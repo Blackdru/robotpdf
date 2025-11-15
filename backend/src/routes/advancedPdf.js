@@ -1307,9 +1307,10 @@ router.post('/advanced-html-to-pdf',
       
       let browser;
       try {
-        // Launch browser
+        // Launch browser with system Chromium for ARM compatibility
         browser = await puppeteer.launch({
           headless: 'new',
+          executablePath: '/usr/bin/chromium-browser',
           args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
@@ -1511,9 +1512,10 @@ router.post('/advanced-html-file-to-pdf',
       
       let browser;
       try {
-        // Launch browser
+        // Launch browser with system Chromium for ARM compatibility
         browser = await puppeteer.launch({
           headless: 'new',
+          executablePath: '/usr/bin/chromium-browser',
           args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
