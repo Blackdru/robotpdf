@@ -128,10 +128,6 @@ const DeveloperKeys = () => {
             <Book className="w-4 h-4" />
             Docs
           </Link>
-          <Link to="/developers/playground" className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-gray-200 rounded-xl text-slate-700 hover:text-indigo-600 hover:border-indigo-300 hover:shadow-md transition-all">
-            <Code className="w-4 h-4" />
-            Playground
-          </Link>
         </div>
         
         {/* Header */}

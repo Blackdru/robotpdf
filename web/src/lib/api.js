@@ -24,10 +24,6 @@ class ApiClient {
     const token = this.getAuthToken()
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
-      console.log('✓ Auth token added to request:', endpoint, '| Token:', token.substring(0, 20) + '...')
-    } else {
-      console.warn('⚠ No auth token found for request:', endpoint)
-      console.log('LocalStorage auth_session:', localStorage.getItem('auth_session')?.substring(0, 50))
     }
 
     // Create AbortController for timeout with better error handling
@@ -172,26 +168,20 @@ class ApiClient {
   getAuthToken() {
     // First, try to get JWT token from new auth system
     const authSession = localStorage.getItem('auth_session')
-    console.log('🔍 Checking auth_session:', authSession ? 'Found' : 'Not found')
     
     if (authSession) {
       try {
         const sessionData = JSON.parse(authSession)
-        console.log('📦 Session data structure:', Object.keys(sessionData))
         
         // Direct access_token property
         if (sessionData.access_token) {
-          console.log('✓ Found access_token directly')
           return sessionData.access_token
         }
         // Also check for nested session property
         if (sessionData.session?.access_token) {
-          console.log('✓ Found access_token in nested session')
           return sessionData.session.access_token
         }
-        console.warn('⚠ No access_token found in session data')
       } catch (e) {
-        console.error('❌ Error parsing auth_session:', e)
         // Clear corrupted session
         localStorage.removeItem('auth_session')
       }
@@ -294,7 +284,6 @@ class ApiClient {
       
       // Refresh if token expires in less than 5 minutes
       if (expiresAt - now < 5 * 60 * 1000) {
-        console.log('Token expiring soon, refreshing...')
         await this.tryRefreshToken()
       }
     } catch (error) {
@@ -329,10 +318,8 @@ class ApiClient {
           expires_in: data.session.expires_in
         }
         localStorage.setItem('auth_session', JSON.stringify(newSession))
-        console.log('✓ Token refreshed successfully')
         return true
       } else {
-        console.error('Token refresh failed')
         this.clearAuthToken()
         return false
       }

@@ -32,7 +32,7 @@ import DeveloperPortal from './pages/DeveloperPortal'
 import DeveloperKeys from './pages/DeveloperKeys'
 import DeveloperUsage from './pages/DeveloperUsage'
 import DeveloperDocs from './pages/DeveloperDocs'
-import DeveloperPlayground from './pages/DeveloperPlayground'
+
 
 // Components
 import ModernNavbar from './components/ModernNavbar'
@@ -237,14 +237,7 @@ const AppContent = () => {
                     <DeveloperDocs />
                   } 
                 />
-                <Route 
-                  path="/developers/playground" 
-                  element={
-                    <ProtectedRoute>
-                      <DeveloperPlayground />
-                    </ProtectedRoute>
-                  } 
-                />
+
                 <Route 
                   path="/admin" 
                   element={

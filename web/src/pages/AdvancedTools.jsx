@@ -816,8 +816,6 @@ const AdvancedTools = () => {
       
       updateProgress(70, 'Creating PDF...', 3)
       
-      console.log('Sending to API with options:', JSON.stringify(options, null, 2))
-      
       const outputName = `webpage_${Date.now()}.pdf`
       let result
       
