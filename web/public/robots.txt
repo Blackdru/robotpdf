@@ -1,0 +1,25 @@
+User-agent: *
+Allow: /
+
+# Disallow authenticated-only areas
+Disallow: /dashboard
+Disallow: /files
+Disallow: /profile
+Disallow: /billing
+Disallow: /upgrade
+Disallow: /admin
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+
+# Allow public tool pages for SEO
+Allow: /tools
+Allow: /advanced-tools
+Allow: /ai-enhanced-ocr-pdf
+Allow: /ai-chat-with-pdf
+Allow: /ai-smart-summary
+
+# Crawl delay (optional, adjust as needed)
+Crawl-delay: 1
+
+Sitemap: https://robotpdf.com/sitemap.xml

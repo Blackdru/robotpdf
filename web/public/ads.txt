@@ -1,0 +1,11 @@
+# ads.txt file for RobotPDF
+# This file is required by Google AdSense to verify ad inventory
+
+# Google AdSense - RobotPDF Publisher ID
+google.com, pub-4179117508545067, DIRECT, f08c47fec0942fa0
+
+# This file must be accessible at: https://robotpdf.com/ads.txt
+# Verify in AdSense dashboard after deployment
+
+# Additional ad networks can be added below if you use them
+# Format: domain, publisher_id, relationship, certification_authority_id
