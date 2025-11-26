@@ -4,6 +4,7 @@ import { useSubscription } from '../contexts/SubscriptionContext'
 import { useSubscriptionAccess } from '../hooks/useSubscriptionAccess'
 import { api } from '../lib/api'
 import { downloadBlob } from '../lib/utils'
+import { trackPageViewOnce } from '../lib/visitorTracking'
 import { Button } from '../components/ui/button'
 import FileUploadModal from '../components/FileUploadModal'
 import ProcessingModal from '../components/ProcessingModal'
@@ -70,6 +71,17 @@ const AdvancedTools = () => {
   }
 
   const filteredTools = getAvailableTools()
+
+  // Track visitor when component mounts
+  useEffect(() => {
+    trackPageViewOnce(window.location.href, 'Advanced Tools - RobotPDF')
+      .then(result => {
+        if (result) {
+          console.log('Visitor tracked:', result.isNewVisitor ? 'New visitor' : 'Returning visitor');
+        }
+      })
+      .catch(err => console.error('Tracking error:', err));
+  }, []);
 
   const updateProgress = (progress, stage, step = null) => {
     setProcessingProgress(progress)
@@ -225,7 +237,10 @@ const AdvancedTools = () => {
     if (!selectedTool) return
     
     // Allow processing with no files for advanced-html-to-pdf if URL is provided
-    if (files.length === 0 && !(selectedTool.id === 'advanced-html-to-pdf' && toolSettings.url)) return
+    // Allow processing with no files for text-to-pdf-pro if direct text is provided
+    if (files.length === 0 && 
+        !(selectedTool.id === 'advanced-html-to-pdf' && toolSettings.url) &&
+        !(selectedTool.id === 'text-to-pdf-pro' && toolSettings.directText)) return
 
     // Initialize processing modal
     initializeProcessingSteps(selectedTool.id)
@@ -235,9 +250,11 @@ const AdvancedTools = () => {
       let uploadedFileIds = []
       
       // Skip file upload if using URL-only mode for advanced-html-to-pdf
+      // Skip file upload if using direct text mode for text-to-pdf-pro
       const isUrlOnlyMode = selectedTool.id === 'advanced-html-to-pdf' && files.length === 0 && toolSettings.url
+      const isDirectTextMode = selectedTool.id === 'text-to-pdf-pro' && files.length === 0 && toolSettings.directText
       
-      if (!isUrlOnlyMode) {
+      if (!isUrlOnlyMode && !isDirectTextMode) {
         // Step 1: Upload files with detailed progress
         updateProgress(5, 'Preparing files for upload...', 0)
         await new Promise(resolve => setTimeout(resolve, 300)) // Brief pause for UI update
@@ -265,12 +282,16 @@ const AdvancedTools = () => {
           }
         }
 
-        if (uploadedFileIds.length === 0) {
+        if (uploadedFileIds.length === 0 && files.length > 0) {
           throw new Error('No files were uploaded successfully')
         }
         
         updateProgress(30, `All ${uploadedFileIds.length} file(s) uploaded successfully`, 1)
         await new Promise(resolve => setTimeout(resolve, 500)) // Brief pause for UI update
+      } else if (isDirectTextMode) {
+        // Direct text mode - skip file upload
+        updateProgress(30, 'Processing text input...', 1)
+        await new Promise(resolve => setTimeout(resolve, 300))
       } else {
         // URL-only mode - skip file upload
         updateProgress(30, 'Preparing URL conversion...', 1)
@@ -321,6 +342,9 @@ const AdvancedTools = () => {
           break
         case 'advanced-html-to-pdf':
           result = await handleAdvancedHTMLToPDF(uploadedFileIds, toolSettings)
+          break
+        case 'text-to-pdf-pro':
+          result = await handleTextToPDFPro(uploadedFileIds, toolSettings)
           break
         default:
           throw new Error('Tool not implemented yet')
@@ -836,6 +860,63 @@ const AdvancedTools = () => {
     }
   }
 
+  const handleTextToPDFPro = async (fileIds, settings = {}) => {
+    updateProgress(30, 'Processing text...', 1)
+    
+    try {
+      // Prepare options for API - AI Enhancement is always enabled for Pro
+      const options = {
+        enableAIEnhancement: true, // Always enabled for Pro version
+        aiEnhancementMode: settings.aiEnhancementMode || 'improve',
+        writingTone: settings.writingTone || 'neutral',
+        fontFamily: settings.fontFamily || 'Helvetica',
+        fontSize: settings.fontSize || '12',
+        pageSize: settings.pageSize || 'A4',
+        lineSpacing: settings.lineSpacing || '1.5',
+        margins: settings.margins || 'normal',
+        marginTop: settings.marginTop,
+        marginRight: settings.marginRight,
+        marginBottom: settings.marginBottom,
+        marginLeft: settings.marginLeft,
+        addPageNumbers: settings.addPageNumbers || false,
+        addHeader: settings.addHeader || false,
+        addFooter: settings.addFooter || false,
+        addTimestamp: settings.addTimestamp || false,
+        headerText: settings.headerText || '',
+        footerText: settings.footerText || ''
+      }
+
+      // AI Enhancement is always enabled for Pro
+      updateProgress(40, 'Enhancing text with AI...', 1)
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      updateProgress(60, 'Applying formatting...', 2)
+      
+      let result
+      if (settings.directText) {
+        // Direct text input with options
+        result = await api.convertDirectTextToPDF(settings.directText, `text_to_pdf_${Date.now()}.pdf`, options)
+        if (result.aiEnhanced) {
+          toast.success('Text enhanced with AI and converted to PDF!')
+        } else {
+          toast.success('Text converted to PDF successfully!')
+        }
+      } else {
+        // File upload
+        result = await api.convertTextToPDF(fileIds, `text_to_pdf_${Date.now()}.pdf`)
+        toast.success(`${fileIds.length} text file(s) converted to PDF successfully!`)
+      }
+      
+      updateProgress(100, 'Complete!', 4)
+      
+      return { file: result.file }
+      
+    } catch (error) {
+      console.error('Text to PDF Pro error:', error)
+      throw error
+    }
+  }
+
   const handlePDFToOffice = async (fileId, settings = {}) => {
 
     updateProgress(30, 'Analyzing PDF structure...', 1)
@@ -1173,6 +1254,59 @@ const AdvancedTools = () => {
             onConfirm={handlePasswordProtectConfirm}
             fileCount={pendingPasswordFiles.length}
           />
+
+          {/* SEO Header */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-12 sm:pt-16 pb-6 sm:pb-8 text-center">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+            AI PDF Tools - Artificial Intelligence Document Processing
+          </h1>
+          <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+            Advanced AI-powered PDF tools: OCR, chat with PDF, smart summarization, and more. 
+            Experience the future of PDF editing with artificial intelligence.
+          </p>
+        </div>
+
+        
+          {/* SEO Content Section */}
+          <section className="max-w-7xl mx-auto px-4 sm:px-6 py-16 sm:py-20">
+            <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-3xl p-8 sm:p-12 border border-indigo-100">
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6 text-center">
+                AI-Powered PDF Tools - The Future of Document Processing
+              </h2>
+              
+              <div className="grid md:grid-cols-3 gap-8 mb-8">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">AI PDF OCR</h3>
+                  <p className="text-gray-600 text-sm leading-relaxed">
+                    Extract text from scanned PDFs and images with 99% accuracy using artificial intelligence. 
+                    Our AI OCR recognizes text in multiple languages. Best free PDF OCR tool online.
+                  </p>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Chat with PDF</h3>
+                  <p className="text-gray-600 text-sm leading-relaxed">
+                    Ask questions about your PDF documents and get instant AI-powered answers. 
+                    Our PDF AI chatbot understands context and provides accurate information from your documents.
+                  </p>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">AI PDF Summarization</h3>
+                  <p className="text-gray-600 text-sm leading-relaxed">
+                    Get intelligent summaries of long PDF documents instantly. 
+                    Our AI document processing extracts key points and creates concise summaries.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="text-center">
+                <p className="text-gray-500 text-sm max-w-3xl mx-auto">
+                  RobotPDF's advanced AI PDF tools bring artificial intelligence to document processing. 
+                  Features include AI PDF reader, smart OCR, chat with PDF, and AI summarization. 
+                  More powerful than Adobe Acrobat with AI features. Free AI PDF tools online.
+                </p>
+              </div>
+            </div>
+          </section>
         </div>
       </div>
     </div>

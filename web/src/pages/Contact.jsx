@@ -113,21 +113,6 @@ const Contact = () => {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="p-4 sm:p-6">
-                <CardTitle className="flex items-center text-base sm:text-lg">
-                  <MessageSquare className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-green-400 flex-shrink-0" />
-                  Live Chat
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 sm:p-6 pt-0">
-                <p className="text-muted-foreground text-xs sm:text-sm mb-2">
-                  Available Monday - Friday
-                </p>
-                <p className="text-foreground font-medium text-sm sm:text-base">9:00 AM - 6:00 PM EST</p>
-              </CardContent>
-            </Card>
-
             
 
             

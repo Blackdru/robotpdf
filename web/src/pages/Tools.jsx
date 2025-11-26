@@ -229,6 +229,22 @@ const Tools = () => {
       popularity: 82,
       processingTime: '< 45s'
     },
+    {
+      id: 'text-to-pdf',
+      icon: FileText,
+      title: 'Text to PDF',
+      description: 'Type or paste text to convert into PDF documents',
+      solidColor: 'bg-violet-600',
+      color: 'from-violet-500 to-purple-700',
+      acceptedFiles: '.txt',
+      multipleFiles: true,
+      minFiles: 0,
+      category: 'Conversion',
+      isFree: true,
+      popularity: 80,
+      processingTime: '< 30s',
+      requiresTextOrFile: true
+    },
   ]
 
   const categories = ['All', 'Basic', 'Optimization', 'Conversion', 'Security']
@@ -317,6 +333,12 @@ const Tools = () => {
         { name: 'Uploading Files', icon: Upload },
         { name: 'Verifying Password', icon: Shield },
         { name: 'Removing Protection', icon: Lock },
+        { name: 'Complete', icon: CheckCircle }
+      ],
+      'text-to-pdf': [
+        { name: 'Uploading Text Files', icon: Upload },
+        { name: 'Processing Text', icon: FileText },
+        { name: 'Creating PDF', icon: FileText },
         { name: 'Complete', icon: CheckCircle }
       ]
     }
@@ -457,8 +479,10 @@ const Tools = () => {
     const finalSettings = { ...toolSettings, ...settings }
 
     // For HTML to PDF, allow processing with no files if URL is provided
+    // For Text to PDF, allow processing with no files if direct text is provided
     if (!selectedTool) return
-    if (selectedTool.id !== 'html-to-pdf' && files.length === 0) return
+    if (selectedTool.id !== 'html-to-pdf' && selectedTool.id !== 'text-to-pdf' && files.length === 0) return
+    if (selectedTool.id === 'text-to-pdf' && files.length === 0 && !finalSettings.directText) return
 
     // Free tools don't require authentication
     // Only check usage limits if user is authenticated
@@ -903,6 +927,24 @@ const Tools = () => {
           toast.success('Excel converted to PDF successfully!')
           break
 
+        case 'text-to-pdf':
+          // Convert Text to PDF (either from direct text input or files)
+          updateProgress(50, 'Processing text...', 1)
+          await new Promise(resolve => setTimeout(resolve, 500))
+          updateProgress(70, 'Creating PDF...', 2)
+
+          if (finalSettings.directText) {
+            // Direct text input
+            result = await api.convertDirectTextToPDF(finalSettings.directText, `${outputName}.pdf`)
+          } else {
+            // File upload
+            result = await api.convertTextToPDF(uploadedFileIds, `${outputName}.pdf`)
+          }
+
+          updateProgress(85, 'Conversion complete!', 2)
+          toast.success('Text converted to PDF successfully!')
+          break
+
         default:
           throw new Error('Unknown tool type')
       }
@@ -1049,9 +1091,8 @@ const Tools = () => {
           </div>
         )}
 
-        {/* Header Section */}
+        {/* Header Section - SEO Optimized */}
         <div className="max-w-7xl mx-auto mobile-container pt-12 sm:pt-16 pb-8 sm:pb-12">
-
 
           {/* Category Filter - Modern */}
           <div className="mobile-overflow-x pb-4">
@@ -1194,6 +1235,55 @@ const Tools = () => {
                     >
                       <Download className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
                       Convert to PDF
+                    </Button>
+                  </>
+                ) : selectedTool.requiresTextOrFile ? (
+                  <>
+                    <h3 className="text-base sm:text-lg font-semibold text-card-foreground mb-3 sm:mb-4 px-2">
+                      Enter or Paste Your Text
+                    </h3>
+
+                    <div className="w-full max-w-3xl mx-auto mb-4 px-2 sm:px-0">
+                      <textarea
+                        id="text-to-pdf-input"
+                        placeholder="Type or paste your text here..."
+                        rows={8}
+                        className="w-full px-3 sm:px-4 py-3 bg-accent border border-border rounded-lg text-card-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm sm:text-base resize-y min-h-[150px] sm:min-h-[200px]"
+                      />
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-4">
+                      <Button
+                        onClick={async () => {
+                          const textInput = document.getElementById('text-to-pdf-input')
+                          const text = textInput?.value?.trim()
+                          if (text) {
+                            await handleAutoProcess([], { directText: text })
+                          } else {
+                            toast.error('Please enter some text to convert')
+                          }
+                        }}
+                        disabled={isProcessing}
+                        className={`bg-gradient-to-r ${selectedTool.color} text-white px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base lg:text-lg font-semibold hover:shadow-lg transition-all duration-300 mobile-touch-target w-full sm:w-auto`}
+                      >
+                        <Download className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
+                        Convert to PDF
+                      </Button>
+                    </div>
+
+                    <div className="flex items-center justify-center gap-4 my-4">
+                      <div className="h-px bg-border flex-1 max-w-[100px]"></div>
+                      <span className="text-muted-foreground text-sm">OR</span>
+                      <div className="h-px bg-border flex-1 max-w-[100px]"></div>
+                    </div>
+
+                    <Button
+                      onClick={() => setShowUploadModal(true)}
+                      variant="outline"
+                      className="border-border text-card-foreground hover:bg-accent px-6 py-3 text-sm font-medium mobile-touch-target"
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      Upload Text File (.txt)
                     </Button>
                   </>
                 ) : (
@@ -1537,6 +1627,54 @@ const Tools = () => {
         onConfirm={handlePasswordRemoveConfirm}
         fileCount={pendingPasswordFiles.length}
       />
+
+      {/* SEO Header */}
+          <div className="text-center mb-8 sm:mb-12">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+              Free PDF Tools Online
+            </h1>
+            <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+              Convert PDF to Word, Excel, JPG. Merge PDF, split PDF, compress PDF files. 
+              Best free online PDF editor - alternative to iLovePDF and Adobe Acrobat.
+            </p>
+          </div>
+
+          
+      {/* SEO Content Section */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-16 sm:py-20">
+        <div className="bg-gradient-to-br from-slate-50 to-white rounded-3xl p-8 sm:p-12 border border-gray-200">
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6 text-center">
+            All-in-One Free PDF Converter & Editor
+          </h2>
+          
+          <div className="grid md:grid-cols-2 gap-8 mb-8">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">PDF Conversion Tools</h3>
+              <p className="text-gray-600 text-sm leading-relaxed">
+                Convert PDF to Word (DOCX), PDF to Excel (XLSX), PDF to JPG images online free. 
+                Our PDF converter supports Word to PDF, Excel to PDF, and JPG to PDF conversion. 
+                Fast, accurate, and no file size limits.
+              </p>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">PDF Editing Tools</h3>
+              <p className="text-gray-600 text-sm leading-relaxed">
+                Merge PDF files (combine PDF), split PDF pages, compress PDF to reduce size. 
+                Our online PDF editor is the best free alternative to Adobe Acrobat and iLovePDF. 
+                Edit PDF documents without installing software.
+              </p>
+            </div>
+          </div>
+          
+          <div className="text-center">
+            <p className="text-gray-500 text-sm max-w-3xl mx-auto">
+              RobotPDF provides free online PDF tools including merge PDF, split PDF, compress PDF, 
+              PDF to Word converter, Word to PDF converter, PDF to Excel, PDF to JPG, JPG to PDF (img to pdf), 
+              and more. Better than iLovePDF with AI-powered features. No registration required.
+            </p>
+          </div>
+        </div>
+      </section>
 
     </div>
   )

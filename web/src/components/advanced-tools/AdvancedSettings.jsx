@@ -1526,6 +1526,276 @@ const AdvancedSettings = ({
             </div>
           )}
 
+          {/* Text to PDF Pro Settings */}
+          {selectedTool.id === 'text-to-pdf-pro' && (
+            <div className="p-4 bg-slate-50 rounded-xl border border-gray-200">
+              <h4 className="font-medium text-slate-900 mb-3 flex items-center">
+                <Brain className="h-4 w-4 mr-2" />
+                Text to PDF Pro Settings
+              </h4>
+
+              {/* AI Enhancement Section - Always Enabled */}
+              <div className="mb-4 p-3 bg-gradient-to-r from-violet-50 to-purple-50 rounded-lg border border-violet-200">
+                <div className="flex items-center justify-between mb-3">
+                  <h5 className="text-sm font-semibold text-violet-900 flex items-center">
+                    <Award className="h-4 w-4 mr-2" />
+                    AI Text Enhancement
+                    <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">Always On</span>
+                  </h5>
+                </div>
+                <p className="text-xs text-violet-700 mb-3">
+                  AI automatically improves grammar, structure, and readability of your text before converting to PDF.
+                </p>
+                
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-900 mb-2">
+                      Enhancement Mode
+                    </label>
+                    <select 
+                      className="w-full bg-white border-2 border-gray-200 text-slate-900 rounded-lg px-3 py-2 focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                      value={toolSettings.aiEnhancementMode || 'improve'}
+                      onChange={(e) => setToolSettings(prev => ({ ...prev, aiEnhancementMode: e.target.value }))}
+                    >
+                      <option value="fix">🔧 Fix Grammar & Spelling Only</option>
+                      <option value="improve">✨ Improve Readability</option>
+                      <option value="professional">💼 Make Professional</option>
+                      <option value="structure">📋 Structure & Format</option>
+                      <option value="summarize">📝 Summarize Content</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-900 mb-2">
+                      Writing Tone
+                    </label>
+                    <select 
+                      className="w-full bg-white border-2 border-gray-200 text-slate-900 rounded-lg px-3 py-2 focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                      value={toolSettings.writingTone || 'neutral'}
+                      onChange={(e) => setToolSettings(prev => ({ ...prev, writingTone: e.target.value }))}
+                    >
+                      <option value="neutral">🎯 Neutral</option>
+                      <option value="formal">🎩 Formal</option>
+                      <option value="casual">😊 Casual</option>
+                      <option value="academic">📚 Academic</option>
+                      <option value="business">💼 Business</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-900 mb-2">
+                    Font Family
+                  </label>
+                  <select 
+                    className="w-full bg-white border-2 border-gray-200 text-slate-900 rounded-lg px-3 py-2 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                    value={toolSettings.fontFamily || 'Helvetica'}
+                    onChange={(e) => setToolSettings(prev => ({ ...prev, fontFamily: e.target.value }))}
+                  >
+                    <option value="Helvetica">Helvetica (Default)</option>
+                    <option value="Times-Roman">Times Roman</option>
+                    <option value="Courier">Courier (Monospace)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-900 mb-2">
+                    Font Size
+                  </label>
+                  <select 
+                    className="w-full bg-white border-2 border-gray-200 text-slate-900 rounded-lg px-3 py-2 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                    value={toolSettings.fontSize || '12'}
+                    onChange={(e) => setToolSettings(prev => ({ ...prev, fontSize: e.target.value }))}
+                  >
+                    <option value="10">10pt (Small)</option>
+                    <option value="11">11pt</option>
+                    <option value="12">12pt (Default)</option>
+                    <option value="14">14pt</option>
+                    <option value="16">16pt (Large)</option>
+                    <option value="18">18pt</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-900 mb-2">
+                    Page Size
+                  </label>
+                  <select 
+                    className="w-full bg-white border-2 border-gray-200 text-slate-900 rounded-lg px-3 py-2 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                    value={toolSettings.pageSize || 'A4'}
+                    onChange={(e) => setToolSettings(prev => ({ ...prev, pageSize: e.target.value }))}
+                  >
+                    <option value="A4">A4 (210 × 297 mm)</option>
+                    <option value="Letter">Letter (8.5 × 11 in)</option>
+                    <option value="Legal">Legal (8.5 × 14 in)</option>
+                    <option value="A3">A3 (297 × 420 mm)</option>
+                    <option value="A5">A5 (148 × 210 mm)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-900 mb-2">
+                    Line Spacing
+                  </label>
+                  <select 
+                    className="w-full bg-white border-2 border-gray-200 text-slate-900 rounded-lg px-3 py-2 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                    value={toolSettings.lineSpacing || '1.5'}
+                    onChange={(e) => setToolSettings(prev => ({ ...prev, lineSpacing: e.target.value }))}
+                  >
+                    <option value="1">Single (1.0)</option>
+                    <option value="1.15">1.15</option>
+                    <option value="1.5">1.5 (Default)</option>
+                    <option value="2">Double (2.0)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-slate-900 mb-2">
+                  Page Margins
+                </label>
+                <select 
+                  className="w-full bg-white border-2 border-gray-200 text-slate-900 rounded-lg px-3 py-2 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                  value={toolSettings.margins || 'normal'}
+                  onChange={(e) => setToolSettings(prev => ({ ...prev, margins: e.target.value }))}
+                >
+                  <option value="narrow">Narrow (0.5 inch)</option>
+                  <option value="normal">Normal (1 inch) - Default</option>
+                  <option value="wide">Wide (1.5 inch)</option>
+                  <option value="custom">Custom</option>
+                </select>
+              </div>
+
+              {toolSettings.margins === 'custom' && (
+                <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+                  <div>
+                    <input
+                      type="number"
+                      placeholder="Top"
+                      value={toolSettings.marginTop || 72}
+                      onChange={(e) => setToolSettings(prev => ({ ...prev, marginTop: parseInt(e.target.value) }))}
+                      className="w-full bg-white border border-gray-200 text-slate-900 rounded-lg px-2 py-2 text-sm"
+                    />
+                    <p className="text-xs text-slate-600 mt-1">Top (pt)</p>
+                  </div>
+                  <div>
+                    <input
+                      type="number"
+                      placeholder="Right"
+                      value={toolSettings.marginRight || 72}
+                      onChange={(e) => setToolSettings(prev => ({ ...prev, marginRight: parseInt(e.target.value) }))}
+                      className="w-full bg-white border border-gray-200 text-slate-900 rounded-lg px-2 py-2 text-sm"
+                    />
+                    <p className="text-xs text-slate-600 mt-1">Right (pt)</p>
+                  </div>
+                  <div>
+                    <input
+                      type="number"
+                      placeholder="Bottom"
+                      value={toolSettings.marginBottom || 72}
+                      onChange={(e) => setToolSettings(prev => ({ ...prev, marginBottom: parseInt(e.target.value) }))}
+                      className="w-full bg-white border border-gray-200 text-slate-900 rounded-lg px-2 py-2 text-sm"
+                    />
+                    <p className="text-xs text-slate-600 mt-1">Bottom (pt)</p>
+                  </div>
+                  <div>
+                    <input
+                      type="number"
+                      placeholder="Left"
+                      value={toolSettings.marginLeft || 72}
+                      onChange={(e) => setToolSettings(prev => ({ ...prev, marginLeft: parseInt(e.target.value) }))}
+                      className="w-full bg-white border border-gray-200 text-slate-900 rounded-lg px-2 py-2 text-sm"
+                    />
+                    <p className="text-xs text-slate-600 mt-1">Left (pt)</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-4 space-y-3">
+                <h5 className="text-sm font-medium text-slate-900">Additional Options</h5>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                  <div className="flex items-center space-x-3 p-2 bg-white rounded-lg border border-gray-100">
+                    <input
+                      type="checkbox"
+                      checked={toolSettings.addPageNumbers || false}
+                      onChange={(e) => setToolSettings(prev => ({ ...prev, addPageNumbers: e.target.checked }))}
+                      className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                    />
+                    <span className="text-sm text-slate-900">Add page numbers</span>
+                  </div>
+                  <div className="flex items-center space-x-3 p-2 bg-white rounded-lg border border-gray-100">
+                    <input
+                      type="checkbox"
+                      checked={toolSettings.addHeader || false}
+                      onChange={(e) => setToolSettings(prev => ({ ...prev, addHeader: e.target.checked }))}
+                      className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                    />
+                    <span className="text-sm text-slate-900">Add header</span>
+                  </div>
+                  <div className="flex items-center space-x-3 p-2 bg-white rounded-lg border border-gray-100">
+                    <input
+                      type="checkbox"
+                      checked={toolSettings.addFooter || false}
+                      onChange={(e) => setToolSettings(prev => ({ ...prev, addFooter: e.target.checked }))}
+                      className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                    />
+                    <span className="text-sm text-slate-900">Add footer</span>
+                  </div>
+                  <div className="flex items-center space-x-3 p-2 bg-white rounded-lg border border-gray-100">
+                    <input
+                      type="checkbox"
+                      checked={toolSettings.addTimestamp || false}
+                      onChange={(e) => setToolSettings(prev => ({ ...prev, addTimestamp: e.target.checked }))}
+                      className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                    />
+                    <span className="text-sm text-slate-900">Add timestamp</span>
+                  </div>
+                </div>
+              </div>
+
+              {(toolSettings.addHeader || toolSettings.addFooter) && (
+                <div className="mt-4 space-y-3">
+                  {toolSettings.addHeader && (
+                    <div>
+                      <label className="block text-sm font-medium text-slate-900 mb-2">
+                        Header Text
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Enter header text..."
+                        value={toolSettings.headerText || ''}
+                        onChange={(e) => setToolSettings(prev => ({ ...prev, headerText: e.target.value }))}
+                        className="w-full bg-white border-2 border-gray-200 text-slate-900 rounded-lg px-3 py-2 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                      />
+                    </div>
+                  )}
+                  {toolSettings.addFooter && (
+                    <div>
+                      <label className="block text-sm font-medium text-slate-900 mb-2">
+                        Footer Text
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Enter footer text..."
+                        value={toolSettings.footerText || ''}
+                        onChange={(e) => setToolSettings(prev => ({ ...prev, footerText: e.target.value }))}
+                        className="w-full bg-white border-2 border-gray-200 text-slate-900 rounded-lg px-3 py-2 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="mt-4 p-3 bg-violet-50 rounded-lg border border-violet-200">
+                <p className="text-xs text-violet-700">
+                  💡 <strong>Pro Tip:</strong> Enable AI Text Enhancement to automatically fix grammar, 
+                  improve readability, and professionally format your text before conversion.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Reset Settings */}
           <div className="flex justify-between items-center pt-4 border-t border-border">
             <p className="text-sm text-muted-foreground">

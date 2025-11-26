@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { Button } from '../ui/button'
-import { Crown, Upload, FileText, Info, Rocket } from 'lucide-react'
+import { Crown, Upload, FileText, Info, Rocket, Download } from 'lucide-react'
 import AdvancedSettings from './AdvancedSettings'
 import HtmlToPdfUploadModal from '../HtmlToPdfUploadModal'
+import FileUploadModal from '../FileUploadModal'
+import toast from 'react-hot-toast'
 
 const ToolProcessor = ({
   selectedTool,
@@ -74,6 +76,55 @@ const ToolProcessor = ({
             <p className="text-xs sm:text-sm text-muted-foreground mt-3">
               Supports: HTML files or any public webpage URL
             </p>
+          </>
+        ) : selectedTool.requiresTextOrFile ? (
+          <>
+            <h3 className="text-base sm:text-lg font-semibold text-card-foreground mb-3 sm:mb-4 px-2">
+              Enter or Paste Your Text
+            </h3>
+
+            <div className="w-full max-w-3xl mx-auto mb-4 px-2 sm:px-0">
+              <textarea
+                id="text-to-pdf-pro-input"
+                placeholder="Type or paste your text here..."
+                rows={8}
+                className="w-full px-3 sm:px-4 py-3 bg-accent border border-border rounded-lg text-card-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm sm:text-base resize-y min-h-[150px] sm:min-h-[200px]"
+              />
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-4">
+              <Button
+                onClick={async () => {
+                  const textInput = document.getElementById('text-to-pdf-pro-input')
+                  const text = textInput?.value?.trim()
+                  if (text) {
+                    onProcess([], { ...toolSettings, directText: text })
+                  } else {
+                    toast.error('Please enter some text to convert')
+                  }
+                }}
+                disabled={isProcessing}
+                className={`bg-gradient-to-r ${selectedTool.color} text-white px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base lg:text-lg font-semibold hover:shadow-lg transition-all duration-300 mobile-touch-target w-full sm:w-auto`}
+              >
+                <Download className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
+                Convert to PDF
+              </Button>
+            </div>
+
+            <div className="flex items-center justify-center gap-4 my-4">
+              <div className="h-px bg-border flex-1 max-w-[100px]"></div>
+              <span className="text-muted-foreground text-sm">OR</span>
+              <div className="h-px bg-border flex-1 max-w-[100px]"></div>
+            </div>
+
+            <Button
+              onClick={() => setShowUploadModal(true)}
+              variant="outline"
+              className="border-border text-card-foreground hover:bg-accent px-6 py-3 text-sm font-medium mobile-touch-target"
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Upload Text File (.txt, .md, .csv)
+            </Button>
           </>
         ) : (
           <>
@@ -172,6 +223,17 @@ const ToolProcessor = ({
           onUrlSubmitted={onUrlSubmitted}
           acceptedFiles={selectedTool.acceptedFiles}
           toolName={selectedTool.title}
+        />
+      )}
+
+      {/* Text to PDF Pro Upload Modal */}
+      {selectedTool.requiresTextOrFile && selectedTool.id !== 'advanced-html-to-pdf' && (
+        <FileUploadModal
+          isOpen={showUploadModal}
+          onClose={() => setShowUploadModal(false)}
+          onFilesUploaded={onFilesUploaded}
+          acceptedFiles={selectedTool.acceptedFiles}
+          multiple={selectedTool.multipleFiles}
         />
       )}
     </div>

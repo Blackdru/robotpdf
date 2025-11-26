@@ -570,6 +570,20 @@ class ApiClient {
     })
   }
 
+  async convertTextToPDF(fileIds, outputName = 'converted.pdf') {
+    return this.request('/pdf/convert/text-to-pdf', {
+      method: 'POST',
+      body: JSON.stringify({ fileIds, outputName }),
+    })
+  }
+
+  async convertDirectTextToPDF(text, outputName = 'converted.pdf', options = {}) {
+    return this.request('/pdf/convert/direct-text-to-pdf', {
+      method: 'POST',
+      body: JSON.stringify({ text, outputName, options }),
+    })
+  }
+
   async getPDFInfo(fileId) {
     return this.request(`/pdf/info/${fileId}`)
   }

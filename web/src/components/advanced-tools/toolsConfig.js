@@ -36,7 +36,8 @@ export const proTools = [
     popularity: 99,
     processingTime: '< 45s',
     features: ['AI-powered generation', 'Multiple templates', 'ATS optimization', 'Industry-specific content'],
-    isGenerator: true
+    isGenerator: true,
+    requiresPro: true
   },
   {
     id: 'advanced-ocr',
@@ -203,6 +204,23 @@ export const proTools = [
     processingTime: '< 60s',
     requiresUrl: true,
     features: ['Full page capture', 'Custom page size', 'Header/Footer', 'Background graphics']
+  },
+  {
+    id: 'text-to-pdf-pro',
+    icon: FileText,
+    title: 'Text to PDF Pro',
+    description: 'Type or paste text to convert into PDF with custom styles',
+    solidColor: 'bg-violet-600',
+    color: 'from-violet-500 to-purple-700',
+    acceptedFiles: '.txt,.md,.csv',
+    multipleFiles: true,
+    minFiles: 0,
+    category: 'Professional',
+    popularity: 84,
+    processingTime: '< 45s',
+    features: ['Custom fonts', 'Page numbering', 'Headers/Footers', 'Markdown support'],
+    requiresTextOrFile: true,
+    requiresPro: true
   }
 ]
 
@@ -297,6 +315,13 @@ export const PROCESSING_STEPS_CONFIG = {
     { name: 'Fetching URL', icon: Upload },
     { name: 'Rendering Page', icon: Eye },
     { name: 'Applying Settings', icon: Zap },
+    { name: 'Creating PDF', icon: FileText },
+    { name: 'Complete', icon: CheckCircle }
+  ],
+  'text-to-pdf-pro': [
+    { name: 'Uploading Text Files', icon: Upload },
+    { name: 'Processing Text', icon: FileText },
+    { name: 'Applying Formatting', icon: Zap },
     { name: 'Creating PDF', icon: FileText },
     { name: 'Complete', icon: CheckCircle }
   ]

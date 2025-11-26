@@ -22,6 +22,8 @@ const TOOL_REQUIREMENTS = {
   'office-to-pdf': 'pro',
   'advanced-html-to-pdf': 'pro',
   'password-protect': 'pro',
+  'ai-resume-generator': 'pro',
+  'text-to-pdf-pro': 'pro',
   
   // Premium tools - require premium
   'encrypt-pro': 'pro',

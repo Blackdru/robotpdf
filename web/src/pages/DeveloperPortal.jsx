@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { trackPageViewOnce } from '../lib/visitorTracking';
 import { 
   Key, 
   BarChart3, 
@@ -25,6 +26,12 @@ const DeveloperPortal = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Track visitor to developer portal
+    trackPageViewOnce(window.location.href, 'Developer Portal - RobotPDF')
+      .catch(err => console.error('Tracking error:', err));
+  }, []);
 
   useEffect(() => {
     if (!user) {

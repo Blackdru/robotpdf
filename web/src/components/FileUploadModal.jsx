@@ -35,6 +35,13 @@ const FileUploadModal = ({
     if (type === '.gif') return 'image/gif'
     if (type === '.bmp') return 'image/bmp'
     if (type === '.webp') return 'image/webp'
+    if (type === '.txt') return 'text/plain'
+    if (type === '.md') return 'text/markdown'
+    if (type === '.csv') return 'text/csv'
+    if (type === '.doc') return 'application/msword'
+    if (type === '.docx') return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    if (type === '.xls') return 'application/vnd.ms-excel'
+    if (type === '.xlsx') return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     return type
   })
 
@@ -82,6 +89,13 @@ const FileUploadModal = ({
         if (type === 'image/gif') return ext === '.gif'
         if (type === 'image/bmp') return ext === '.bmp'
         if (type === 'image/webp') return ext === '.webp'
+        if (type === 'text/plain') return ext === '.txt'
+        if (type === 'text/markdown') return ext === '.md'
+        if (type === 'text/csv') return ext === '.csv'
+        if (type === 'application/msword') return ext === '.doc'
+        if (type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') return ext === '.docx'
+        if (type === 'application/vnd.ms-excel') return ext === '.xls'
+        if (type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') return ext === '.xlsx'
         return false
       })])
     ),

@@ -927,6 +927,297 @@ router.post('/simple-convert', optionalAuth, async (req, res) => {
   }
 });
 
+// Convert direct text input to PDF with advanced options
+router.post('/convert/direct-text-to-pdf', optionalAuth, async (req, res) => {
+  try {
+    const { 
+      text, 
+      outputName = 'text-converted.pdf',
+      options = {}
+    } = req.body;
+    const isAnonymous = !req.user;
+
+    console.log('=== DIRECT TEXT TO PDF REQUEST ===');
+    console.log('User:', req.user?.id || 'anonymous');
+    console.log('Text length:', text?.length || 0);
+    console.log('Options:', options);
+
+    if (!text || typeof text !== 'string' || text.trim().length === 0) {
+      return res.status(400).json({ error: 'Text content is required' });
+    }
+
+    let processedText = text;
+
+    // AI Enhancement if enabled
+    if (options.enableAIEnhancement) {
+      try {
+        const aiService = require('../services/aiService');
+        const enhancementPrompt = getEnhancementPrompt(options.aiEnhancementMode, options.writingTone);
+        
+        console.log('Enhancing text with AI...');
+        const enhancedResult = await aiService.enhanceText(text, enhancementPrompt);
+        if (enhancedResult && enhancedResult.enhancedText) {
+          processedText = enhancedResult.enhancedText;
+          console.log('Text enhanced successfully');
+        }
+      } catch (aiError) {
+        console.error('AI enhancement failed, using original text:', aiError.message);
+        // Continue with original text if AI fails
+      }
+    }
+
+    // Parse options with defaults
+    const fontSize = parseInt(options.fontSize) || 12;
+    const fontFamily = options.fontFamily || 'Helvetica';
+    const pageSize = options.pageSize || 'A4';
+    const lineSpacing = parseFloat(options.lineSpacing) || 1.5;
+    
+    // Calculate margins
+    let margins = { top: 72, bottom: 72, left: 72, right: 72 }; // 1 inch default
+    if (options.margins === 'narrow') {
+      margins = { top: 36, bottom: 36, left: 36, right: 36 };
+    } else if (options.margins === 'wide') {
+      margins = { top: 108, bottom: 108, left: 108, right: 108 };
+    } else if (options.margins === 'custom') {
+      margins = {
+        top: parseInt(options.marginTop) || 72,
+        bottom: parseInt(options.marginBottom) || 72,
+        left: parseInt(options.marginLeft) || 72,
+        right: parseInt(options.marginRight) || 72
+      };
+    }
+
+    // Create PDF using PDFKit with advanced options
+    const doc = new PDFKit({
+      size: pageSize,
+      margins: margins,
+      bufferPages: true
+    });
+
+    const chunks = [];
+    doc.on('data', chunk => chunks.push(chunk));
+
+    // Add header if enabled
+    if (options.addHeader && options.headerText) {
+      doc.fontSize(10).font('Helvetica').text(options.headerText, {
+        align: 'center'
+      });
+      doc.moveDown();
+    }
+
+    // Add timestamp if enabled
+    if (options.addTimestamp) {
+      doc.fontSize(9).font('Helvetica').fillColor('#666666').text(
+        `Generated: ${new Date().toLocaleString()}`,
+        { align: 'right' }
+      );
+      doc.fillColor('#000000').moveDown();
+    }
+
+    // Add main text content with formatting
+    const lineGap = (lineSpacing - 1) * fontSize;
+    doc.fontSize(fontSize).font(fontFamily).text(processedText, {
+      align: 'left',
+      lineGap: lineGap
+    });
+
+    // Add footer if enabled
+    if (options.addFooter && options.footerText) {
+      doc.moveDown(2);
+      doc.fontSize(10).font('Helvetica').text(options.footerText, {
+        align: 'center'
+      });
+    }
+
+    // Add page numbers if enabled
+    if (options.addPageNumbers) {
+      const pages = doc.bufferedPageRange();
+      for (let i = 0; i < pages.count; i++) {
+        doc.switchToPage(i);
+        doc.fontSize(10).font('Helvetica').text(
+          `Page ${i + 1} of ${pages.count}`,
+          0,
+          doc.page.height - 50,
+          { align: 'center' }
+        );
+      }
+    }
+
+    doc.end();
+
+    // Wait for PDF generation to complete
+    const pdfBuffer = await new Promise((resolve, reject) => {
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
+    });
+
+    // Save PDF file
+    const savedFile = await saveProcessedFile(
+      req.user?.id || null,
+      pdfBuffer,
+      outputName,
+      'application/pdf',
+      isAnonymous
+    );
+
+    // Log operation (only for authenticated users)
+    if (req.user) {
+      await logOperation(req.user.id, savedFile.id, 'direct-text-to-pdf');
+    }
+
+    console.log('Direct text to PDF completed successfully:', savedFile.id);
+
+    res.json({
+      message: 'Text converted to PDF successfully',
+      file: savedFile,
+      aiEnhanced: options.enableAIEnhancement || false,
+      isAnonymous: isAnonymous
+    });
+
+  } catch (error) {
+    console.error('Direct text to PDF error:', error);
+    res.status(500).json({ error: error.message || 'Text to PDF conversion failed' });
+  }
+});
+
+// Helper function to get AI enhancement prompt
+function getEnhancementPrompt(mode, tone) {
+  const toneInstructions = {
+    neutral: 'Maintain a neutral, clear tone.',
+    formal: 'Use formal, professional language.',
+    casual: 'Use a friendly, conversational tone.',
+    academic: 'Use academic, scholarly language with proper citations format.',
+    business: 'Use business-appropriate, professional language.'
+  };
+
+  const modeInstructions = {
+    fix: 'Fix only grammar, spelling, and punctuation errors. Keep the original structure and style.',
+    improve: 'Improve readability while fixing grammar. Enhance clarity and flow without changing the meaning.',
+    professional: 'Rewrite to sound more professional and polished. Fix all errors and improve structure.',
+    structure: 'Organize the content with proper headings, paragraphs, and bullet points where appropriate.',
+    summarize: 'Summarize the key points while maintaining clarity and completeness.'
+  };
+
+  return `${modeInstructions[mode] || modeInstructions.improve} ${toneInstructions[tone] || toneInstructions.neutral}`;
+}
+
+// Convert Text files to PDF
+router.post('/convert/text-to-pdf', optionalAuth, async (req, res) => {
+  try {
+    const { fileIds, outputName = 'text-converted.pdf' } = req.body;
+    const isAnonymous = !req.user;
+
+    console.log('=== TEXT TO PDF REQUEST ===');
+    console.log('User:', req.user?.id || 'anonymous');
+    console.log('File IDs:', fileIds);
+
+    if (!fileIds || !Array.isArray(fileIds) || fileIds.length === 0) {
+      return res.status(400).json({ error: 'At least 1 text file is required' });
+    }
+
+    // Get file metadata
+    let query = supabaseAdmin
+      .from('files')
+      .select('*')
+      .in('id', fileIds);
+
+    if (req.user) {
+      query = query.eq('user_id', req.user.id);
+    } else {
+      query = query.is('user_id', null);
+    }
+
+    const { data: files, error: filesError } = await query;
+
+    if (filesError || !files || files.length !== fileIds.length) {
+      console.log('Files error:', filesError);
+      console.log('Found files:', files?.length, 'Expected:', fileIds.length);
+      return res.status(404).json({ error: 'One or more files not found or access denied' });
+    }
+
+    // Verify all files are text files
+    const textTypes = ['text/plain', 'text/markdown', 'text/csv', 'application/octet-stream'];
+    const textExtensions = ['.txt', '.md', '.csv', '.text'];
+    const nonTextFiles = files.filter(file => {
+      const isTextType = textTypes.includes(file.type);
+      const hasTextExtension = textExtensions.some(ext => file.filename.toLowerCase().endsWith(ext));
+      return !isTextType && !hasTextExtension;
+    });
+
+    if (nonTextFiles.length > 0) {
+      console.log('File types found:', files.map(f => ({ name: f.filename, type: f.type })));
+      return res.status(400).json({ 
+        error: 'All files must be text files (TXT, MD, CSV)',
+        foundTypes: files.map(f => f.type)
+      });
+    }
+
+    // Create PDF using PDFKit
+    const doc = new PDFKit({
+      size: 'A4',
+      margins: { top: 50, bottom: 50, left: 50, right: 50 }
+    });
+
+    const chunks = [];
+    doc.on('data', chunk => chunks.push(chunk));
+
+    // Process each text file
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const textBuffer = await getFileBuffer(file.path);
+      const textContent = textBuffer.toString('utf-8');
+
+      // Add file name as header
+      if (i > 0) {
+        doc.addPage();
+      }
+      
+      doc.fontSize(14).font('Helvetica-Bold').text(file.filename, { underline: true });
+      doc.moveDown();
+
+      // Add text content with wrapping
+      doc.fontSize(11).font('Helvetica').text(textContent, {
+        align: 'left',
+        lineGap: 3
+      });
+    }
+
+    doc.end();
+
+    // Wait for PDF generation to complete
+    const pdfBuffer = await new Promise((resolve, reject) => {
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
+    });
+
+    // Save PDF file
+    const savedFile = await saveProcessedFile(
+      req.user?.id || null,
+      pdfBuffer,
+      outputName,
+      'application/pdf',
+      isAnonymous
+    );
+
+    // Log operation (only for authenticated users)
+    if (req.user) {
+      await logOperation(req.user.id, savedFile.id, 'text-to-pdf');
+    }
+
+    console.log('Text to PDF completed successfully:', savedFile.id);
+
+    res.json({
+      message: 'Text files converted to PDF successfully',
+      file: savedFile,
+      isAnonymous: isAnonymous
+    });
+
+  } catch (error) {
+    console.error('Text to PDF error:', error);
+    res.status(500).json({ error: error.message || 'Text to PDF conversion failed' });
+  }
+});
+
 // Get PDF info
 router.get('/info/:fileId', authenticateUser, async (req, res) => {
   try {

@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Book, Code, Server, Key, Zap, Shield, Search, ArrowLeft, BarChart3 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { trackPageViewOnce } from '../lib/visitorTracking';
 
 const DeveloperDocs = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -45,6 +46,12 @@ const DeveloperDocs = () => {
   ];
 
   const [selectedPlatform, setSelectedPlatform] = useState('nodejs');
+
+  // Track visitor to developer docs
+  useEffect(() => {
+    trackPageViewOnce(window.location.href, 'Developer Docs - RobotPDF')
+      .catch(err => console.error('Tracking error:', err));
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white via-slate-50 to-white relative overflow-hidden">

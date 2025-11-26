@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { trackPageViewOnce } from '../lib/visitorTracking';
 import { BarChart3, Activity, TrendingUp, Clock, Download, Loader2, ArrowLeft, Key, Book, Code, Home } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -13,6 +14,12 @@ const DeveloperUsage = () => {
   const [usageData, setUsageData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('30d');
+
+  useEffect(() => {
+    // Track visitor to developer usage page
+    trackPageViewOnce(window.location.href, 'Developer Usage - RobotPDF')
+      .catch(err => console.error('Tracking error:', err));
+  }, []);
 
   useEffect(() => {
     if (!user) {

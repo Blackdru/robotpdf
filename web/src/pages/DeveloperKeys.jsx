@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { trackPageViewOnce } from '../lib/visitorTracking';
 import { Key, Copy, Plus, Trash2, RefreshCw, AlertTriangle, Loader2, ArrowLeft, BarChart3, Book, Code } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -15,6 +16,12 @@ const DeveloperKeys = () => {
   const [newKeyData, setNewKeyData] = useState(null);
   const [creating, setCreating] = useState(false);
   const [keyName, setKeyName] = useState('');
+
+  useEffect(() => {
+    // Track visitor to developer keys page
+    trackPageViewOnce(window.location.href, 'Developer API Keys - RobotPDF')
+      .catch(err => console.error('Tracking error:', err));
+  }, []);
 
   useEffect(() => {
     if (!user) {

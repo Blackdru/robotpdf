@@ -1,5 +1,20 @@
+# RobotPDF - AI PDF Tools, Free Online PDF Editor
+# Best alternative to iLovePDF and Adobe Acrobat
+
 User-agent: *
 Allow: /
+
+# Public tool pages - High priority for SEO
+Allow: /tools
+Allow: /advanced-tools
+Allow: /ai-enhanced-ocr-pdf
+Allow: /ai-chat-with-pdf
+Allow: /ai-smart-summary
+Allow: /resume-generator
+Allow: /pricing
+Allow: /developers
+Allow: /developers/docs
+Allow: /contact
 
 # Disallow authenticated-only areas
 Disallow: /dashboard
@@ -11,15 +26,24 @@ Disallow: /admin
 Disallow: /login
 Disallow: /register
 Disallow: /forgot-password
+Disallow: /api/
+Disallow: /developers/keys
+Disallow: /developers/usage
 
-# Allow public tool pages for SEO
-Allow: /tools
-Allow: /advanced-tools
-Allow: /ai-enhanced-ocr-pdf
-Allow: /ai-chat-with-pdf
-Allow: /ai-smart-summary
+# Google Bot - Allow everything public
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 0
 
-# Crawl delay (optional, adjust as needed)
+# Bing Bot
+User-agent: Bingbot
+Allow: /
 Crawl-delay: 1
 
 Sitemap: https://robotpdf.com/sitemap.xml
+
+# Keywords: AI PDF tools, PDF AI, free PDF tools, online PDF editor, merge PDF, split PDF, 
+# compress PDF, convert PDF, PDF to Word, PDF to Word converter, PDF to Excel, PDF to JPG, 
+# Word to PDF, Word to PDF converter, img to pdf, jpg to pdf converter, jpeg pdf, PDF OCR, 
+# chat with PDF, AI document processing, PDF converter, edit PDF online, PDF reader AI, 
+# pdf editor, ilovepdf, ilove pdf, mergepdf, combine pdf, adobe acrobat, adobe reader

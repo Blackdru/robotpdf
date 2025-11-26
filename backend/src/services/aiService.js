@@ -763,6 +763,91 @@ Provide only the translation without any explanations:`;
       throw new Error(`Translation failed: ${error.message}`);
     }
   }
+
+  // General text enhancement with custom instructions - uses free AI model
+  async enhanceText(text, instructions) {
+    if (!this.isEnabled()) {
+      throw new Error('AI service is not available');
+    }
+
+    try {
+      console.log('Enhancing text with custom instructions, length:', text.length);
+      console.log('Using model:', this.model);
+      
+      const prompt = `You are an expert text editor and writer. ${instructions}
+
+Here is the text to enhance:
+
+"""
+${text}
+"""
+
+Please provide the enhanced version of the text. Only return the enhanced text, nothing else.`;
+
+      // Use the configured model (free model via OpenRouter or OpenAI)
+      const response = await this.openai.chat.completions.create({
+        model: this.model, // Uses free model from OpenRouter (e.g., mistral-nemo:free)
+        messages: [
+          {
+            role: 'system',
+            content: 'You are an expert text editor. Enhance the provided text according to the given instructions. Return only the enhanced text without any additional commentary or explanation.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.3,
+        max_tokens: Math.min(this.maxTokens || 4000, 4000)
+      });
+
+      const enhancedText = response.choices[0].message.content.trim();
+      
+      console.log('Text enhanced successfully, new length:', enhancedText.length);
+      
+      return {
+        enhancedText,
+        originalLength: text.length,
+        enhancedLength: enhancedText.length
+      };
+    } catch (error) {
+      console.error('Error enhancing text:', error);
+      // Try fallback models if available
+      if (this.fallbackModels && this.fallbackModels.length > 0) {
+        for (const fallbackModel of this.fallbackModels) {
+          if (fallbackModel === this.model) continue;
+          try {
+            console.log('Trying fallback model:', fallbackModel);
+            const response = await this.openai.chat.completions.create({
+              model: fallbackModel,
+              messages: [
+                {
+                  role: 'system',
+                  content: 'You are an expert text editor. Enhance the provided text according to the given instructions. Return only the enhanced text without any additional commentary or explanation.'
+                },
+                {
+                  role: 'user',
+                  content: `${instructions}\n\nText to enhance:\n${text}`
+                }
+              ],
+              temperature: 0.3,
+              max_tokens: 4000
+            });
+            const enhancedText = response.choices[0].message.content.trim();
+            console.log('Text enhanced with fallback model:', fallbackModel);
+            return {
+              enhancedText,
+              originalLength: text.length,
+              enhancedLength: enhancedText.length
+            };
+          } catch (fallbackError) {
+            console.error(`Fallback model ${fallbackModel} failed:`, fallbackError.message);
+          }
+        }
+      }
+      throw new Error(`Text enhancement failed: ${error.message}`);
+    }
+  }
 }
 
 module.exports = new AIService();

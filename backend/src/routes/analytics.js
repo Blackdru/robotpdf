@@ -29,25 +29,80 @@ router.post('/track', async (req, res) => {
       return res.status(400).json({ error: 'Visitor ID is required' });
     }
 
-    // Get IP address from request
-    let ipAddress = req.headers['x-forwarded-for']?.split(',')[0].trim() || 
-                    req.headers['x-real-ip'] || 
-                    req.connection.remoteAddress ||
-                    req.socket.remoteAddress;
+    // Get IP address from request - check multiple headers for different proxy setups
+    const forwardedFor = req.headers['x-forwarded-for'];
+    const realIp = req.headers['x-real-ip'];
+    const cfConnectingIp = req.headers['cf-connecting-ip'];
+    const trueClientIp = req.headers['true-client-ip'];
+    const xClientIp = req.headers['x-client-ip'];
+    const forwardedIp = req.headers['forwarded'];
+    
+    // Log all relevant headers for debugging
+    console.log('[Analytics] IP Detection headers:');
+    console.log('  x-forwarded-for:', forwardedFor);
+    console.log('  x-real-ip:', realIp);
+    console.log('  cf-connecting-ip:', cfConnectingIp);
+    console.log('  true-client-ip:', trueClientIp);
+    console.log('  x-client-ip:', xClientIp);
+    console.log('  forwarded:', forwardedIp);
+    console.log('  req.ip:', req.ip);
+    console.log('  connection.remoteAddress:', req.connection?.remoteAddress);
+    
+    // Priority: Cloudflare > x-forwarded-for (first IP) > x-real-ip > req.ip > socket
+    let ipAddress = cfConnectingIp ||
+                    trueClientIp ||
+                    (forwardedFor ? forwardedFor.split(',')[0].trim() : null) ||
+                    realIp ||
+                    xClientIp ||
+                    req.ip ||
+                    req.connection?.remoteAddress ||
+                    req.socket?.remoteAddress;
+
+    console.log('[Analytics] Selected IP before cleaning:', ipAddress);
 
     // Clean IP address (remove ::ffff: prefix for IPv4-mapped IPv6)
     if (ipAddress && ipAddress.startsWith('::ffff:')) {
       ipAddress = ipAddress.substring(7);
     }
+    
+    console.log('[Analytics] Final IP for geolocation:', ipAddress);
 
     // Get location from IP address
     let locationData = { country: null, city: null };
+    
+    // Check if it's a local/private IP
+    const isLocalIP = !ipAddress || 
+                      ipAddress === '127.0.0.1' || 
+                      ipAddress === '::1' ||
+                      ipAddress.startsWith('192.168.') ||
+                      ipAddress.startsWith('10.') ||
+                      ipAddress.match(/^172\.(1[6-9]|2[0-9]|3[0-1])\./);
+    
+    if (isLocalIP) {
+      console.log('[Analytics] Local IP detected, fetching public IP from external service...');
+      // For local development or when behind NAT, fetch real public IP
+      try {
+        const axios = require('axios');
+        const publicIpResponse = await axios.get('https://api.ipify.org?format=json', { timeout: 3000 });
+        if (publicIpResponse.data && publicIpResponse.data.ip) {
+          ipAddress = publicIpResponse.data.ip;
+          console.log('[Analytics] Got public IP from ipify:', ipAddress);
+        }
+      } catch (err) {
+        console.log('[Analytics] Could not fetch public IP:', err.message);
+      }
+    }
+    
     if (ipAddress && ipAddress !== '127.0.0.1' && ipAddress !== '::1') {
       try {
+        console.log('[Analytics] Getting location for IP:', ipAddress);
         locationData = await getLocationWithCache(ipAddress);
+        console.log('[Analytics] Location data retrieved:', locationData);
       } catch (error) {
-        console.error('Error getting location:', error);
+        console.error('[Analytics] Error getting location for IP', ipAddress, ':', error);
       }
+    } else {
+      console.log('[Analytics] Skipping location lookup - no valid IP available');
     }
 
     // Check if visitor already exists
