@@ -75,12 +75,11 @@ const AdvancedTools = () => {
   // Track visitor when component mounts
   useEffect(() => {
     trackPageViewOnce(window.location.href, 'Advanced Tools - RobotPDF')
-      .then(result => {
-        if (result) {
-          console.log('Visitor tracked:', result.isNewVisitor ? 'New visitor' : 'Returning visitor');
+      .catch(err => {
+        if (import.meta.env.DEV) {
+          console.error('Tracking error:', err);
         }
-      })
-      .catch(err => console.error('Tracking error:', err));
+      });
   }, []);
 
   const updateProgress = (progress, stage, step = null) => {
