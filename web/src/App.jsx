@@ -1,38 +1,46 @@
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
-import { useEffect } from 'react'
+import { useEffect, lazy, Suspense } from 'react'
 import { AuthProvider } from './contexts/AuthContext'
 import { ThemeProvider, useTheme } from './contexts/ThemeContext'
 import { SubscriptionProvider } from './contexts/SubscriptionContext'
 import ErrorBoundary from './components/ErrorBoundary'
 
-// Pages
+// Loading component for lazy loaded pages
+const PageLoader = () => (
+  <div className="min-h-screen flex items-center justify-center">
+    <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+  </div>
+)
+
+// Eagerly loaded pages (critical path)
 import ModernHome from './pages/ModernHome'
 import Login from './pages/Login'
 import Register from './pages/Register'
-import ForgotPassword from './pages/ForgotPassword'
-import Tools from './pages/Tools'
-import AdvancedTools from './pages/AdvancedTools'
-import FileManagerPage from './pages/FileManager'
-import Admin from './pages/Admin'
-import AdminAnalytics from './pages/AdminAnalytics'
-import Profile from './pages/Profile'
-import Billing from './pages/Billing'
-import Upgrade from './pages/Upgrade'
-import Pricing from './pages/Pricing'
-import PrivacyPolicy from './pages/PrivacyPolicy'
-import TermsConditions from './pages/TermsConditions'
-import CancellationRefunds from './pages/CancellationRefunds'
-import Contact from './pages/Contact'
-import AIEnhancedOCR from './pages/AIEnhancedOCR'
-import AIChatWithPDF from './pages/AIChatWithPDF'
-import AISmartSummary from './pages/AISmartSummary'
-import ResumeGenerator from './pages/ResumeGenerator'
-import DeveloperPortal from './pages/DeveloperPortal'
-import DeveloperKeys from './pages/DeveloperKeys'
-import DeveloperUsage from './pages/DeveloperUsage'
-import DeveloperDocs from './pages/DeveloperDocs'
 
+// Lazy loaded pages (non-critical, loaded on demand)
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
+const Tools = lazy(() => import('./pages/Tools'))
+const AdvancedTools = lazy(() => import('./pages/AdvancedTools'))
+const FileManagerPage = lazy(() => import('./pages/FileManager'))
+const Admin = lazy(() => import('./pages/Admin'))
+const AdminAnalytics = lazy(() => import('./pages/AdminAnalytics'))
+const Profile = lazy(() => import('./pages/Profile'))
+const Billing = lazy(() => import('./pages/Billing'))
+const Upgrade = lazy(() => import('./pages/Upgrade'))
+const Pricing = lazy(() => import('./pages/Pricing'))
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'))
+const TermsConditions = lazy(() => import('./pages/TermsConditions'))
+const CancellationRefunds = lazy(() => import('./pages/CancellationRefunds'))
+const Contact = lazy(() => import('./pages/Contact'))
+const AIEnhancedOCR = lazy(() => import('./pages/AIEnhancedOCR'))
+const AIChatWithPDF = lazy(() => import('./pages/AIChatWithPDF'))
+const AISmartSummary = lazy(() => import('./pages/AISmartSummary'))
+const ResumeGenerator = lazy(() => import('./pages/ResumeGenerator'))
+const DeveloperPortal = lazy(() => import('./pages/DeveloperPortal'))
+const DeveloperKeys = lazy(() => import('./pages/DeveloperKeys'))
+const DeveloperUsage = lazy(() => import('./pages/DeveloperUsage'))
+const DeveloperDocs = lazy(() => import('./pages/DeveloperDocs'))
 
 // Components
 import ModernNavbar from './components/ModernNavbar'
@@ -152,6 +160,7 @@ const AppContent = () => {
       <ScrollToTop />
       <ModernNavbar />
       <main className="modern-scrollbar flex-1">
+        <Suspense fallback={<PageLoader />}>
         <Routes>
                 <Route path="/" element={<ModernHome />} />
                 <Route path="/login" element={<Login />} />
@@ -255,6 +264,7 @@ const AppContent = () => {
                   } 
                 />
               </Routes>
+        </Suspense>
       </main>
       <Footer />
       <MobileBottomNav />

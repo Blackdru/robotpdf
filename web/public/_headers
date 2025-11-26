@@ -1,0 +1,37 @@
+# Cache static assets for 1 year (immutable with hash in filename)
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Cache images for 1 year
+/assets/images/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Cache fonts for 1 year
+/assets/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Cache JS chunks for 1 year (they have hashes)
+/assets/js/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Cache PDF worker
+/pdf.worker.min.js
+  Cache-Control: public, max-age=31536000, immutable
+
+# Cache logo and favicon
+/logo.png
+  Cache-Control: public, max-age=86400
+
+/favicon.ico
+  Cache-Control: public, max-age=86400
+
+# HTML pages - revalidate
+/*
+  Cache-Control: public, max-age=0, must-revalidate
+
+# Security headers
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()

@@ -48,9 +48,12 @@
     <!-- Preconnect to external domains for performance -->
     <link rel="preconnect" href="https://glghqfydjoqbtmxmfqgv.supabase.co" crossorigin />
     <link rel="dns-prefetch" href="https://glghqfydjoqbtmxmfqgv.supabase.co" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 
-    <!-- Preload critical PDF worker -->
+    <!-- Preload critical resources -->
     <link rel="preload" as="script" href="/pdf.worker.min.js" />
+    <link rel="preload" as="image" href="/logo.png" fetchpriority="high" />
 
     <!-- Open Graph -->
     <meta property="og:locale" content="en_US" />
@@ -196,21 +199,23 @@
     ]
     </script>
 
-    <!-- Google AdSense Auto Ads -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4179117508545067"
-         crossorigin="anonymous"></script>
-
     <!-- Runtime canonical and og:url based on environment/site URL -->
-    <script type="module">
-      const site = (import.meta.env?.VITE_SITE_URL || location.origin).replace(/\/+$/,'');
-      const canon = document.getElementById('canonical');
-      if (canon) canon.href = site + '/';
-      const ogUrl = document.querySelector('meta[property="og:url"]');
-      if (ogUrl) ogUrl.setAttribute('content', site + '/');
+    <script>
+      (function() {
+        const site = (window.location.origin).replace(/\/+$/,'');
+        const canon = document.getElementById('canonical');
+        if (canon) canon.href = site + '/';
+        const ogUrl = document.querySelector('meta[property="og:url"]');
+        if (ogUrl) ogUrl.setAttribute('content', site + '/');
+      })();
     </script>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    
+    <!-- Google AdSense Auto Ads - Load after page content -->
+    <script defer src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4179117508545067"
+         crossorigin="anonymous"></script>
   </body>
 </html>
