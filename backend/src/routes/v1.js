@@ -97,7 +97,7 @@ router.get('/usage', trackApiUsage('usage_stats'), async (req, res) => {
   }
 });
 
-// POST /v1/ocr - Advanced OCR Pro
+// POST /v1/ocr - Enhanced OCR with AI
 router.post('/ocr', trackApiUsage('ocr_pro'), upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
@@ -107,20 +107,77 @@ router.post('/ocr', trackApiUsage('ocr_pro'), upload.single('file'), async (req,
       });
     }
 
-    const { language = 'eng', enhance = 'true' } = req.body;
-    
-    const result = await ocrService.extractTextFromImage(req.file.buffer, {
+    const { 
+      language = 'auto',
+      enhance_image = 'true',
+      ai_enhanced = 'true',
+      extract_original = 'false'
+    } = req.body;
+
+    // Upload file to storage first
+    const userFolder = req.developer.id;
+    const filePath = `${userFolder}/${Date.now()}-${req.file.originalname}`;
+
+    const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
+      .from('files')
+      .upload(filePath, req.file.buffer, {
+        contentType: req.file.mimetype,
+        upsert: false
+      });
+
+    if (uploadError) {
+      throw new Error(`Failed to upload file: ${uploadError.message}`);
+    }
+
+    // Save file metadata
+    const { data: fileData, error: fileError } = await supabaseAdmin
+      .from('files')
+      .insert([{
+        user_id: null, // API files don't have user_id
+        filename: req.file.originalname,
+        original_name: req.file.originalname,
+        type: req.file.mimetype,
+        size: req.file.size,
+        path: uploadData.path,
+        metadata: {
+          api_request: true,
+          developer_id: req.developer.id
+        }
+      }])
+      .select()
+      .single();
+
+    if (fileError) {
+      await supabaseAdmin.storage.from('files').remove([uploadData.path]);
+      throw new Error(`Failed to save file metadata: ${fileError.message}`);
+    }
+
+    // Perform enhanced OCR
+    const fileType = req.file.mimetype.startsWith('image/') ? 'image' : 'pdf';
+    const result = await ocrService.extractTextWithAI(req.file.buffer, {
       language: language,
-      enhanceImage: enhance === 'true'
+      enhanceImage: enhance_image === 'true',
+      aiEnhanced: ai_enhanced === 'true',
+      extractOriginal: extract_original === 'true',
+      fileType: fileType
     });
+
+    // Clean up uploaded file
+    await supabaseAdmin.storage.from('files').remove([uploadData.path]);
+    await supabaseAdmin.from('files').delete().eq('id', fileData.id);
 
     res.json({
       success: true,
       data: {
         text: result.text,
+        original_text: result.originalText,
+        enhanced_text: result.enhancedText,
+        detected_language: result.detectedLanguage,
         confidence: result.confidence,
-        language: language,
-        page_count: 1
+        page_count: result.pageCount,
+        pages: result.pages,
+        ai_enhanced: result.aiEnhanced,
+        processing_options: result.processingOptions
       }
     });
   } catch (error) {
