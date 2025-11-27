@@ -528,6 +528,86 @@ class OCRService {
     };
   }
 
+  // Local text cleaner - works without external AI
+  // Cleans OCR errors, removes garbage symbols, and improves readability
+  cleanTextLocally(text) {
+    if (!text || text.length === 0) return text;
+    
+    console.log('🧹 Applying local text cleaning...');
+    let cleaned = text;
+    
+    // Common OCR error corrections
+    const ocrCorrections = [
+      // Letter substitutions
+      [/rn/g, 'm'],           // rn → m
+      [/vv/g, 'w'],           // vv → w
+      [/\bI([a-z])/g, 'l$1'], // I at start of lowercase word → l
+      [/\b0([a-z])/g, 'O$1'], // 0 at start of word → O
+      [/([a-z])0([a-z])/g, '$1o$2'], // 0 between letters → o
+      [/\bl\b/g, 'I'],        // standalone l → I (common mistake)
+      [/\|/g, 'I'],           // | → I
+      [/\bII\b/g, 'II'],      // Keep Roman numeral II
+      
+      // Common word fixes
+      [/\btbe\b/gi, 'the'],
+      [/\btlie\b/gi, 'the'],
+      [/\bwbich\b/gi, 'which'],
+      [/\bwitb\b/gi, 'with'],
+      [/\bfrorn\b/gi, 'from'],
+      [/\bbave\b/gi, 'have'],
+      [/\btbat\b/gi, 'that'],
+      [/\btbis\b/gi, 'this'],
+      [/\bwbat\b/gi, 'what'],
+      [/\bwben\b/gi, 'when'],
+      [/\bwbere\b/gi, 'where'],
+      [/\bbeen\b/gi, 'been'],
+      [/\brnore\b/gi, 'more'],
+      [/\bsorne\b/gi, 'some'],
+      [/\btirne\b/gi, 'time'],
+      [/\bnarne\b/gi, 'name'],
+      [/\bnurnber\b/gi, 'number'],
+    ];
+    
+    for (const [pattern, replacement] of ocrCorrections) {
+      cleaned = cleaned.replace(pattern, replacement);
+    }
+    
+    // Remove garbage characters and symbols
+    // Keep: letters, numbers, common punctuation, currency symbols
+    cleaned = cleaned.replace(/[^\w\s\.,;:!?'"()\-–—@#$%&*+=\/\\<>₹€£¥\[\]{}|`~\n\r]/g, ' ');
+    
+    // Remove repeated special characters (artifacts)
+    cleaned = cleaned.replace(/([!@#$%^&*()_+=\-\[\]{}|\\:";'<>?,./])\1{2,}/g, '$1');
+    
+    // Remove isolated single characters that are likely OCR errors (except I, a, A)
+    cleaned = cleaned.replace(/\s[^IaA\d\s]\s/g, ' ');
+    
+    // Fix spacing issues
+    cleaned = cleaned.replace(/\s{3,}/g, '  ');     // Multiple spaces → double space
+    cleaned = cleaned.replace(/\n{4,}/g, '\n\n\n'); // Excessive newlines → triple
+    cleaned = cleaned.replace(/\s+([.,;:!?])/g, '$1'); // Remove space before punctuation
+    cleaned = cleaned.replace(/([.,;:!?])([A-Za-z])/g, '$1 $2'); // Add space after punctuation
+    
+    // Remove lines that are mostly symbols/garbage (less than 30% alphanumeric)
+    const lines = cleaned.split('\n');
+    const cleanedLines = lines.filter(line => {
+      if (line.trim().length === 0) return true; // Keep empty lines for structure
+      const alphanumeric = (line.match(/[a-zA-Z0-9]/g) || []).length;
+      const total = line.trim().length;
+      return total === 0 || (alphanumeric / total) > 0.3;
+    });
+    cleaned = cleanedLines.join('\n');
+    
+    // Clean up repeated words (OCR artifact)
+    cleaned = cleaned.replace(/\b(\w+)\s+\1\b/gi, '$1');
+    
+    // Final trim and cleanup
+    cleaned = cleaned.trim();
+    
+    console.log('✓ Local cleaning completed. Original length:', text.length, 'Cleaned length:', cleaned.length);
+    return cleaned;
+  }
+
   // Extract text with AI enhancement option - 99% ACCURATE OCR
   async extractTextWithAI(buffer, options = {}) {
     const {
@@ -568,6 +648,7 @@ class OCRService {
         pages: ocrResult.pages,
         detectedLanguage: ocrResult.language || language,
         aiEnhanced: false,
+        localCleaned: false,
         processingOptions: {
           enhanceWithAI,
           extractOriginal,
@@ -579,6 +660,8 @@ class OCRService {
       // If AI enhancement is requested and we have text
       if (enhanceWithAI && ocrResult.text && ocrResult.text.length > 10) {
         console.log('🤖 Applying AI enhancement for 99% accuracy...');
+        
+        let aiEnhancementSucceeded = false;
         
         try {
           const aiService = require('./aiService');
@@ -596,20 +679,31 @@ class OCRService {
               
               result.aiEnhanced = true;
               result.confidence = Math.min(result.confidence + 0.15, 0.99); // Boost to 99%
+              aiEnhancementSucceeded = true;
               console.log('✓ AI enhancement completed. Enhanced text length:', enhancedText.length);
               console.log('✓ Confidence boosted to:', result.confidence);
             } else {
-              console.warn('⚠ AI enhancement returned empty text, using original');
-              result.aiEnhanced = false;
+              console.warn('⚠ AI enhancement returned empty text');
             }
           } else {
-            console.warn('⚠ AI service not enabled, using original OCR only');
-            result.aiEnhanced = false;
+            console.warn('⚠ AI service not enabled');
           }
         } catch (aiError) {
           console.error('❌ AI enhancement failed:', aiError.message);
-          result.aiEnhanced = false;
-          // Continue with original text if AI enhancement fails
+        }
+        
+        // If AI enhancement failed or is not available, use local cleaning as fallback
+        if (!aiEnhancementSucceeded && !extractOriginal) {
+          console.log('📋 Falling back to local text cleaning...');
+          const localCleanedText = this.cleanTextLocally(ocrResult.text);
+          
+          if (localCleanedText && localCleanedText.length > 0) {
+            result.enhancedText = localCleanedText;
+            result.text = localCleanedText;
+            result.localCleaned = true;
+            result.confidence = Math.min(result.confidence + 0.05, 0.90); // Smaller boost for local cleaning
+            console.log('✓ Local cleaning applied. Cleaned text length:', localCleanedText.length);
+          }
         }
       } else if (enhanceWithAI) {
         console.log('⚠ Skipping AI enhancement - text too short or empty');
@@ -617,7 +711,7 @@ class OCRService {
       }
 
       console.log(`✓ Final OCR result: language=${result.detectedLanguage}, confidence=${result.confidence}, textLength=${result.text.length}`);
-      console.log('✓ AI Enhanced:', result.aiEnhanced);
+      console.log('✓ AI Enhanced:', result.aiEnhanced, '| Local Cleaned:', result.localCleaned);
       
       return result;
 

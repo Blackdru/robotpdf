@@ -22,16 +22,14 @@ export default defineConfig({
     format: 'es'
   },
   build: {
-    // Minimize bundle size
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true,
-        drop_debugger: true
-      }
-    },
+    // Minimize bundle size using esbuild (built-in, faster than terser)
+    minify: 'esbuild',
     // Enable source maps for debugging (disable in prod if needed)
     sourcemap: false,
+    // Target modern browsers for smaller bundles
+    target: 'es2020',
+    // CSS minification
+    cssMinify: true,
     // Chunk size warning limit
     chunkSizeWarningLimit: 1000,
     rollupOptions: {

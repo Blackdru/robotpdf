@@ -730,27 +730,41 @@ const Tools = () => {
           break
 
         case 'ocr':
-          // Perform OCR on the uploaded file
+          // Perform OCR on the uploaded file with AI text cleaning
 
-          toast.loading('Processing OCR with multi-language support...', { id: 'ocr-processing' })
+          toast.loading('Processing OCR with AI text cleaning...', { id: 'ocr-processing' })
 
           try {
             result = await api.post('/ai/ocr', {
               fileId: uploadedFileIds[0],
               language: 'eng+tel', // Default to English + Telugu for better ID card recognition
-              enhanceImage: true
+              enhanceImage: true,
+              aiEnhanced: true, // Enable AI text cleaning to remove errors, symbols, mistakes
+              extractOriginal: false // Use cleaned text as primary result
             })
 
             toast.dismiss('ocr-processing')
-            toast.success('OCR processing completed! Text extracted successfully.')
+            
+            // Show appropriate success message based on enhancement type
+            if (result.result.aiEnhanced) {
+              toast.success('OCR completed with AI enhancement! Text cleaned and structured.')
+            } else if (result.result.localCleaned) {
+              toast.success('OCR completed with local text cleaning!')
+            } else {
+              toast.success('OCR processing completed! Text extracted successfully.')
+            }
 
             // Store OCR results for display
             setOcrResults({
               text: result.result.text,
+              originalText: result.result.originalText,
+              enhancedText: result.result.enhancedText,
               confidence: result.result.confidence,
               filename: result.fileInfo.filename,
               pageCount: result.result.pageCount,
-              detectedLanguage: result.result.detectedLanguage
+              detectedLanguage: result.result.detectedLanguage,
+              aiEnhanced: result.result.aiEnhanced,
+              localCleaned: result.result.localCleaned
             })
           } catch (ocrError) {
             console.error('OCR specific error:', ocrError)
@@ -1386,6 +1400,17 @@ const Tools = () => {
                   <div className="bg-green-600 text-white text-xs sm:text-sm font-bold px-2 sm:px-3 py-1 sm:py-1.5 rounded-full whitespace-nowrap">
                     {Math.round((ocrResults.confidence || 0) * 100)}% Accurate
                   </div>
+                  {ocrResults.aiEnhanced && (
+                    <div className="bg-purple-600 text-white text-xs sm:text-sm font-bold px-2 sm:px-3 py-1 sm:py-1.5 rounded-full whitespace-nowrap flex items-center gap-1">
+                      <Sparkles className="h-3 w-3" />
+                      AI Cleaned
+                    </div>
+                  )}
+                  {ocrResults.localCleaned && !ocrResults.aiEnhanced && (
+                    <div className="bg-blue-600 text-white text-xs sm:text-sm font-bold px-2 sm:px-3 py-1 sm:py-1.5 rounded-full whitespace-nowrap">
+                      Auto Cleaned
+                    </div>
+                  )}
                   <span className="text-xs sm:text-sm bg-elevated text-muted-foreground px-2 sm:px-3 py-1 sm:py-1.5 rounded-full truncate max-w-[120px] sm:max-w-none">
                     {ocrResults.detectedLanguage || 'Unknown'}
                   </span>

@@ -537,22 +537,22 @@ Please provide only the cleaned and enhanced text without any explanations or co
       try {
         const response = await this.openai.chat.completions.create({
           model: freeModel,
-            messages: [
-              {
-                role: 'system',
-                content: 'You are a professional OCR text enhancement expert. Clean up OCR-extracted text while preserving all original information exactly. Focus on fixing OCR errors, improving readability, and maintaining document structure. Return only the enhanced text without any explanations.'
-              },
-              {
-                role: 'user',
-                content: prompt
-              }
-            ],
-            max_tokens: Math.min(2000, Math.ceil(rawText.length * 1.5)),
-            temperature: 0.1, // Very low temperature for consistent corrections
-          });
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a professional OCR text enhancement expert. Clean up OCR-extracted text while preserving all original information exactly. Focus on fixing OCR errors, improving readability, and maintaining document structure. Return only the enhanced text without any explanations.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          max_tokens: Math.min(2000, Math.ceil(rawText.length * 1.5)),
+          temperature: 0.1, // Very low temperature for consistent corrections
+        });
 
-          const enhancedText = response.choices[0].message.content.trim();
-          console.log('AI enhancement completed with model:', model, 'new length:', enhancedText.length);
+        const enhancedText = response.choices[0].message.content.trim();
+        console.log('AI enhancement completed with model:', freeModel, 'new length:', enhancedText.length);
           
           // Validate that the enhanced text is reasonable
           if (enhancedText.length > rawText.length * 3) {

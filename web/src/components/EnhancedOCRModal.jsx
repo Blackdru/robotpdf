@@ -156,12 +156,12 @@ const EnhancedOCRModal = ({ isOpen, onClose, result, fileName, fileId, onResultU
 
   return (
     <div 
-      className="fixed inset-0 bg-black/95 backdrop-blur-md z-50 flex items-center justify-center p-0 sm:p-4" 
+      className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-0 sm:p-4" 
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="w-full h-[75vh] sm:h-auto sm:max-h-[90vh] sm:max-w-6xl flex flex-col bg-background sm:rounded-xl overflow-hidden shadow-2xl border-0 sm:border border-border">
+      <div className="w-full h-[75vh] sm:h-auto sm:max-h-[90vh] sm:max-w-6xl flex flex-col bg-gray-900 sm:rounded-xl overflow-hidden shadow-2xl border-0 sm:border border-gray-700">
         {/* Header - Mobile Optimized */}
-        <div className="flex-shrink-0 bg-gradient-to-r from-blue-600 to-purple-600 px-3 py-2 sm:px-4 sm:py-2.5">
+        <div className="flex-shrink-0 bg-gradient-to-r from-indigo-600 to-purple-600 px-3 py-2 sm:px-4 sm:py-2.5">
           <div className="flex items-center justify-between gap-2 sm:gap-2">
             <div className="flex items-center gap-2 sm:gap-2 min-w-0 flex-1">
               <div className="p-1.5 sm:p-1.5 bg-white/10 rounded">
@@ -189,44 +189,44 @@ const EnhancedOCRModal = ({ isOpen, onClose, result, fileName, fileId, onResultU
         {/* Content Area */}
         <div className="flex-1 overflow-hidden flex flex-col">
           {/* Mobile: Collapsible Sidebar - Mobile Optimized */}
-          <div className="lg:hidden border-b border-border">
+          <div className="lg:hidden border-b border-gray-700">
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="w-full px-4 py-3 flex items-center justify-between bg-surface hover:bg-elevated transition-colors"
+              className="w-full px-4 py-3 flex items-center justify-between bg-gray-800 hover:bg-gray-700 transition-colors"
             >
-              <span className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <Eye className="h-4 w-4 text-cyan-400" />
+              <span className="text-sm font-semibold text-gray-200 flex items-center gap-2">
+                <Globe className="h-4 w-4 text-emerald-400" />
                 Translate 
               </span>
               {sidebarCollapsed ? (
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                <ChevronDown className="h-4 w-4 text-gray-400" />
               ) : (
-                <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                <ChevronUp className="h-4 w-4 text-gray-400" />
               )}
             </button>
             
             {!sidebarCollapsed && (
-              <div className="max-h-60 overflow-y-auto bg-surface border-t border-border">
+              <div className="max-h-60 overflow-y-auto bg-gray-800 border-t border-gray-700">
                 <div className="p-3 space-y-3">
 
 
                   {/* AI Translation */}
-                  <div className="space-y-3 p-4 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 rounded-lg border border-emerald-500/20">
-                    <h3 className="text-xs font-semibold flex items-center gap-2 text-foreground uppercase tracking-wide">
+                  <div className="space-y-3 p-4 bg-gray-800/50 rounded-lg border border-emerald-500/30">
+                    <h3 className="text-xs font-semibold flex items-center gap-2 text-gray-200 uppercase tracking-wide">
                       <Globe className="h-4 w-4 text-emerald-400" />
                       AI Translation
                     </h3>
                     
                     <div className="space-y-3">
                       <div>
-                        <Label className="text-xs text-muted-foreground mb-2 block">Target Language</Label>
+                        <Label className="text-xs text-gray-400 mb-2 block">Target Language</Label>
                         <Select value={targetLanguage} onValueChange={setTargetLanguage}>
-                          <SelectTrigger className="h-10 text-sm">
+                          <SelectTrigger className="h-10 text-sm bg-gray-800 border-gray-600 text-gray-200">
                             <SelectValue placeholder="Select language..." />
                           </SelectTrigger>
-                          <SelectContent className="max-h-48">
+                          <SelectContent className="max-h-48 bg-gray-800 border-gray-700">
                             {languages.map((lang) => (
-                              <SelectItem key={lang.code} value={lang.code} className="text-sm py-2">
+                              <SelectItem key={lang.code} value={lang.code} className="text-sm py-2 text-gray-200">
                                 {lang.name}
                               </SelectItem>
                             ))}
@@ -255,7 +255,7 @@ const EnhancedOCRModal = ({ isOpen, onClose, result, fileName, fileId, onResultU
                       {isTranslating && (
                         <div className="space-y-2">
                           <Progress value={translationProgress} className="h-2" />
-                          <p className="text-xs text-center text-muted-foreground">
+                          <p className="text-xs text-center text-gray-400">
                             {translationProgress}% Complete
                           </p>
                         </div>
@@ -270,12 +270,12 @@ const EnhancedOCRModal = ({ isOpen, onClose, result, fileName, fileId, onResultU
           {/* Desktop & Tablet Layout */}
           <div className="flex-1 flex overflow-hidden">
             {/* Desktop Sidebar */}
-            <div className="hidden lg:block w-64 xl:w-72 border-r border-border bg-surface overflow-y-auto">
+            <div className="hidden lg:block w-64 xl:w-72 border-r border-gray-700 bg-gray-800 overflow-y-auto">
               <div className="p-4 space-y-4">
                 {/* OCR Information */}
                 <div className="space-y-2">
-                  <h3 className="text-xs font-semibold flex items-center gap-2 text-foreground">
-                    <Eye className="h-3.5 w-3.5 text-cyan-400" />
+                  <h3 className="text-xs font-semibold flex items-center gap-2 text-gray-200">
+                    <Eye className="h-3.5 w-3.5 text-indigo-400" />
                     OCR Information
                   </h3>
                   <div className="space-y-1.5">
@@ -311,22 +311,22 @@ const EnhancedOCRModal = ({ isOpen, onClose, result, fileName, fileId, onResultU
                 </div>
 
                 {/* AI Translation */}
-                <div className="space-y-2 p-3 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 rounded-lg border border-emerald-500/20">
-                  <h3 className="text-xs font-semibold flex items-center gap-2 text-foreground">
+                <div className="space-y-2 p-3 bg-gray-800/50 rounded-lg border border-emerald-500/30">
+                  <h3 className="text-xs font-semibold flex items-center gap-2 text-gray-200">
                     <Globe className="h-3.5 w-3.5 text-emerald-400" />
                     AI Translation
                   </h3>
                   
                   <div className="space-y-2">
                     <div>
-                      <Label className="text-xs text-muted-foreground mb-2 block">Target Language</Label>
+                      <Label className="text-xs text-gray-400 mb-2 block">Target Language</Label>
                       <Select value={targetLanguage} onValueChange={setTargetLanguage}>
-                        <SelectTrigger>
+                        <SelectTrigger className="bg-gray-800 border-gray-600 text-gray-200">
                           <SelectValue placeholder="Select language..." />
                         </SelectTrigger>
-                        <SelectContent className="max-h-60">
+                        <SelectContent className="max-h-60 bg-gray-800 border-gray-700">
                           {languages.map((lang) => (
-                            <SelectItem key={lang.code} value={lang.code}>
+                            <SelectItem key={lang.code} value={lang.code} className="text-gray-200">
                               {lang.name}
                             </SelectItem>
                           ))}
@@ -355,7 +355,7 @@ const EnhancedOCRModal = ({ isOpen, onClose, result, fileName, fileId, onResultU
                     {isTranslating && (
                       <div className="space-y-2">
                         <Progress value={translationProgress} className="h-2" />
-                        <p className="text-xs text-center text-muted-foreground">
+                        <p className="text-xs text-center text-gray-400">
                           {translationProgress}% Complete
                         </p>
                       </div>
@@ -366,12 +366,12 @@ const EnhancedOCRModal = ({ isOpen, onClose, result, fileName, fileId, onResultU
             </div>
 
             {/* Main Content */}
-            <div className="flex-1 flex flex-col overflow-hidden bg-background">
+            <div className="flex-1 flex flex-col overflow-hidden bg-gray-900">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-                <TabsList className="grid w-full grid-cols-2 m-2 sm:m-2 shrink-0 bg-surface h-10 sm:h-9">
+                <TabsList className="grid w-full grid-cols-2 m-2 sm:m-2 shrink-0 bg-gray-800 h-10 sm:h-9">
                   <TabsTrigger 
                     value="results" 
-                    className="flex items-center justify-center gap-1.5 sm:gap-1.5 text-sm sm:text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white"
+                    className="flex items-center justify-center gap-1.5 sm:gap-1.5 text-sm sm:text-sm text-gray-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-600 data-[state=active]:to-purple-600 data-[state=active]:text-white"
                   >
                     <FileText className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                     <span>Extracted Text</span>
@@ -390,8 +390,8 @@ const EnhancedOCRModal = ({ isOpen, onClose, result, fileName, fileId, onResultU
                   <TabsContent value="results" className="h-full m-0 p-0 data-[state=active]:flex data-[state=active]:flex-col">
                     <div className="flex flex-col h-full p-2 sm:p-4">
                       {/* Header */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-2 mb-2 sm:mb-3 pb-2 sm:pb-2 border-b border-border">
-                        <Label className="text-sm sm:text-xs font-semibold flex items-center gap-2 sm:gap-1.5 text-foreground">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-2 mb-2 sm:mb-3 pb-2 sm:pb-2 border-b border-gray-700">
+                        <Label className="text-sm sm:text-xs font-semibold flex items-center gap-2 sm:gap-1.5 text-gray-200">
                           <FileText className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-blue-400" />
                           Extracted Text
                         </Label>
@@ -423,13 +423,13 @@ const EnhancedOCRModal = ({ isOpen, onClose, result, fileName, fileId, onResultU
                       <Textarea
                         value={result.text}
                         readOnly
-                        className="flex-1 min-h-[200px] sm:min-h-[260px] text-sm sm:text-sm resize-none font-mono leading-relaxed sm:leading-relaxed bg-surface border-border"
+                        className="flex-1 min-h-[200px] sm:min-h-[260px] text-sm sm:text-sm resize-none font-mono leading-relaxed sm:leading-relaxed bg-gray-800 border-gray-700 text-gray-200"
                         placeholder="No text extracted..."
                       />
                       
                       {/* Stats */}
                       {result.text && (
-                        <div className="flex items-center justify-center gap-4 sm:gap-4 mt-3 sm:mt-3 pt-3 sm:pt-3 border-t border-border text-xs sm:text-xs text-muted-foreground">
+                        <div className="flex items-center justify-center gap-4 sm:gap-4 mt-3 sm:mt-3 pt-3 sm:pt-3 border-t border-gray-700 text-xs sm:text-xs text-gray-400">
                           <span>{result.text.length.toLocaleString()} chars</span>
                           <span>•</span>
                           <span>{result.text.split(/\s+/).filter(w => w.length > 0).length.toLocaleString()} words</span>
@@ -441,8 +441,8 @@ const EnhancedOCRModal = ({ isOpen, onClose, result, fileName, fileId, onResultU
                   <TabsContent value="translated" className="h-full m-0 p-0 data-[state=active]:flex data-[state=active]:flex-col">
                     <div className="flex flex-col h-full p-2 sm:p-6">
                       {/* Header */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 mb-2 sm:mb-4 pb-2 sm:pb-3 border-b border-border">
-                        <Label className="text-sm sm:text-sm font-semibold flex items-center gap-2 sm:gap-2 text-foreground">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 mb-2 sm:mb-4 pb-2 sm:pb-3 border-b border-gray-700">
+                        <Label className="text-sm sm:text-sm font-semibold flex items-center gap-2 sm:gap-2 text-gray-200">
                           <Globe className="h-4 w-4 sm:h-4 sm:w-4 text-emerald-400" />
                           Translated Text
                         </Label>
@@ -474,13 +474,13 @@ const EnhancedOCRModal = ({ isOpen, onClose, result, fileName, fileId, onResultU
                       <Textarea
                         value={translatedText}
                         readOnly
-                        className="flex-1 min-h-[200px] sm:min-h-[200px] text-sm sm:text-sm resize-none font-mono leading-relaxed sm:leading-relaxed bg-surface border-border"
+                        className="flex-1 min-h-[200px] sm:min-h-[200px] text-sm sm:text-sm resize-none font-mono leading-relaxed sm:leading-relaxed bg-gray-800 border-gray-700 text-gray-200"
                         placeholder="Select a language and click Translate Now..."
                       />
                       
                       {/* Stats */}
                       {translatedText && (
-                        <div className="flex items-center justify-center gap-4 sm:gap-4 mt-3 sm:mt-3 pt-3 sm:pt-3 border-t border-border text-xs sm:text-xs text-muted-foreground">
+                        <div className="flex items-center justify-center gap-4 sm:gap-4 mt-3 sm:mt-3 pt-3 sm:pt-3 border-t border-gray-700 text-xs sm:text-xs text-gray-400">
                           <span>{translatedText.length.toLocaleString()} chars</span>
                           <span>•</span>
                           <span>{translatedText.split(/\s+/).filter(w => w.length > 0).length.toLocaleString()} words</span>
