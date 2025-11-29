@@ -12,6 +12,7 @@ import AIAssistant from '../components/AIAssistant'
 import UpgradeModal from '../components/UpgradeModal'
 import FileOrderPreview from '../components/FileOrderPreview'
 import PasswordRemoveModal from '../components/PasswordRemoveModal'
+
 import toast from 'react-hot-toast'
 import {
   GitMerge,
@@ -76,6 +77,7 @@ const Tools = () => {
   const [toolSettings, setToolSettings] = useState({})
   const [showPasswordRemoveModal, setShowPasswordRemoveModal] = useState(false)
   const [pendingPasswordFiles, setPendingPasswordFiles] = useState([])
+
 
   const tools = [
     {
@@ -245,6 +247,21 @@ const Tools = () => {
       processingTime: '< 30s',
       requiresTextOrFile: true
     },
+    {
+      id: 'image-compress',
+      icon: Image,
+      title: 'Image Compressor',
+      description: 'Compress images to 50% size with fixed quality',
+      solidColor: 'bg-gradient-to-br from-pink-600 to-rose-600',
+      color: 'from-pink-500 to-rose-700',
+      acceptedFiles: '.jpg,.jpeg,.png,.webp,.gif,.bmp',
+      multipleFiles: true,
+      minFiles: 1,
+      category: 'Optimization',
+      isFree: true,
+      popularity: 86,
+      processingTime: '< 45s'
+    }
   ]
 
   const categories = ['All', 'Basic', 'Optimization', 'Conversion', 'Security']
@@ -340,6 +357,12 @@ const Tools = () => {
         { name: 'Processing Text', icon: FileText },
         { name: 'Creating PDF', icon: FileText },
         { name: 'Complete', icon: CheckCircle }
+      ],
+      'image-compress': [
+        { name: 'Uploading Images', icon: Upload },
+        { name: 'Analyzing Images', icon: Eye },
+        { name: 'Compressing Images', icon: Image },
+        { name: 'Complete', icon: CheckCircle }
       ]
     }
 
@@ -403,6 +426,8 @@ const Tools = () => {
       return
     }
 
+
+
     // Check if tool needs file ordering (any tool with multiple files support)
     const needsOrdering = selectedTool?.multipleFiles && validFiles.length > 1
 
@@ -433,6 +458,8 @@ const Tools = () => {
     // Auto-process with password settings
     await handleAutoProcess(pendingPasswordFiles, settings)
   }
+
+
 
   const handleFileOrderConfirm = async (orderedFiles) => {
     setShowFileOrderPreview(false)
@@ -957,6 +984,51 @@ const Tools = () => {
 
           updateProgress(85, 'Conversion complete!', 2)
           toast.success('Text converted to PDF successfully!')
+          break
+
+        case 'image-compress':
+          // Compress images - Fixed 50% size and 50% quality reduction
+          updateProgress(50, 'Analyzing images...', 1)
+          await new Promise(resolve => setTimeout(resolve, 500))
+          
+          const compressedImages = []
+          const totalImages = uploadedFileIds.length
+          
+          for (let i = 0; i < uploadedFileIds.length; i++) {
+            const fileId = uploadedFileIds[i]
+            try {
+              const compressProgress = 50 + ((i + 1) / totalImages) * 35
+              updateProgress(compressProgress, `Compressing image ${i + 1}/${totalImages}...`, 2)
+              
+              const compressed = await api.post('/pdf/compress-image', {
+                fileId: fileId,
+                compressionMode: 'quality',
+                quality: 50,
+                targetSizeKB: null,
+                outputFormat: 'original',
+                minQuality: 30,
+                preserveMetadata: false,
+                resizeImage: false,
+                outputName: `compressed-${Date.now()}-${i}`
+              })
+              
+              compressedImages.push(compressed.file)
+            } catch (error) {
+              console.error('Image compression error:', error)
+              toast.error(`Compression failed for image ${i + 1}: ${error.message}`)
+            }
+          }
+          
+          if (compressedImages.length === 0) {
+            toast.error('No images could be compressed')
+            setUploadedFiles([])
+            setIsProcessing(false)
+            return
+          }
+          
+          updateProgress(85, 'Compression complete!', 2)
+          result = { files: compressedImages }
+          toast.success(`${compressedImages.length} image(s) compressed successfully!`)
           break
 
         default:
@@ -1652,6 +1724,8 @@ const Tools = () => {
         onConfirm={handlePasswordRemoveConfirm}
         fileCount={pendingPasswordFiles.length}
       />
+
+
 
       {/* SEO Header */}
           <div className="text-center mb-8 sm:mb-12">

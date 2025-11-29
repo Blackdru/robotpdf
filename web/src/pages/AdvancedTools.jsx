@@ -16,6 +16,7 @@ import ToolProcessor from '../components/advanced-tools/ToolProcessor'
 import ResultsDisplay from '../components/advanced-tools/ResultsDisplay'
 import EnhancedOCRModal from '../components/EnhancedOCRModal'
 import PasswordProtectModal from '../components/PasswordProtectModal'
+import ImageCompressProModal from '../components/ImageCompressProModal'
 import { proTools, PROCESSING_STEPS_CONFIG } from '../components/advanced-tools/toolsConfig'
 import toast from 'react-hot-toast'
 import { AlertCircle, FileText } from 'lucide-react'
@@ -58,6 +59,8 @@ const AdvancedTools = () => {
   const [pendingFiles, setPendingFiles] = useState([])
   const [showPasswordProtectModal, setShowPasswordProtectModal] = useState(false)
   const [pendingPasswordFiles, setPendingPasswordFiles] = useState([])
+  const [showImageCompressProModal, setShowImageCompressProModal] = useState(false)
+  const [pendingImageFiles, setPendingImageFiles] = useState([])
 
   const categories = ['All', 'AI-Powered', 'Professional', 'Security']
   const [selectedCategory, setSelectedCategory] = useState('All')
@@ -156,6 +159,14 @@ const AdvancedTools = () => {
     if (selectedTool?.id === 'password-protect') {
       setPendingPasswordFiles(validFiles)
       setShowPasswordProtectModal(true)
+      setShowUploadModal(false)
+      return
+    }
+
+    // Check if tool needs image compression settings modal
+    if (selectedTool?.id === 'image-compress-pro') {
+      setPendingImageFiles(validFiles)
+      setShowImageCompressProModal(true)
       setShowUploadModal(false)
       return
     }
@@ -344,6 +355,9 @@ const AdvancedTools = () => {
           break
         case 'text-to-pdf-pro':
           result = await handleTextToPDFPro(uploadedFileIds, toolSettings)
+          break
+        case 'image-compress-pro':
+          result = await handleImageCompressPro(uploadedFileIds, toolSettings)
           break
         default:
           throw new Error('Tool not implemented yet')
@@ -916,6 +930,54 @@ const AdvancedTools = () => {
     }
   }
 
+  const handleImageCompressPro = async (fileIds, settings = {}) => {
+    updateProgress(30, 'Analyzing images...', 1)
+    
+    try {
+      const compressedImages = []
+      const totalImages = fileIds.length
+      
+      for (let i = 0; i < fileIds.length; i++) {
+        const fileId = fileIds[i]
+        try {
+          const compressProgress = 30 + ((i + 1) / totalImages) * 55
+          updateProgress(compressProgress, `Compressing image ${i + 1}/${totalImages}...`, 2)
+          
+          const compressed = await api.post('/pdf/compress-image', {
+            fileId: fileId,
+            compressionMode: settings.compressionMode || 'quality',
+            quality: settings.imageQuality || 80,
+            targetSizeKB: settings.targetSizeKB || null,
+            minQuality: settings.minQuality || 30,
+            outputFormat: settings.outputFormat || 'original',
+            preserveMetadata: settings.preserveMetadata || false,
+            resizeImage: settings.resizeImage || false,
+            maxDimension: settings.maxDimension || 1920,
+            outputName: `compressed-${Date.now()}-${i}`
+          })
+          
+          compressedImages.push(compressed.file)
+        } catch (error) {
+          console.error('Image compression error:', error)
+          toast.error(`Compression failed for image ${i + 1}: ${error.message}`)
+        }
+      }
+      
+      if (compressedImages.length === 0) {
+        throw new Error('No images could be compressed')
+      }
+      
+      updateProgress(90, 'Compression complete!', 3)
+      toast.success(`${compressedImages.length} image(s) compressed successfully!`)
+      
+      return { files: compressedImages }
+      
+    } catch (error) {
+      console.error('Image Compressor Pro error:', error)
+      throw error
+    }
+  }
+
   const handlePDFToOffice = async (fileId, settings = {}) => {
 
     updateProgress(30, 'Analyzing PDF structure...', 1)
@@ -1252,6 +1314,23 @@ const AdvancedTools = () => {
             }}
             onConfirm={handlePasswordProtectConfirm}
             fileCount={pendingPasswordFiles.length}
+          />
+
+          {/* Image Compress Pro Modal */}
+          <ImageCompressProModal
+            isOpen={showImageCompressProModal}
+            onClose={() => {
+              setShowImageCompressProModal(false)
+              setPendingImageFiles([])
+            }}
+            onConfirm={(settings) => {
+              setShowImageCompressProModal(false)
+              setUploadedFiles(pendingImageFiles)
+              setToolSettings(settings)
+              setPendingImageFiles([])
+              handleAutoProcess(pendingImageFiles, settings)
+            }}
+            fileCount={pendingImageFiles.length}
           />
 
           {/* SEO Header */}

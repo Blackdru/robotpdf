@@ -42,6 +42,12 @@ const DeveloperKeys = lazy(() => import('./pages/DeveloperKeys'))
 const DeveloperUsage = lazy(() => import('./pages/DeveloperUsage'))
 const DeveloperDocs = lazy(() => import('./pages/DeveloperDocs'))
 
+// App-specific privacy policies
+const OCRPrivacyPolicy = lazy(() => import('./apps/ocr'))
+const CompressPrivacyPolicy = lazy(() => import('./apps/compress'))
+const MergePrivacyPolicy = lazy(() => import('./apps/merge'))
+const SplitPrivacyPolicy = lazy(() => import('./apps/split'))
+
 // Components
 import ModernNavbar from './components/ModernNavbar'
 import Footer from './components/Footer'
@@ -263,6 +269,12 @@ const AppContent = () => {
                     </AdminRoute>
                   } 
                 />
+
+                {/* App-specific privacy policies */}
+                <Route path="/apps/ocr" element={<OCRPrivacyPolicy />} />
+                <Route path="/apps/compress" element={<CompressPrivacyPolicy />} />
+                <Route path="/apps/merge" element={<MergePrivacyPolicy />} />
+                <Route path="/apps/split" element={<SplitPrivacyPolicy />} />
               </Routes>
         </Suspense>
       </main>

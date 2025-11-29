@@ -18,7 +18,9 @@ import {
   Download,
   FileSpreadsheet,
   FileType,
-  Wand2
+  Wand2,
+  Image,
+  Gauge
 } from 'lucide-react'
 
 export const proTools = [
@@ -221,6 +223,22 @@ export const proTools = [
     features: ['Custom fonts', 'Page numbering', 'Headers/Footers', 'Markdown support'],
     requiresTextOrFile: true,
     requiresPro: true
+  },
+  {
+    id: 'image-compress-pro',
+    icon: Image,
+    title: 'Image Compressor Pro',
+    description: 'Advanced image compression with target size and quality control',
+    solidColor: 'bg-gradient-to-br from-pink-600 to-rose-600',
+    color: 'from-pink-500 to-rose-700',
+    acceptedFiles: '.jpg,.jpeg,.png,.webp,.gif,.bmp',
+    multipleFiles: true,
+    minFiles: 1,
+    category: 'Professional',
+    popularity: 88,
+    processingTime: '< 45s',
+    features: ['Target file size', 'Quality control', 'Batch processing', 'Format conversion'],
+    requiresPro: true
   }
 ]
 
@@ -323,6 +341,13 @@ export const PROCESSING_STEPS_CONFIG = {
     { name: 'Processing Text', icon: FileText },
     { name: 'Applying Formatting', icon: Zap },
     { name: 'Creating PDF', icon: FileText },
+    { name: 'Complete', icon: CheckCircle }
+  ],
+  'image-compress-pro': [
+    { name: 'Uploading Images', icon: Upload },
+    { name: 'Analyzing Images', icon: Eye },
+    { name: 'Applying Compression', icon: Gauge },
+    { name: 'Optimizing Output', icon: Image },
     { name: 'Complete', icon: CheckCircle }
   ]
 }

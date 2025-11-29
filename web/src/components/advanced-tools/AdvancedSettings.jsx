@@ -1796,6 +1796,8 @@ const AdvancedSettings = ({
             </div>
           )}
 
+
+
           {/* Reset Settings */}
           <div className="flex justify-between items-center pt-4 border-t border-border">
             <p className="text-sm text-muted-foreground">

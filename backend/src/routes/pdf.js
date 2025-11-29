@@ -1265,4 +1265,280 @@ router.get('/info/:fileId', authenticateUser, async (req, res) => {
   }
 });
 
+// Compress Image - supports both authenticated and anonymous users
+router.post('/compress-image', optionalAuth, async (req, res) => {
+  try {
+    const { 
+      fileId, 
+      quality = 80, 
+      compressionMode = 'quality',
+      targetSizeKB = null,
+      minQuality = 30,
+      outputFormat = 'original',
+      preserveMetadata = false,
+      resizeImage = false,
+      maxDimension = 1920,
+      outputName = 'compressed'
+    } = req.body;
+    const isAnonymous = !req.user;
+
+    console.log('=== COMPRESS IMAGE REQUEST ===');
+    console.log('User:', req.user?.id || 'anonymous');
+    console.log('File ID:', fileId);
+    console.log('Compression mode:', compressionMode);
+    console.log('Quality:', quality);
+    console.log('Target size KB:', targetSizeKB);
+
+    if (!fileId) {
+      return res.status(400).json({ error: 'File ID is required' });
+    }
+
+    // Get file metadata
+    let query = supabaseAdmin
+      .from('files')
+      .select('*')
+      .eq('id', fileId);
+
+    if (req.user) {
+      query = query.eq('user_id', req.user.id);
+    } else {
+      query = query.is('user_id', null);
+    }
+
+    const { data: file, error: fileError } = await query.single();
+
+    if (fileError || !file) {
+      console.log('File error:', fileError);
+      return res.status(404).json({ error: 'File not found or access denied' });
+    }
+
+    // Verify it's an image
+    const imageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/bmp'];
+    if (!imageTypes.includes(file.type)) {
+      return res.status(400).json({ error: 'File must be an image (JPEG, PNG, WebP, GIF, or BMP)' });
+    }
+
+    const fileBuffer = await getFileBuffer(file.path);
+    const originalSize = fileBuffer.length;
+    console.log('Original file size:', originalSize, 'bytes');
+
+    // Determine output format
+    let targetFormat = outputFormat;
+    if (outputFormat === 'original') {
+      if (file.type === 'image/png') targetFormat = 'png';
+      else if (file.type === 'image/webp') targetFormat = 'webp';
+      else if (file.type === 'image/gif') targetFormat = 'png'; // Convert GIF to PNG
+      else targetFormat = 'jpeg';
+    }
+
+    let processedBuffer;
+    let finalQuality = quality;
+
+    // Get image metadata
+    const imageMetadata = await sharp(fileBuffer).metadata();
+    console.log('Image dimensions:', imageMetadata.width, 'x', imageMetadata.height);
+
+    // Resize if needed
+    let sharpInstance = sharp(fileBuffer);
+    
+    if (resizeImage && maxDimension) {
+      const maxCurrentDim = Math.max(imageMetadata.width, imageMetadata.height);
+      if (maxCurrentDim > maxDimension) {
+        console.log('Resizing image to max dimension:', maxDimension);
+        sharpInstance = sharpInstance.resize({
+          width: maxDimension,
+          height: maxDimension,
+          fit: 'inside',
+          withoutEnlargement: true
+        });
+      }
+    }
+
+    // Preserve or strip metadata
+    if (!preserveMetadata) {
+      sharpInstance = sharpInstance.rotate(); // Auto-rotate based on EXIF, then strip
+    } else {
+      sharpInstance = sharpInstance.withMetadata();
+    }
+
+    // Quality-based compression
+    if (compressionMode === 'quality') {
+      // For quality <= 60, always use JPEG for better compression
+      if (quality <= 60 && targetFormat !== 'webp') {
+        targetFormat = 'jpeg';
+      }
+      
+      // Apply compression based on output format
+      if (targetFormat === 'jpeg') {
+        processedBuffer = await sharpInstance.jpeg({ quality: quality, mozjpeg: true }).toBuffer();
+      } else if (targetFormat === 'png') {
+        const compressionLevel = Math.round((100 - quality) / 10); // 0-9 compression level
+        processedBuffer = await sharpInstance.png({ compressionLevel: Math.min(9, Math.max(0, compressionLevel)) }).toBuffer();
+      } else if (targetFormat === 'webp') {
+        processedBuffer = await sharpInstance.webp({ quality: quality }).toBuffer();
+      }
+    } 
+    // Size-based compression
+    else if (compressionMode === 'size' && targetSizeKB) {
+      const targetSizeBytes = targetSizeKB * 1024;
+      
+      {
+        // Use JPEG for best compatibility
+        console.log('Target size:', targetSizeBytes, 'bytes');
+        const testFormat = targetFormat === 'png' ? 'jpeg' : targetFormat;
+        
+        let testInstance = sharp(fileBuffer);
+        if (!preserveMetadata) testInstance = testInstance.rotate();
+        
+        // Binary search for optimal quality
+        let low = minQuality;
+        let high = 100;
+        let attempts = 0;
+        const maxAttempts = 12;
+        let bestBuffer = null;
+        let bestQuality = minQuality;
+        let bestDiff = Infinity;
+        
+        while (attempts < maxAttempts && high - low > 2) {
+          const currentQuality = Math.round((low + high) / 2);
+          
+          let tempBuffer;
+          if (testFormat === 'jpeg') {
+            tempBuffer = await testInstance.clone().jpeg({ quality: currentQuality, mozjpeg: true }).toBuffer();
+          } else if (testFormat === 'png') {
+            const compressionLevel = Math.round((100 - currentQuality) / 10);
+            tempBuffer = await testInstance.clone().png({ compressionLevel: Math.min(9, Math.max(0, compressionLevel)) }).toBuffer();
+          } else if (testFormat === 'webp') {
+            tempBuffer = await testInstance.clone().webp({ quality: currentQuality, effort: 6 }).toBuffer();
+          }
+          
+          const sizeDiff = Math.abs(tempBuffer.length - targetSizeBytes);
+          console.log(`Attempt ${attempts + 1}: Quality ${currentQuality}%, Size: ${tempBuffer.length} bytes`);
+          
+          // Keep track of the best result (closest to target without exceeding)
+          if (tempBuffer.length <= targetSizeBytes && sizeDiff < bestDiff) {
+            bestBuffer = tempBuffer;
+            bestQuality = currentQuality;
+            bestDiff = sizeDiff;
+            if (targetFormat === 'png') targetFormat = 'jpeg';
+          }
+          
+          if (tempBuffer.length > targetSizeBytes) {
+            high = currentQuality - 1;
+          } else {
+            low = currentQuality + 1;
+          }
+          
+          attempts++;
+        }
+        
+        if (bestBuffer) {
+          processedBuffer = bestBuffer;
+          finalQuality = bestQuality;
+          
+          console.log(`Binary search complete: Quality ${bestQuality}%, Size: ${processedBuffer.length} bytes (${(processedBuffer.length/targetSizeBytes*100).toFixed(1)}% of target)`);
+          
+          // Try to get closer to target if we're significantly under
+          if (processedBuffer.length < targetSizeBytes * 0.85) {
+            console.log('Result is far from target, trying alternative compression strategies...');
+            
+            // Try incrementally higher qualities to get closer
+            for (let tryQuality = bestQuality + 1; tryQuality <= 100; tryQuality++) {
+              let testBuffer;
+              if (testFormat === 'jpeg') {
+                testBuffer = await testInstance.clone().jpeg({ quality: tryQuality, mozjpeg: true }).toBuffer();
+              } else if (testFormat === 'webp') {
+                testBuffer = await testInstance.clone().webp({ quality: tryQuality, effort: 6 }).toBuffer();
+              } else {
+                break;
+              }
+              
+              console.log(`Trying quality ${tryQuality}%: Size ${testBuffer.length} bytes (${(testBuffer.length/targetSizeBytes*100).toFixed(1)}% of target)`);
+              
+              if (testBuffer.length <= targetSizeBytes) {
+                processedBuffer = testBuffer;
+                finalQuality = tryQuality;
+              } else {
+                break;
+              }
+            }
+            
+            console.log(`Final result: Quality ${finalQuality}%, Size: ${processedBuffer.length} bytes (${(processedBuffer.length/targetSizeBytes*100).toFixed(1)}% of target)`);
+          }
+        }
+        
+        // If still no success, try resizing
+        if (!processedBuffer || processedBuffer.length > targetSizeBytes) {
+          console.log('Could not reach target size with quality alone, trying resize');
+          const scaleFactor = Math.sqrt(targetSizeBytes / originalSize);
+          const newWidth = Math.round(imageMetadata.width * scaleFactor * 0.9);
+          
+          processedBuffer = await sharp(fileBuffer)
+            .resize({ width: newWidth, withoutEnlargement: true })
+            .jpeg({ quality: 75, mozjpeg: true })
+            .toBuffer();
+          
+          targetFormat = 'jpeg';
+          finalQuality = 75;
+          console.log('Resized and compressed to:', processedBuffer.length, 'bytes');
+        }
+      }
+    }
+
+    const compressedSize = processedBuffer.length;
+    const compressionRatio = ((originalSize - compressedSize) / originalSize * 100).toFixed(2);
+    
+    console.log('Compressed size:', compressedSize, 'bytes');
+    console.log('Compression ratio:', compressionRatio, '%');
+
+    // Determine file extension and mime type
+    let fileExtension, mimeType;
+    if (targetFormat === 'jpeg') {
+      fileExtension = 'jpg';
+      mimeType = 'image/jpeg';
+    } else if (targetFormat === 'png') {
+      fileExtension = 'png';
+      mimeType = 'image/png';
+    } else if (targetFormat === 'webp') {
+      fileExtension = 'webp';
+      mimeType = 'image/webp';
+    }
+
+    const finalOutputName = `${outputName}.${fileExtension}`;
+
+    // Save the compressed image
+    const savedFile = await saveProcessedFile(
+      req.user?.id || null,
+      processedBuffer,
+      finalOutputName,
+      mimeType,
+      isAnonymous
+    );
+
+    // Log operation (only for authenticated users)
+    if (req.user) {
+      await logOperation(req.user.id, savedFile.id, 'compress-image');
+    }
+
+    console.log('Image compression completed:', savedFile.id);
+
+    res.json({
+      message: 'Image compressed successfully',
+      file: savedFile,
+      stats: {
+        originalSize: originalSize,
+        compressedSize: compressedSize,
+        compressionRatio: parseFloat(compressionRatio),
+        finalQuality: finalQuality,
+        outputFormat: targetFormat
+      },
+      isAnonymous: isAnonymous
+    });
+
+  } catch (error) {
+    console.error('Image compression error:', error);
+    res.status(500).json({ error: error.message || 'Image compression failed' });
+  }
+});
+
 module.exports = router;
