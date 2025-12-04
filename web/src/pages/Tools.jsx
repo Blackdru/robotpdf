@@ -16,10 +16,10 @@ import PasswordRemoveModal from '../components/PasswordRemoveModal'
 
 import toast from 'react-hot-toast'
 import {
-  GitMerge, Scissors, Archive, Image, FileText, Upload, Download, Zap, Star,
-  ArrowRight, CheckCircle, AlertCircle, Info, Layers, Rocket, Eye, MessageSquare,
-  Play, Clock, Shield, Lock, Sparkles, TrendingUp, Users, Award, Copy,
-  FileSpreadsheet, FileType, ChevronRight, Search, Filter, Grid3X3, LayoutGrid
+  Combine, Scissors, Minimize2, ImagePlus, Globe, FileOutput, FileInput,
+  Table2, Sheet, Unlock, Type, ImageDown, Upload, Download, CheckCircle,
+  AlertCircle, Info, Layers, Rocket, Eye, MessageSquare, Shield, Lock,
+  Sparkles, Copy, FileText
 } from 'lucide-react'
 
 const Tools = () => {
@@ -55,7 +55,7 @@ const Tools = () => {
   const tools = [
     {
       id: 'merge',
-      icon: GitMerge,
+      icon: Combine,
       title: 'Merge PDFs',
       description: 'Combine multiple PDF files into one document',
       solidColor: 'bg-blue-600',
@@ -87,7 +87,7 @@ const Tools = () => {
     },
     {
       id: 'compress',
-      icon: Archive,
+      icon: Minimize2,
       title: 'Compress PDF',
       description: 'Reduce file size while maintaining quality',
       solidColor: 'bg-orange-600',
@@ -103,12 +103,12 @@ const Tools = () => {
     },
     {
       id: 'convert',
-      icon: Image,
+      icon: ImagePlus,
       title: 'Images to PDF',
       description: 'Convert images (JPG, PNG) to PDF format',
-      solidColor: 'bg-orange-500',
-      color: 'from-orange-400 to-orange-600',
-      iconBg: 'bg-orange-400',
+      solidColor: 'bg-cyan-600',
+      color: 'from-cyan-500 to-cyan-700',
+      iconBg: 'bg-cyan-500',
       acceptedFiles: '.jpg,.jpeg,.png,.gif,.bmp,.webp',
       multipleFiles: true,
       minFiles: 1,
@@ -119,7 +119,7 @@ const Tools = () => {
     },
     {
       id: 'html-to-pdf',
-      icon: FileText,
+      icon: Globe,
       title: 'HTML to PDF',
       description: 'Convert webpage URL to PDF',
       solidColor: 'bg-teal-600',
@@ -136,7 +136,7 @@ const Tools = () => {
     },
     {
       id: 'pdf-to-word',
-      icon: FileText,
+      icon: FileOutput,
       title: 'PDF to Word',
       description: 'Convert PDF files to editable Word documents',
       solidColor: 'bg-blue-700',
@@ -152,12 +152,12 @@ const Tools = () => {
     },
     {
       id: 'word-to-pdf',
-      icon: FileType,
+      icon: FileInput,
       title: 'Word to PDF',
       description: 'Convert Word documents to PDF format',
-      solidColor: 'bg-gradient-to-br from-purple-600 to-pink-600',
-      color: 'from-purple-600 to-pink-700',
-      iconBg: 'bg-purple-600',
+      solidColor: 'bg-indigo-600',
+      color: 'from-indigo-500 to-indigo-700',
+      iconBg: 'bg-indigo-500',
       acceptedFiles: '.doc,.docx',
       multipleFiles: false,
       minFiles: 1,
@@ -168,7 +168,7 @@ const Tools = () => {
     },
     {
       id: 'pdf-to-excel',
-      icon: FileSpreadsheet,
+      icon: Table2,
       title: 'PDF to Excel',
       description: 'Convert PDF files to Excel spreadsheets',
       solidColor: 'bg-emerald-700',
@@ -184,12 +184,12 @@ const Tools = () => {
     },
     {
       id: 'excel-to-pdf',
-      icon: FileSpreadsheet,
+      icon: Sheet,
       title: 'Excel to PDF',
       description: 'Convert Excel spreadsheets to PDF format',
-      solidColor: 'bg-gradient-to-br from-orange-600 to-red-600',
-      color: 'from-orange-600 to-red-700',
-      iconBg: 'bg-orange-600',
+      solidColor: 'bg-green-600',
+      color: 'from-green-500 to-green-700',
+      iconBg: 'bg-green-500',
       acceptedFiles: '.xls,.xlsx',
       multipleFiles: false,
       minFiles: 1,
@@ -200,7 +200,7 @@ const Tools = () => {
     },
     {
       id: 'password-remove',
-      icon: Shield,
+      icon: Unlock,
       title: 'Password Remover',
       description: 'Remove password protection from your PDFs',
       solidColor: 'bg-amber-600',
@@ -216,7 +216,7 @@ const Tools = () => {
     },
     {
       id: 'text-to-pdf',
-      icon: FileText,
+      icon: Type,
       title: 'Text to PDF',
       description: 'Type or paste text to convert into PDF documents',
       solidColor: 'bg-violet-600',
@@ -233,10 +233,10 @@ const Tools = () => {
     },
     {
       id: 'image-compress',
-      icon: Image,
+      icon: ImageDown,
       title: 'Image Compressor',
       description: 'Compress images to 50% size with fixed quality',
-      solidColor: 'bg-gradient-to-br from-pink-600 to-rose-600',
+      solidColor: 'bg-pink-600',
       color: 'from-pink-500 to-rose-700',
       iconBg: 'bg-pink-500',
       acceptedFiles: '.jpg,.jpeg,.png,.webp,.gif,.bmp',
@@ -279,7 +279,7 @@ const Tools = () => {
       'merge': [
         { name: 'Uploading Files', icon: Upload },
         { name: 'Processing PDFs', icon: FileText },
-        { name: 'Merging Documents', icon: GitMerge },
+        { name: 'Merging Documents', icon: Combine },
         { name: 'Complete', icon: CheckCircle }
       ],
       'split': [
@@ -291,12 +291,12 @@ const Tools = () => {
       'compress': [
         { name: 'Uploading Files', icon: Upload },
         { name: 'Analyzing Content', icon: Eye },
-        { name: 'Compressing PDFs', icon: Archive },
+        { name: 'Compressing PDFs', icon: Minimize2 },
         { name: 'Complete', icon: CheckCircle }
       ],
       'convert': [
         { name: 'Uploading Images', icon: Upload },
-        { name: 'Processing Images', icon: Image },
+        { name: 'Processing Images', icon: ImagePlus },
         { name: 'Creating PDF', icon: FileText },
         { name: 'Complete', icon: CheckCircle }
       ],
@@ -313,7 +313,7 @@ const Tools = () => {
         { name: 'Complete', icon: CheckCircle }
       ],
       'html-to-pdf': [
-        { name: 'Fetching URL', icon: Upload },
+        { name: 'Fetching URL', icon: Globe },
         { name: 'Rendering Page', icon: Eye },
         { name: 'Creating PDF', icon: FileText },
         { name: 'Complete', icon: CheckCircle }
@@ -321,19 +321,19 @@ const Tools = () => {
       'password-remove': [
         { name: 'Uploading Files', icon: Upload },
         { name: 'Verifying Password', icon: Shield },
-        { name: 'Removing Protection', icon: Lock },
+        { name: 'Removing Protection', icon: Unlock },
         { name: 'Complete', icon: CheckCircle }
       ],
       'text-to-pdf': [
         { name: 'Uploading Text Files', icon: Upload },
-        { name: 'Processing Text', icon: FileText },
+        { name: 'Processing Text', icon: Type },
         { name: 'Creating PDF', icon: FileText },
         { name: 'Complete', icon: CheckCircle }
       ],
       'image-compress': [
         { name: 'Uploading Images', icon: Upload },
         { name: 'Analyzing Images', icon: Eye },
-        { name: 'Compressing Images', icon: Image },
+        { name: 'Compressing Images', icon: ImageDown },
         { name: 'Complete', icon: CheckCircle }
       ]
     }
@@ -941,7 +941,9 @@ const Tools = () => {
                   </div>
                 </div>
                 <div className="p-3 sm:p-4">
-                  <p className="text-slate-600 text-xs sm:text-sm leading-snug line-clamp-2 mb-2">{tool.description}</p>
+                  <p className="text-slate-600 text-xs sm:text-sm leading-snug mb-2 line-clamp-2" title={tool.description}>
+                    {tool.description}
+                  </p>
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] sm:text-xs text-emerald-600 font-medium bg-emerald-50 px-1.5 py-0.5 rounded">FREE</span>
                     <span className="text-[10px] sm:text-xs text-slate-400">{tool.processingTime}</span>

@@ -24,7 +24,9 @@ const ToolsGrid = ({ tools, selectedTool, onToolSelect }) => {
             </div>
           </div>
           <div className="p-3 sm:p-4">
-            <p className="text-slate-600 text-xs sm:text-sm leading-snug line-clamp-2 mb-2">{tool.description}</p>
+            <p className="text-slate-600 text-xs sm:text-sm leading-snug mb-2 line-clamp-2" title={tool.description}>
+              {tool.description}
+            </p>
             <div className="flex items-center justify-between">
               <span className="text-[10px] sm:text-xs text-purple-600 font-medium bg-purple-50 px-1.5 py-0.5 rounded flex items-center gap-1">
                 <Crown className="h-2.5 w-2.5" />PRO

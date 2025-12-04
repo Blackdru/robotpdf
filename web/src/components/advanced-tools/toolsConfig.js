@@ -1,12 +1,11 @@
 import {
-  Eye,
+  ScanText,
   MessageSquare,
   Sparkles,
-  GitMerge,
+  Combine,
   Scissors,
-  Archive,
+  Minimize2,
   Lock,
-  Award,
   Upload,
   Brain,
   FileText,
@@ -16,11 +15,15 @@ import {
   Zap,
   Shield,
   Download,
-  FileSpreadsheet,
-  FileType,
+  FileOutput,
+  FileInput,
   Wand2,
-  Image,
-  Gauge
+  ImagePlus,
+  ImageDown,
+  Globe,
+  Type,
+  Unlock,
+  Eye
 } from 'lucide-react'
 
 export const proTools = [
@@ -28,8 +31,8 @@ export const proTools = [
     id: 'ai-resume-generator',
     icon: Wand2,
     title: 'AI Resume Generator',
-    description: 'Create professional, ATS-optimized resumes from scratch with advanced AI',
-    solidColor: 'bg-gradient-to-br from-violet-600 to-purple-600',
+    description: 'Create professional, ATS-optimized resumes with AI',
+    solidColor: 'bg-violet-600',
     color: 'from-violet-500 to-purple-700',
     acceptedFiles: '',
     multipleFiles: false,
@@ -37,15 +40,15 @@ export const proTools = [
     category: 'AI-Powered',
     popularity: 99,
     processingTime: '< 45s',
-    features: ['AI-powered generation', 'Multiple templates', 'ATS optimization', 'Industry-specific content'],
+    features: ['AI-powered generation', 'Multiple templates'],
     isGenerator: true,
     requiresPro: true
   },
   {
     id: 'advanced-ocr',
-    icon: Eye,
+    icon: ScanText,
     title: 'Advanced OCR Pro',
-    description: 'AI-powered text extraction with 99.9% accuracy and multi-language support',
+    description: 'AI-powered text extraction with 99.9% accuracy',
     solidColor: 'bg-cyan-600',
     color: 'from-cyan-500 to-blue-700',
     acceptedFiles: '.pdf,.jpg,.jpeg,.png',
@@ -54,14 +57,14 @@ export const proTools = [
     category: 'AI-Powered',
     popularity: 98,
     processingTime: '< 60s',
-    features: ['Multi-language OCR', 'AI enhancement', 'Entity extraction', 'Confidence scoring']
+    features: ['Multi-language OCR', 'AI enhancement']
   },
   {
     id: 'ai-chat',
     icon: MessageSquare,
     title: 'AI Document Chat',
-    description: 'Intelligent conversations with your PDFs and images using advanced AI',
-    solidColor: 'bg-gradient-to-br from-pink-600 to-purple-600',
+    description: 'Chat with your PDFs using advanced AI',
+    solidColor: 'bg-pink-600',
     color: 'from-pink-500 to-purple-700',
     acceptedFiles: '.pdf,.jpg,.jpeg,.png,.gif,.bmp,.webp,.tiff,.tif',
     multipleFiles: false,
@@ -69,14 +72,14 @@ export const proTools = [
     category: 'AI-Powered',
     popularity: 95,
     processingTime: '< 30s',
-    features: ['GPT-4 powered', 'Context awareness', 'Smart summaries', 'Multi-turn conversations']
+    features: ['GPT-4 powered', 'Context awareness']
   },
   {
     id: 'smart-summary',
     icon: Sparkles,
     title: 'Smart Summary Pro',
-    description: 'AI-generated summaries with key insights and sentiment analysis',
-    solidColor: 'bg-gradient-to-br from-amber-500 to-orange-600',
+    description: 'AI-generated summaries with key insights',
+    solidColor: 'bg-amber-500',
     color: 'from-yellow-500 to-orange-700',
     acceptedFiles: '.pdf',
     multipleFiles: false,
@@ -84,13 +87,13 @@ export const proTools = [
     category: 'AI-Powered',
     popularity: 92,
     processingTime: '< 45s',
-    features: ['Key insights', 'Sentiment analysis', 'Entity recognition', 'Executive summaries']
+    features: ['Key insights', 'Sentiment analysis']
   },
   {
     id: 'pro-merge',
-    icon: GitMerge,
+    icon: Combine,
     title: 'Pro Merge',
-    description: 'Advanced PDF merging with bookmarks and professional options',
+    description: 'Advanced PDF merging with bookmarks',
     solidColor: 'bg-indigo-600',
     color: 'from-blue-500 to-indigo-700',
     acceptedFiles: '.pdf',
@@ -99,13 +102,13 @@ export const proTools = [
     category: 'Professional',
     popularity: 89,
     processingTime: '< 90s',
-    features: ['Auto bookmarks', 'Page numbering', 'Title pages', 'Print optimization']
+    features: ['Auto bookmarks', 'Page numbering']
   },
   {
     id: 'precision-split',
     icon: Scissors,
     title: 'Precision Split',
-    description: 'Advanced PDF splitting with custom ranges and batch processing',
+    description: 'Advanced PDF splitting with custom ranges',
     solidColor: 'bg-emerald-600',
     color: 'from-green-500 to-emerald-700',
     acceptedFiles: '.pdf',
@@ -114,13 +117,13 @@ export const proTools = [
     category: 'Professional',
     popularity: 87,
     processingTime: '< 75s',
-    features: ['Custom ranges', 'Batch processing', 'Smart naming', 'Quality preservation']
+    features: ['Custom ranges', 'Batch processing']
   },
   {
     id: 'smart-compress',
-    icon: Archive,
+    icon: Minimize2,
     title: 'Smart Compress Pro',
-    description: 'Intelligent compression with quality control and optimization',
+    description: 'Intelligent compression with quality control',
     solidColor: 'bg-purple-600',
     color: 'from-purple-500 to-violet-700',
     acceptedFiles: '.pdf',
@@ -129,14 +132,14 @@ export const proTools = [
     category: 'Professional',
     popularity: 91,
     processingTime: '< 120s',
-    features: ['Quality control', 'Image optimization', 'Size prediction', 'Batch processing']
+    features: ['Quality control', 'Size prediction']
   },
   {
     id: 'password-protect',
     icon: Lock,
     title: 'Password Protect',
-    description: 'Military-grade encryption with advanced security features',
-    solidColor: 'bg-gradient-to-br from-rose-600 to-pink-600',
+    description: 'Military-grade encryption for PDFs',
+    solidColor: 'bg-rose-600',
     color: 'from-red-500 to-pink-700',
     acceptedFiles: '.pdf',
     multipleFiles: true,
@@ -144,13 +147,13 @@ export const proTools = [
     category: 'Security',
     popularity: 85,
     processingTime: '< 60s',
-    features: ['AES-256 encryption', 'Password protection', 'Permission control', 'Audit trails']
+    features: ['AES-256 encryption', 'Permission control']
   },
   {
     id: 'images-to-pdf',
-    icon: Upload,
+    icon: ImagePlus,
     title: 'Images to PDF Pro',
-    description: 'Convert multiple images to professional PDF with advanced settings',
+    description: 'Convert images to PDF with advanced settings',
     solidColor: 'bg-teal-600',
     color: 'from-emerald-500 to-teal-700',
     acceptedFiles: '.jpg,.jpeg,.png,.gif,.bmp,.webp',
@@ -159,13 +162,13 @@ export const proTools = [
     category: 'Professional',
     popularity: 88,
     processingTime: '< 60s',
-    features: ['Multiple formats', 'Custom page size', 'Quality control', 'Auto orientation']
+    features: ['Custom page size', 'Quality control']
   },
   {
     id: 'pdf-to-office',
-    icon: FileSpreadsheet,
-    title: 'PDF to Office Converter',
-    description: 'Convert PDF to DOC, DOCX, Excel, PowerPoint with 100% accuracy',
+    icon: FileOutput,
+    title: 'PDF to Office',
+    description: 'Convert PDF to Word, Excel, PowerPoint',
     solidColor: 'bg-blue-700',
     color: 'from-indigo-500 to-blue-700',
     acceptedFiles: '.pdf',
@@ -174,14 +177,14 @@ export const proTools = [
     category: 'Professional',
     popularity: 96,
     processingTime: '< 90s',
-    features: ['Word conversion', 'Excel extraction', 'PowerPoint export', 'Format preservation']
+    features: ['Word conversion', 'Excel extraction']
   },
   {
     id: 'office-to-pdf',
-    icon: FileType,
-    title: 'Office to PDF Converter',
-    description: 'Convert Word, Excel, PowerPoint to PDF with 100% accuracy',
-    solidColor: 'bg-gradient-to-br from-orange-600 to-red-600',
+    icon: FileInput,
+    title: 'Office to PDF',
+    description: 'Convert Word, Excel, PowerPoint to PDF',
+    solidColor: 'bg-orange-600',
     color: 'from-orange-500 to-red-700',
     acceptedFiles: '.doc,.docx,.xls,.xlsx,.ppt,.pptx,.rtf,.odt,.txt',
     multipleFiles: true,
@@ -189,13 +192,13 @@ export const proTools = [
     category: 'Professional',
     popularity: 96,
     processingTime: '< 90s',
-    features: ['Word to PDF', 'Excel to PDF', 'PowerPoint to PDF', 'Format preservation']
+    features: ['Word to PDF', 'Excel to PDF']
   },
   {
     id: 'advanced-html-to-pdf',
-    icon: FileText,
+    icon: Globe,
     title: 'Advanced HTML to PDF',
-    description: 'Convert webpages or HTML files to PDF with custom settings',
+    description: 'Convert webpages to PDF with custom settings',
     solidColor: 'bg-cyan-700',
     color: 'from-teal-500 to-cyan-700',
     acceptedFiles: '.html,.htm',
@@ -205,13 +208,13 @@ export const proTools = [
     popularity: 82,
     processingTime: '< 60s',
     requiresUrl: true,
-    features: ['Full page capture', 'Custom page size', 'Header/Footer', 'Background graphics']
+    features: ['Full page capture', 'Custom page size']
   },
   {
     id: 'text-to-pdf-pro',
-    icon: FileText,
+    icon: Type,
     title: 'Text to PDF Pro',
-    description: 'Type or paste text to convert into PDF with custom styles',
+    description: 'Convert text to PDF with custom styles',
     solidColor: 'bg-violet-600',
     color: 'from-violet-500 to-purple-700',
     acceptedFiles: '.txt,.md,.csv',
@@ -220,16 +223,16 @@ export const proTools = [
     category: 'Professional',
     popularity: 84,
     processingTime: '< 45s',
-    features: ['Custom fonts', 'Page numbering', 'Headers/Footers', 'Markdown support'],
+    features: ['Custom fonts', 'Markdown support'],
     requiresTextOrFile: true,
     requiresPro: true
   },
   {
     id: 'image-compress-pro',
-    icon: Image,
+    icon: ImageDown,
     title: 'Image Compressor Pro',
-    description: 'Advanced image compression with target size and quality control',
-    solidColor: 'bg-gradient-to-br from-pink-600 to-rose-600',
+    description: 'Advanced image compression with quality control',
+    solidColor: 'bg-pink-600',
     color: 'from-pink-500 to-rose-700',
     acceptedFiles: '.jpg,.jpeg,.png,.webp,.gif,.bmp',
     multipleFiles: true,
@@ -237,10 +240,11 @@ export const proTools = [
     category: 'Professional',
     popularity: 88,
     processingTime: '< 45s',
-    features: ['Target file size', 'Quality control', 'Batch processing', 'Format conversion'],
+    features: ['Target file size', 'Quality control'],
     requiresPro: true
   }
 ]
+
 
 export const PROCESSING_STEPS_CONFIG = {
   'ai-resume-generator': [
@@ -253,7 +257,7 @@ export const PROCESSING_STEPS_CONFIG = {
   'advanced-ocr': [
     { name: 'Uploading File', icon: Upload },
     { name: 'AI Enhancement', icon: Brain },
-    { name: 'Text Extraction', icon: Eye },
+    { name: 'Text Extraction', icon: ScanText },
     { name: 'Entity Detection', icon: Users },
     { name: 'Complete', icon: CheckCircle }
   ],
@@ -275,7 +279,7 @@ export const PROCESSING_STEPS_CONFIG = {
   'pro-merge': [
     { name: 'Uploading Files', icon: Upload },
     { name: 'Processing PDFs', icon: FileText },
-    { name: 'Merging Documents', icon: GitMerge },
+    { name: 'Merging Documents', icon: Combine },
     { name: 'Optimizing Output', icon: Zap },
     { name: 'Complete', icon: CheckCircle }
   ],
@@ -283,14 +287,14 @@ export const PROCESSING_STEPS_CONFIG = {
     { name: 'Uploading File', icon: Upload },
     { name: 'Analyzing Structure', icon: Eye },
     { name: 'Splitting Pages', icon: Scissors },
-    { name: 'Creating Archive', icon: Archive },
+    { name: 'Creating Archive', icon: Download },
     { name: 'Complete', icon: CheckCircle }
   ],
   'smart-compress': [
     { name: 'Uploading Files', icon: Upload },
     { name: 'Analyzing Content', icon: Eye },
     { name: 'Optimizing Images', icon: TrendingUp },
-    { name: 'Compressing PDFs', icon: Archive },
+    { name: 'Compressing PDFs', icon: Minimize2 },
     { name: 'Complete', icon: CheckCircle }
   ],
   'password-protect': [
@@ -303,12 +307,12 @@ export const PROCESSING_STEPS_CONFIG = {
   'password-remove': [
     { name: 'Uploading Files', icon: Upload },
     { name: 'Verifying Password', icon: Shield },
-    { name: 'Removing Protection', icon: Lock },
+    { name: 'Removing Protection', icon: Unlock },
     { name: 'Complete', icon: CheckCircle }
   ],
   'images-to-pdf': [
     { name: 'Uploading Images', icon: Upload },
-    { name: 'Processing Images', icon: Eye },
+    { name: 'Processing Images', icon: ImagePlus },
     { name: 'Creating PDF', icon: FileText },
     { name: 'Optimizing', icon: Zap },
     { name: 'Complete', icon: CheckCircle }
@@ -317,7 +321,7 @@ export const PROCESSING_STEPS_CONFIG = {
     { name: 'Uploading PDF', icon: Upload },
     { name: 'Analyzing Structure', icon: Brain },
     { name: 'Extracting Content', icon: Eye },
-    { name: 'Converting Format', icon: FileSpreadsheet },
+    { name: 'Converting Format', icon: FileOutput },
     { name: 'Optimizing Output', icon: Zap },
     { name: 'Complete', icon: CheckCircle }
   ],
@@ -325,12 +329,12 @@ export const PROCESSING_STEPS_CONFIG = {
     { name: 'Uploading Files', icon: Upload },
     { name: 'Analyzing Content', icon: Brain },
     { name: 'Processing Document', icon: FileText },
-    { name: 'Converting to PDF', icon: FileType },
+    { name: 'Converting to PDF', icon: FileInput },
     { name: 'Optimizing Output', icon: Zap },
     { name: 'Complete', icon: CheckCircle }
   ],
   'advanced-html-to-pdf': [
-    { name: 'Fetching URL', icon: Upload },
+    { name: 'Fetching URL', icon: Globe },
     { name: 'Rendering Page', icon: Eye },
     { name: 'Applying Settings', icon: Zap },
     { name: 'Creating PDF', icon: FileText },
@@ -338,7 +342,7 @@ export const PROCESSING_STEPS_CONFIG = {
   ],
   'text-to-pdf-pro': [
     { name: 'Uploading Text Files', icon: Upload },
-    { name: 'Processing Text', icon: FileText },
+    { name: 'Processing Text', icon: Type },
     { name: 'Applying Formatting', icon: Zap },
     { name: 'Creating PDF', icon: FileText },
     { name: 'Complete', icon: CheckCircle }
@@ -346,8 +350,8 @@ export const PROCESSING_STEPS_CONFIG = {
   'image-compress-pro': [
     { name: 'Uploading Images', icon: Upload },
     { name: 'Analyzing Images', icon: Eye },
-    { name: 'Applying Compression', icon: Gauge },
-    { name: 'Optimizing Output', icon: Image },
+    { name: 'Applying Compression', icon: ImageDown },
+    { name: 'Optimizing Output', icon: Zap },
     { name: 'Complete', icon: CheckCircle }
   ]
 }
