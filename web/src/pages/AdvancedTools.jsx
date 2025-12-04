@@ -751,7 +751,7 @@ const AdvancedTools = () => {
                     <div className="p-2 bg-white/20 rounded-lg group-hover:scale-105 transition-transform">
                       <tool.icon className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                     </div>
-                    <h3 className="text-sm sm:text-base font-semibold text-white truncate flex-1">{tool.title}</h3>
+                    <h3 className="text-sm sm:text-base font-semibold text-white flex-1 line-clamp-2 leading-tight">{tool.title}</h3>
                   </div>
                 </div>
                 <div className="p-3 sm:p-4">
