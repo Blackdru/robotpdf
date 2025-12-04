@@ -109,6 +109,10 @@ const AppContent = () => {
       '/resume-generator': {
         title: 'AI Resume Generator — Create Professional Resumes | RobotPDF',
         description: 'Generate ATS-optimized professional resumes with AI. Multiple templates, industry-specific content, and instant download. Free to start.'
+      },
+      '/developers/docs': {
+        title: 'API Documentation — RobotPDF Developer Docs',
+        description: 'Complete API documentation for RobotPDF. Integrate PDF processing, OCR, conversion, and AI features into your applications with our REST API.'
       }
     }
 
