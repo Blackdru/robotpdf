@@ -11,6 +11,7 @@ const officeConversionService = require('../services/officeConversionService');
 const resumeGenerator = require('../services/resumeGenerator');
 const resumeExport = require('../services/resumeExport');
 const { supabaseAdmin } = require('../config/supabase');
+const { createFileResponse } = require('../utils/fileEncoder');
 
 // Configure multer for file uploads
 const upload = multer({
@@ -276,12 +277,12 @@ router.post('/compress', trackApiUsage('compress'), upload.single('file'), async
 
     res.json({
       success: true,
-      data: {
+      data: createFileResponse(result.buffer, {
         original_size: req.file.size,
         compressed_size: result.size,
         compression_ratio: ((1 - result.size / req.file.size) * 100).toFixed(2) + '%',
-        file_base64: result.buffer.toString('base64')
-      }
+        filename: req.file.originalname
+      })
     });
   } catch (error) {
     console.error('Compress API error:', error);
@@ -310,11 +311,10 @@ router.post('/images-to-pdf', trackApiUsage('images_to_pdf'), upload.array('file
 
     res.json({
       success: true,
-      data: {
+      data: createFileResponse(result.buffer, {
         page_count: req.files.length,
-        file_size: result.size,
-        file_base64: result.buffer.toString('base64')
-      }
+        filename: 'converted.pdf'
+      })
     });
   } catch (error) {
     console.error('Images to PDF API error:', error);
@@ -346,11 +346,10 @@ router.post('/convert/pdf-to-docx', trackApiUsage('pdf_to_docx'), upload.single(
 
     res.json({
       success: true,
-      data: {
-        file_size: result.length,
-        file_base64: result.toString('base64'),
-        format: 'docx'
-      }
+      data: createFileResponse(result, {
+        format: 'docx',
+        filename: req.file.originalname.replace(/\.pdf$/i, '.docx')
+      })
     });
   } catch (error) {
     console.error('PDF to DOCX API error:', error);
@@ -382,11 +381,10 @@ router.post('/convert/pdf-to-excel', trackApiUsage('pdf_to_excel'), upload.singl
 
     res.json({
       success: true,
-      data: {
-        file_size: result.length,
-        file_base64: result.toString('base64'),
-        format: 'xlsx'
-      }
+      data: createFileResponse(result, {
+        format: 'xlsx',
+        filename: req.file.originalname.replace(/\.pdf$/i, '.xlsx')
+      })
     });
   } catch (error) {
     console.error('PDF to Excel API error:', error);
@@ -418,11 +416,10 @@ router.post('/convert/pdf-to-ppt', trackApiUsage('pdf_to_ppt'), upload.single('f
 
     res.json({
       success: true,
-      data: {
-        file_size: result.length,
-        file_base64: result.toString('base64'),
-        format: 'pptx'
-      }
+      data: createFileResponse(result, {
+        format: 'pptx',
+        filename: req.file.originalname.replace(/\.pdf$/i, '.pptx')
+      })
     });
   } catch (error) {
     console.error('PDF to PPT API error:', error);
@@ -448,11 +445,10 @@ router.post('/merge', trackApiUsage('merge_pdf'), upload.array('files', 10), asy
 
     res.json({
       success: true,
-      data: {
+      data: createFileResponse(result.buffer, {
         file_count: req.files.length,
-        file_size: result.size,
-        file_base64: result.buffer.toString('base64')
-      }
+        filename: 'merged.pdf'
+      })
     });
   } catch (error) {
     console.error('Merge PDF API error:', error);
@@ -480,25 +476,68 @@ router.post('/split', trackApiUsage('split_pdf'), upload.single('file'), async (
       });
     }
 
-    const { pages } = req.body;
+    const { pages, split_mode = 'single' } = req.body;
     
     if (!pages) {
       return res.status(400).json({
         error: 'Missing pages parameter',
-        message: 'Please specify which pages to extract (e.g., "1-3,5,7-9")'
+        message: 'Please specify which pages to extract (e.g., "1-3,5,7-9") or "all" to split into individual pages'
       });
     }
 
-    const result = await advancedPdfService.splitPdf(req.file.buffer, pages);
-
-    res.json({
-      success: true,
-      data: {
-        page_count: result.pageCount,
-        file_size: result.size,
-        file_base64: result.buffer.toString('base64')
+    // If split_mode is 'individual', split into separate PDFs and return as ZIP
+    if (split_mode === 'individual' || pages === 'all') {
+      const archiver = require('archiver');
+      const PDFLib = require('pdf-lib');
+      const sourcePdf = await PDFLib.PDFDocument.load(req.file.buffer);
+      const totalPages = sourcePdf.getPageCount();
+      
+      // Create ZIP archive in memory
+      const archive = archiver('zip', { zlib: { level: 9 } });
+      const chunks = [];
+      
+      archive.on('data', chunk => chunks.push(chunk));
+      archive.on('error', err => { throw err; });
+      
+      const archivePromise = new Promise((resolve) => {
+        archive.on('end', () => resolve(Buffer.concat(chunks)));
+      });
+      
+      // Split each page into individual PDF
+      for (let i = 0; i < totalPages; i++) {
+        const newPdf = await PDFLib.PDFDocument.create();
+        const [copiedPage] = await newPdf.copyPages(sourcePdf, [i]);
+        newPdf.addPage(copiedPage);
+        const pdfBytes = await newPdf.save();
+        
+        const filename = `page_${i + 1}.pdf`;
+        archive.append(Buffer.from(pdfBytes), { name: filename });
       }
-    });
+      
+      archive.finalize();
+      const zipBuffer = await archivePromise;
+      
+      res.json({
+        success: true,
+        data: createFileResponse(zipBuffer, {
+          page_count: totalPages,
+          file_count: totalPages,
+          format: 'zip',
+          filename: req.file.originalname.replace(/\.pdf$/i, '_split.zip')
+        })
+      });
+    } else {
+      // Single PDF with selected pages
+      const result = await advancedPdfService.splitPdf(req.file.buffer, pages);
+      
+      res.json({
+        success: true,
+        data: createFileResponse(result.buffer, {
+          page_count: result.pageCount,
+          filename: req.file.originalname.replace(/\.pdf$/i, '_split.pdf')
+        })
+      });
+    }
   } catch (error) {
     console.error('Split PDF API error:', error);
     res.status(500).json({
@@ -590,11 +629,10 @@ router.post('/resumes/export', trackApiUsage('resume_export'), async (req, res) 
 
     res.json({
       success: true,
-      data: {
+      data: createFileResponse(buffer, {
         format: format,
-        file_size: buffer.length,
-        file_base64: buffer.toString('base64')
-      }
+        filename: `resume_${Date.now()}.${format}`
+      })
     });
   } catch (error) {
     console.error('Resume export API error:', error);

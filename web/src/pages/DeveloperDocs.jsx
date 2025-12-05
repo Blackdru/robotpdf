@@ -22,6 +22,7 @@ const DeveloperDocs = () => {
     { id: 'authentication', title: 'Authentication', icon: Key },
     { id: 'rate-limits', title: 'Rate Limits & Quotas', icon: Clock },
     { id: 'endpoints', title: 'API Endpoints', icon: Server },
+    { id: 'file-handling', title: 'Handling File Responses', icon: FileOutput },
     { id: 'error-codes', title: 'Error Codes', icon: AlertTriangle },
     { id: 'examples', title: 'Code Examples', icon: Code },
     { id: 'sdks', title: 'SDKs & Libraries', icon: Database },
@@ -224,21 +225,25 @@ const DeveloperDocs = () => {
           method: 'POST',
           path: '/split',
           title: 'Split PDF',
-          description: 'Extract specific pages from a PDF document.',
+          description: 'Extract specific pages from a PDF document or split into individual page PDFs returned as a ZIP file.',
           auth: true,
           contentType: 'multipart/form-data',
           requestBody: {
             file: { type: 'File', required: true, description: 'PDF file to split' },
-            pages: { type: 'string', required: true, description: 'Page specification: "1-3,5,7-9" or "1,3,5"' }
+            pages: { type: 'string', required: true, description: 'Page specification: "1-3,5,7-9", "1,3,5", or "all" for all pages' },
+            split_mode: { type: 'string', required: false, default: 'single', description: 'Split mode: "single" (one PDF with selected pages) or "individual" (separate PDF per page as ZIP)' }
           },
           responseExample: {
             success: true,
             data: {
               page_count: 5,
+              file_count: 5,
               file_size: 524288,
-              file_base64: 'JVBERi0xLjQK...'
+              format: 'zip',
+              file_base64: 'UEsDBBQAAAAI...'
             }
-          }
+          },
+          notes: 'When split_mode="individual" or pages="all", returns a ZIP file containing individual PDFs for each page. Otherwise returns a single PDF with selected pages.'
         },
         {
           method: 'POST',
@@ -957,6 +962,455 @@ const DeveloperDocs = () => {
               </motion.div>
             )}
 
+
+            {/* File Handling */}
+            {activeSection === 'file-handling' && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-6"
+              >
+                <div className="bg-white border-2 border-gray-200 rounded-2xl p-8 shadow-md">
+                  <h2 className="text-2xl font-bold text-slate-900 mb-4">Handling File Responses</h2>
+                  <p className="text-slate-600 mb-6">
+                    Many API endpoints return processed files as base64-encoded strings in JSON responses. 
+                    This guide shows you how to properly decode and save these files to avoid corruption.
+                  </p>
+
+                  <div className="p-4 bg-amber-50 border-2 border-amber-200 rounded-xl mb-6">
+                    <div className="flex gap-3">
+                      <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <h4 className="font-semibold text-amber-800 mb-1">Important</h4>
+                        <p className="text-sm text-amber-700">
+                          Endpoints that return files (compress, merge, split, convert, etc.) include a <code className="bg-amber-100 px-1 rounded">file_base64</code> field 
+                          containing the base64-encoded file data. You must decode this string properly to get a valid file.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <h3 className="text-xl font-semibold text-slate-900 mt-8 mb-3">Response Format</h3>
+                  <p className="text-slate-600 mb-4">File-returning endpoints respond with this structure:</p>
+                  <CodeBlock 
+                    code={`{
+  "success": true,
+  "data": {
+    "file_size": 524288,
+    "file_base64": "JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PC9UeXBlL0NhdGFsb2cvUGFnZXMgMiAwIFI+PgplbmRvYmoKMiAwIG9iago8PC9UeXBlL1BhZ2VzL0tpZHNbMyAwIFJdL0NvdW50IDE+PgplbmRvYmoKMyAwIG9iago8PC9UeXBlL1BhZ2UvTWVkaWFCb3hbMCAwIDYxMiA3OTJdL1BhcmVudCAyIDAgUi9SZXNvdXJjZXM8PC9Gb250PDwvRjEgNCAwIFI+Pj4+L0NvbnRlbnRzIDUgMCBSPj4KZW5kb2JqCjQgMCBvYmoKPDwvVHlwZS9Gb250L1N1YnR5cGUvVHlwZTEvQmFzZUZvbnQvSGVsdmV0aWNhPj4KZW5kb2JqCjUgMCBvYmoKPDwvTGVuZ3RoIDQ0Pj4Kc3RyZWFtCkJUCi9GMSA0OCBUZgoxMDAgNzAwIFRkCihIZWxsbywgV29ybGQhKSBUagpFVAplbmRzdHJlYW0KZW5kb2JqCnhyZWYKMCA2CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDAxNSAwMDAwMCBuIAowMDAwMDAwMDY0IDAwMDAwIG4gCjAwMDAwMDAxMjEgMDAwMDAgbiAKMDAwMDAwMDI0NyAwMDAwMCBuIAowMDAwMDAwMzI2IDAwMDAwIG4gCnRyYWlsZXIKPDwvU2l6ZSA2L1Jvb3QgMSAwIFI+PgpzdGFydHhyZWYKNDE4CiUlRU9GCg==",
+    "compression_ratio": "80.00%",
+    "format": "pdf"
+  }
+}`}
+                    id="file-response-format"
+                  />
+
+                  <h3 className="text-xl font-semibold text-slate-900 mt-8 mb-3">Decoding Base64 Files</h3>
+                  <p className="text-slate-600 mb-4">Here's how to properly decode and save files in different languages:</p>
+
+                  {/* Node.js Example */}
+                  <div className="mb-6">
+                    <h4 className="font-medium text-slate-900 mb-2 flex items-center gap-2">
+                      <span className="text-xl">🟢</span> Node.js
+                    </h4>
+                    <CodeBlock 
+                      code={`const fs = require('fs');
+const axios = require('axios');
+
+async function compressAndSavePdf(inputPath, outputPath) {
+  const formData = new FormData();
+  formData.append('file', fs.createReadStream(inputPath));
+  formData.append('quality', 'medium');
+  
+  const response = await axios.post(
+    'https://api.robotpdf.com/api/v1/compress',
+    formData,
+    {
+      headers: {
+        'X-API-Key': process.env.ROBOTPDF_API_KEY,
+        'X-API-Secret': process.env.ROBOTPDF_API_SECRET,
+        ...formData.getHeaders()
+      }
+    }
+  );
+  
+  // Decode base64 string to Buffer
+  const fileBuffer = Buffer.from(
+    response.data.data.file_base64,
+    'base64'
+  );
+  
+  // Write to file
+  fs.writeFileSync(outputPath, fileBuffer);
+  
+  console.log('File saved successfully!');
+  console.log('Original size:', response.data.data.original_size);
+  console.log('Compressed size:', response.data.data.compressed_size);
+  
+  return fileBuffer;
+}
+
+// Usage
+compressAndSavePdf('./input.pdf', './output.pdf');`}
+                      id="nodejs-decode"
+                    />
+                  </div>
+
+                  {/* Python Example */}
+                  <div className="mb-6">
+                    <h4 className="font-medium text-slate-900 mb-2 flex items-center gap-2">
+                      <span className="text-xl">🐍</span> Python
+                    </h4>
+                    <CodeBlock 
+                      code={`import requests
+import base64
+import os
+
+def compress_and_save_pdf(input_path, output_path):
+    """Compress a PDF and save the result."""
+    
+    # Make API request
+    with open(input_path, 'rb') as f:
+        response = requests.post(
+            'https://api.robotpdf.com/api/v1/compress',
+            headers={
+                'X-API-Key': os.environ['ROBOTPDF_API_KEY'],
+                'X-API-Secret': os.environ['ROBOTPDF_API_SECRET']
+            },
+            files={'file': f},
+            data={'quality': 'medium'}
+        )
+    
+    response.raise_for_status()
+    result = response.json()['data']
+    
+    # Decode base64 string to bytes
+    file_bytes = base64.b64decode(result['file_base64'])
+    
+    # Write to file
+    with open(output_path, 'wb') as f:
+        f.write(file_bytes)
+    
+    print(f"File saved successfully!")
+    print(f"Original size: {result['original_size']} bytes")
+    print(f"Compressed size: {result['compressed_size']} bytes")
+    print(f"Compression ratio: {result['compression_ratio']}")
+    
+    return file_bytes
+
+# Usage
+compress_and_save_pdf('input.pdf', 'output.pdf')`}
+                      id="python-decode"
+                    />
+                  </div>
+
+                  {/* PHP Example */}
+                  <div className="mb-6">
+                    <h4 className="font-medium text-slate-900 mb-2 flex items-center gap-2">
+                      <span className="text-xl">🐘</span> PHP
+                    </h4>
+                    <CodeBlock 
+                      code={`<?php
+function compressAndSavePdf($inputPath, $outputPath) {
+    $apiKey = getenv('ROBOTPDF_API_KEY');
+    $apiSecret = getenv('ROBOTPDF_API_SECRET');
+    
+    // Prepare file upload
+    $ch = curl_init('https://api.robotpdf.com/api/v1/compress');
+    $cfile = new CURLFile($inputPath);
+    
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'X-API-Key: ' . $apiKey,
+        'X-API-Secret: ' . $apiSecret
+    ]);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, [
+        'file' => $cfile,
+        'quality' => 'medium'
+    ]);
+    
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    if ($httpCode !== 200) {
+        throw new Exception("API Error: " . $response);
+    }
+    
+    $result = json_decode($response, true)['data'];
+    
+    // Decode base64 string
+    $fileBytes = base64_decode($result['file_base64']);
+    
+    // Write to file
+    file_put_contents($outputPath, $fileBytes);
+    
+    echo "File saved successfully!\n";
+    echo "Original size: {$result['original_size']} bytes\n";
+    echo "Compressed size: {$result['compressed_size']} bytes\n";
+    
+    return $fileBytes;
+}
+
+// Usage
+compressAndSavePdf('input.pdf', 'output.pdf');
+?>`}
+                      id="php-decode"
+                    />
+                  </div>
+
+                  {/* Java Example */}
+                  <div className="mb-6">
+                    <h4 className="font-medium text-slate-900 mb-2 flex items-center gap-2">
+                      <span className="text-xl">☕</span> Java
+                    </h4>
+                    <CodeBlock 
+                      code={`import okhttp3.*;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.Base64;
+
+public class PDFCompressor {
+    private static final String API_KEY = System.getenv("ROBOTPDF_API_KEY");
+    private static final String API_SECRET = System.getenv("ROBOTPDF_API_SECRET");
+    
+    public static void compressAndSavePdf(String inputPath, String outputPath) 
+            throws IOException {
+        OkHttpClient client = new OkHttpClient();
+        
+        // Prepare multipart request
+        RequestBody fileBody = RequestBody.create(
+            new File(inputPath),
+            MediaType.parse("application/pdf")
+        );
+        
+        MultipartBody body = new MultipartBody.Builder()
+            .setType(MultipartBody.FORM)
+            .addFormDataPart("file", "input.pdf", fileBody)
+            .addFormDataPart("quality", "medium")
+            .build();
+        
+        Request request = new Request.Builder()
+            .url("https://api.robotpdf.com/api/v1/compress")
+            .addHeader("X-API-Key", API_KEY)
+            .addHeader("X-API-Secret", API_SECRET)
+            .post(body)
+            .build();
+        
+        try (Response response = client.newCall(request).execute()) {
+            String responseBody = response.body().string();
+            JsonObject json = JsonParser.parseString(responseBody)
+                .getAsJsonObject();
+            JsonObject data = json.getAsJsonObject("data");
+            
+            // Decode base64 string
+            String base64String = data.get("file_base64").getAsString();
+            byte[] fileBytes = Base64.getDecoder().decode(base64String);
+            
+            // Write to file
+            try (FileOutputStream fos = new FileOutputStream(outputPath)) {
+                fos.write(fileBytes);
+            }
+            
+            System.out.println("File saved successfully!");
+            System.out.println("Original size: " + 
+                data.get("original_size").getAsInt());
+            System.out.println("Compressed size: " + 
+                data.get("compressed_size").getAsInt());
+        }
+    }
+    
+    public static void main(String[] args) throws IOException {
+        compressAndSavePdf("input.pdf", "output.pdf");
+    }
+}`}
+                      id="java-decode"
+                    />
+                  </div>
+
+                  {/* C# Example */}
+                  <div className="mb-6">
+                    <h4 className="font-medium text-slate-900 mb-2 flex items-center gap-2">
+                      <span className="text-xl">💜</span> C#
+                    </h4>
+                    <CodeBlock 
+                      code={`using System;
+using System.IO;
+using System.Net.Http;
+using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
+
+public class PDFCompressor
+{
+    private static readonly string ApiKey = 
+        Environment.GetEnvironmentVariable("ROBOTPDF_API_KEY");
+    private static readonly string ApiSecret = 
+        Environment.GetEnvironmentVariable("ROBOTPDF_API_SECRET");
+    
+    public static async Task CompressAndSavePdfAsync(
+        string inputPath, string outputPath)
+    {
+        using var client = new HttpClient();
+        client.DefaultRequestHeaders.Add("X-API-Key", ApiKey);
+        client.DefaultRequestHeaders.Add("X-API-Secret", ApiSecret);
+        
+        // Prepare multipart form data
+        using var form = new MultipartFormDataContent();
+        using var fileStream = File.OpenRead(inputPath);
+        form.Add(new StreamContent(fileStream), "file", "input.pdf");
+        form.Add(new StringContent("medium"), "quality");
+        
+        // Make API request
+        var response = await client.PostAsync(
+            "https://api.robotpdf.com/api/v1/compress",
+            form
+        );
+        response.EnsureSuccessStatusCode();
+        
+        var responseBody = await response.Content.ReadAsStringAsync();
+        var json = JObject.Parse(responseBody);
+        var data = json["data"];
+        
+        // Decode base64 string
+        string base64String = data["file_base64"].ToString();
+        byte[] fileBytes = Convert.FromBase64String(base64String);
+        
+        // Write to file
+        await File.WriteAllBytesAsync(outputPath, fileBytes);
+        
+        Console.WriteLine("File saved successfully!");
+        Console.WriteLine($"Original size: {data["original_size"]}");
+        Console.WriteLine($"Compressed size: {data["compressed_size"]}");
+    }
+    
+    public static async Task Main(string[] args)
+    {
+        await CompressAndSavePdfAsync("input.pdf", "output.pdf");
+    }
+}`}
+                      id="csharp-decode"
+                    />
+                  </div>
+
+                  <h3 className="text-xl font-semibold text-slate-900 mt-8 mb-3">Common Issues & Solutions</h3>
+                  <div className="space-y-4">
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+                      <div className="flex gap-3">
+                        <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <h4 className="font-semibold text-red-800 mb-1">Issue: File is corrupted or won't open</h4>
+                          <p className="text-sm text-red-700 mb-2">
+                            <strong>Cause:</strong> The base64 string wasn't decoded properly, or extra characters were added.
+                          </p>
+                          <p className="text-sm text-red-700">
+                            <strong>Solution:</strong> Ensure you're decoding the exact base64 string from <code className="bg-red-100 px-1 rounded">file_base64</code> 
+                            without any modifications. Don't add line breaks or whitespace.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+                      <div className="flex gap-3">
+                        <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <h4 className="font-semibold text-red-800 mb-1">Issue: File size is different than expected</h4>
+                          <p className="text-sm text-red-700 mb-2">
+                            <strong>Cause:</strong> The file was saved as text instead of binary.
+                          </p>
+                          <p className="text-sm text-red-700">
+                            <strong>Solution:</strong> Always write the decoded bytes in binary mode (e.g., <code className="bg-red-100 px-1 rounded">'wb'</code> in Python, 
+                            <code className="bg-red-100 px-1 rounded">fs.writeFileSync</code> with Buffer in Node.js).
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+                      <div className="flex gap-3">
+                        <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <h4 className="font-semibold text-red-800 mb-1">Issue: Memory issues with large files</h4>
+                          <p className="text-sm text-red-700 mb-2">
+                            <strong>Cause:</strong> Large base64 strings consume significant memory.
+                          </p>
+                          <p className="text-sm text-red-700">
+                            <strong>Solution:</strong> For files larger than 50MB, consider processing them in chunks or using streaming. 
+                            Contact support if you need to process very large files regularly.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                    <div className="flex gap-3">
+                      <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <h4 className="font-semibold text-blue-800 mb-1">Testing Your Implementation</h4>
+                        <p className="text-sm text-blue-700">
+                          After decoding and saving a file, verify it opens correctly in the appropriate application (PDF reader, Word, Excel, etc.). 
+                          Compare the file size with the <code className="bg-blue-100 px-1 rounded">file_size</code> field in the API response to ensure proper decoding.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ZIP File Handling */}
+                <div className="bg-white border-2 border-gray-200 rounded-2xl p-8 shadow-md">
+                  <h3 className="text-xl font-semibold text-slate-900 mb-4">Handling ZIP File Responses</h3>
+                  <p className="text-slate-600 mb-6">
+                    The split endpoint with split_mode=individual returns ZIP files containing multiple PDFs. 
+                    The ZIP file is base64-encoded and must be decoded then extracted.
+                  </p>
+
+                  <h4 className="font-medium text-slate-900 mb-3">Node.js Example</h4>
+                  <CodeBlock 
+                    code={`const fs = require('fs');
+const AdmZip = require('adm-zip');
+
+const zipBuffer = Buffer.from(response.data.data.file_base64, 'base64');
+const zip = new AdmZip(zipBuffer);
+zip.extractAllTo('./output', true);
+console.log('Extracted', response.data.data.file_count, 'PDFs');`}
+                    id="nodejs-zip-decode"
+                  />
+
+                  <h4 className="font-medium text-slate-900 mb-3 mt-6">Python Example</h4>
+                  <CodeBlock 
+                    code={`import base64
+import zipfile
+import io
+
+zip_bytes = base64.b64decode(result['file_base64'])
+with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zip_file:
+    zip_file.extractall('./output')
+print(f"Extracted {result['file_count']} PDFs")`}
+                    id="python-zip-decode"
+                  />
+                </div>
+
+                {/* Alternative: Direct Binary Response */}
+                <div className="bg-white border-2 border-gray-200 rounded-2xl p-8 shadow-md">
+                  <h3 className="text-xl font-semibold text-slate-900 mb-4">Alternative: Request Binary Response (Coming Soon)</h3>
+                  <p className="text-slate-600 mb-4">
+                    We're working on adding support for direct binary file responses as an alternative to base64 encoding. 
+                    This will eliminate the need for base64 decoding and reduce response sizes.
+                  </p>
+                  <div className="p-4 bg-slate-50 rounded-xl">
+                    <p className="text-sm text-slate-600">
+                      <strong>Future usage:</strong> Add <code className="bg-slate-200 px-1 rounded">Accept: application/octet-stream</code> header 
+                      to receive files directly as binary data instead of base64-encoded JSON.
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
 
             {/* Endpoints */}
             {activeSection === 'endpoints' && (
