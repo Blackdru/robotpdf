@@ -47,6 +47,8 @@ const OCRPrivacyPolicy = lazy(() => import('./apps/ocr'))
 const CompressPrivacyPolicy = lazy(() => import('./apps/compress'))
 const MergePrivacyPolicy = lazy(() => import('./apps/merge'))
 const SplitPrivacyPolicy = lazy(() => import('./apps/split'))
+const CalPrivacyPolicy = lazy(() => import('./apps/calc'))
+
 
 // Components
 import ModernNavbar from './components/ModernNavbar'
@@ -279,6 +281,7 @@ const AppContent = () => {
                 <Route path="/apps/compress" element={<CompressPrivacyPolicy />} />
                 <Route path="/apps/merge" element={<MergePrivacyPolicy />} />
                 <Route path="/apps/split" element={<SplitPrivacyPolicy />} />
+                <Route path="/apps/calc" element={<CalPrivacyPolicy />} />
               </Routes>
         </Suspense>
       </main>
