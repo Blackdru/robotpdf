@@ -377,7 +377,7 @@ router.post('/convert/pdf-to-excel', trackApiUsage('pdf_to_excel'), upload.singl
       });
     }
 
-    const result = await officeConversionService.pdfToExcel(req.file.buffer);
+    const result = await officeConversionService.pdfBufferToExcel(req.file.buffer);
 
     res.json({
       success: true,

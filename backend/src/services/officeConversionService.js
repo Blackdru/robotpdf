@@ -46,11 +46,22 @@ class OfficeConversionService {
   }
 
   // Word to PDF conversion
-  async wordToPdf(buffer, filename) {
+  async wordToPdf(buffer, filename, options = {}) {
     console.log('Converting Word document to PDF...');
 
     try {
-      // Extract text and formatting from Word document using mammoth
+      // Try Python-based conversion first for better format preservation
+      try {
+        const docx2pdfService = require('./docx2pdfService');
+        console.log('[officeConversion] Attempting Python-based Word to PDF conversion...');
+        const pdfBuffer = await docx2pdfService.convertWordToPdf(buffer, filename, options);
+        console.log('[officeConversion] Python-based Word to PDF conversion successful!');
+        return pdfBuffer;
+      } catch (pythonError) {
+        console.warn('[officeConversion] Python Word to PDF failed, falling back to basic conversion:', pythonError.message);
+      }
+
+      // Fallback: Extract text and formatting from Word document using mammoth
       const result = await mammoth.convertToHtml({ buffer });
       const html = result.value;
       const messages = result.messages;
@@ -67,21 +78,35 @@ class OfficeConversionService {
     }
   }
 
-  // Excel to PDF conversion
+  // Excel to PDF conversion with improved formatting
   async excelToPdf(buffer, filename) {
     console.log('Converting Excel spreadsheet to PDF...');
 
+    // Try Python-based conversion first for better formatting
     try {
-      // Read Excel file using ExcelJS
+      const excelPdfService = require('./excelPdfService');
+      const status = await excelPdfService.checkAvailability();
+      if (status.available) {
+        console.log('[officeConversion] Using Python-based Excel to PDF conversion...');
+        const pdfBuffer = await excelPdfService.convertExcelToPdf(buffer, filename, {});
+        console.log('[officeConversion] Python Excel to PDF conversion successful!');
+        return pdfBuffer;
+      }
+    } catch (pythonError) {
+      console.warn('[officeConversion] Python Excel to PDF failed, using fallback:', pythonError.message);
+    }
+
+    try {
+      // Fallback: Read Excel file using ExcelJS
       const ExcelJS = require('exceljs');
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.load(buffer);
       
-      // Create PDF
+      // Create PDF with landscape orientation for better table display
       const pdfDoc = new PDFDocument({
         size: 'A4',
         layout: 'landscape',
-        margin: 50
+        margins: { top: 40, bottom: 40, left: 40, right: 40 }
       });
 
       const chunks = [];
@@ -92,60 +117,79 @@ class OfficeConversionService {
         pdfDoc.on('error', reject);
       });
 
-      // Add title
-      pdfDoc.fontSize(16).text(`Excel Spreadsheet: ${filename}`, { align: 'center' });
-      pdfDoc.moveDown();
+      const pageWidth = pdfDoc.page.width - 80; // Account for margins
+      const pageHeight = pdfDoc.page.height - 80;
 
       // Process each sheet
+      let isFirstSheet = true;
       workbook.eachSheet((worksheet, sheetIndex) => {
-        if (sheetIndex > 1) {
+        if (!isFirstSheet) {
           pdfDoc.addPage();
         }
+        isFirstSheet = false;
 
-        // Add sheet name
-        pdfDoc.fontSize(14).text(`Sheet: ${worksheet.name}`, { underline: true });
-        pdfDoc.moveDown();
+        // Add sheet name as header
+        pdfDoc.fontSize(14).fillColor('#1a365d').text(`Sheet: ${worksheet.name}`, { underline: true });
+        pdfDoc.moveDown(0.5);
 
         if (worksheet.rowCount === 0) {
-          pdfDoc.fontSize(10).text('(Empty sheet)', { italics: true });
+          pdfDoc.fontSize(10).fillColor('#666666').text('(Empty sheet)', { italics: true });
           return;
         }
 
-        // Calculate column widths
-        const maxCols = worksheet.columnCount || 10;
-        const pageWidth = pdfDoc.page.width - 100;
-        const colWidth = Math.min(pageWidth / maxCols, 150);
+        // Calculate optimal column widths based on content
+        const columnWidths = [];
+        const maxCols = Math.min(worksheet.columnCount || 10, 20); // Limit columns
+        
+        // First pass: calculate content-based widths
+        for (let col = 1; col <= maxCols; col++) {
+          let maxWidth = 50; // Minimum width
+          worksheet.eachRow((row, rowIndex) => {
+            if (rowIndex > 100) return; // Sample first 100 rows
+            const cell = row.getCell(col);
+            const cellValue = this.getCellDisplayValue(cell);
+            const textWidth = Math.min(cellValue.length * 6 + 10, 200); // Estimate width
+            maxWidth = Math.max(maxWidth, textWidth);
+          });
+          columnWidths.push(maxWidth);
+        }
+
+        // Normalize widths to fit page
+        const totalWidth = columnWidths.reduce((a, b) => a + b, 0);
+        const scaleFactor = totalWidth > pageWidth ? pageWidth / totalWidth : 1;
+        const scaledWidths = columnWidths.map(w => Math.max(w * scaleFactor, 30));
 
         // Draw table
-        pdfDoc.fontSize(9);
-        let y = pdfDoc.y;
+        let y = pdfDoc.y + 10;
+        const startX = 40;
+        const rowHeight = 22;
+        let rowCount = 0;
 
         worksheet.eachRow((row, rowIndex) => {
           // Check if we need a new page
-          if (y > pdfDoc.page.height - 100) {
+          if (y + rowHeight > pageHeight + 40) {
             pdfDoc.addPage();
-            y = 50;
+            y = 40;
+            
+            // Redraw header row on new page if this isn't the first row
+            if (rowIndex > 1) {
+              const headerRow = worksheet.getRow(1);
+              this.drawExcelRow(pdfDoc, headerRow, startX, y, scaledWidths, rowHeight, true, maxCols);
+              y += rowHeight;
+            }
           }
 
-          let x = 50;
-          
-          row.eachCell({ includeEmpty: true }, (cell, colIndex) => {
-            const cellText = String(cell.value || '');
-            
-            // Draw cell border
-            pdfDoc.rect(x, y, colWidth, 20).stroke();
-            
-            // Draw cell text
-            pdfDoc.text(cellText, x + 2, y + 5, {
-              width: colWidth - 4,
-              height: 15,
-              ellipsis: true
-            });
-            
-            x += colWidth;
-          });
+          // Draw row (first row is header)
+          const isHeader = rowIndex === 1;
+          this.drawExcelRow(pdfDoc, row, startX, y, scaledWidths, rowHeight, isHeader, maxCols);
+          y += rowHeight;
+          rowCount++;
 
-          y += 20;
+          // Limit rows per sheet to prevent huge PDFs
+          if (rowCount > 500) {
+            pdfDoc.fontSize(10).fillColor('#666666').text('... (additional rows truncated)', startX, y + 10);
+            return false; // Stop iteration
+          }
         });
 
         pdfDoc.moveDown(2);
@@ -157,6 +201,210 @@ class OfficeConversionService {
       console.error('Excel to PDF error:', error);
       throw new Error(`Excel conversion failed: ${error.message}`);
     }
+  }
+
+  // Helper to draw a single Excel row with proper formatting
+  drawExcelRow(pdfDoc, row, startX, y, columnWidths, rowHeight, isHeader, maxCols) {
+    let x = startX;
+    
+    for (let colIndex = 1; colIndex <= maxCols; colIndex++) {
+      const cell = row.getCell(colIndex);
+      const cellValue = this.getCellDisplayValue(cell);
+      const colWidth = columnWidths[colIndex - 1] || 50;
+
+      // Get cell styling
+      const fill = cell.fill;
+      const font = cell.font || {};
+      const alignment = cell.alignment || {};
+      const border = cell.border || {};
+
+      // Determine background color
+      let bgColor = '#ffffff';
+      if (isHeader) {
+        bgColor = '#e2e8f0';
+      } else if (fill) {
+        if (fill.type === 'pattern' && fill.pattern === 'solid') {
+          if (fill.fgColor) {
+            if (fill.fgColor.argb) {
+              bgColor = this.argbToHex(fill.fgColor.argb);
+            } else if (fill.fgColor.theme !== undefined) {
+              // Theme colors - use defaults
+              const themeColors = ['#ffffff', '#000000', '#e7e6e6', '#44546a', '#4472c4', '#ed7d31', '#a5a5a5', '#ffc000', '#5b9bd5', '#70ad47'];
+              bgColor = themeColors[fill.fgColor.theme] || '#ffffff';
+            }
+          }
+        }
+      }
+
+      // Draw cell background
+      pdfDoc.rect(x, y, colWidth, rowHeight).fill(bgColor);
+
+      // Draw cell borders
+      const borderColor = '#cbd5e1';
+      pdfDoc.rect(x, y, colWidth, rowHeight).stroke(borderColor);
+
+      // Determine text color
+      let textColor = '#1a202c';
+      if (font.color) {
+        if (font.color.argb) {
+          textColor = this.argbToHex(font.color.argb);
+        } else if (font.color.theme !== undefined) {
+          const themeColors = ['#ffffff', '#000000', '#44546a', '#4472c4', '#ed7d31', '#a5a5a5', '#ffc000', '#5b9bd5', '#70ad47'];
+          textColor = themeColors[font.color.theme] || '#1a202c';
+        }
+      }
+
+      // Determine font style
+      const fontSize = isHeader ? 9 : 8;
+      let fontStyle = 'Helvetica';
+      if (isHeader || font.bold) {
+        fontStyle = font.italic ? 'Helvetica-BoldOblique' : 'Helvetica-Bold';
+      } else if (font.italic) {
+        fontStyle = 'Helvetica-Oblique';
+      }
+      
+      pdfDoc
+        .font(fontStyle)
+        .fontSize(fontSize)
+        .fillColor(textColor);
+
+      // Determine text alignment
+      let textAlign = 'left';
+      if (alignment.horizontal === 'center') {
+        textAlign = 'center';
+      } else if (alignment.horizontal === 'right') {
+        textAlign = 'right';
+      } else if (typeof cell.value === 'number' || (cell.value && cell.value.result !== undefined && typeof cell.value.result === 'number')) {
+        // Numbers default to right alignment
+        textAlign = 'right';
+      }
+
+      // Calculate text position
+      const padding = 3;
+      const textX = x + padding;
+      const textY = y + (rowHeight - fontSize) / 2;
+      const textWidth = colWidth - (padding * 2);
+
+      // Draw the text
+      if (cellValue) {
+        pdfDoc.text(cellValue, textX, textY, {
+          width: textWidth,
+          height: rowHeight - 4,
+          ellipsis: true,
+          align: textAlign,
+          lineBreak: false
+        });
+      }
+
+      x += colWidth;
+    }
+  }
+
+  // Helper to get display value from Excel cell - FIXED for formulas
+  getCellDisplayValue(cell) {
+    if (cell.value === null || cell.value === undefined) return '';
+    
+    const value = cell.value;
+    
+    // Handle formula cells - get the calculated result, not the formula
+    if (typeof value === 'object') {
+      // Formula cell: { formula: '=A1+B1', result: 123 }
+      if (value.formula !== undefined) {
+        // Return the calculated result, not the formula
+        if (value.result !== undefined && value.result !== null) {
+          return this.formatCellValue(value.result, cell.numFmt);
+        }
+        // If no result, try to return empty or the sharedFormula result
+        if (value.sharedFormula !== undefined && value.result !== undefined) {
+          return this.formatCellValue(value.result, cell.numFmt);
+        }
+        return ''; // Formula without result
+      }
+      
+      // Rich text: { richText: [{text: 'Hello', font: {...}}] }
+      if (value.richText && Array.isArray(value.richText)) {
+        return value.richText.map(rt => rt.text || '').join('');
+      }
+      
+      // Hyperlink: { text: 'Click here', hyperlink: 'http://...' }
+      if (value.text !== undefined) {
+        return String(value.text);
+      }
+      
+      // Error value: { error: '#DIV/0!' }
+      if (value.error !== undefined) {
+        return String(value.error);
+      }
+      
+      // Date object
+      if (value instanceof Date) {
+        return value.toLocaleDateString();
+      }
+      
+      // Unknown object - try to get a sensible string
+      return '';
+    }
+    
+    // Handle numbers with formatting
+    if (typeof value === 'number') {
+      return this.formatCellValue(value, cell.numFmt);
+    }
+    
+    // Handle booleans
+    if (typeof value === 'boolean') {
+      return value ? 'TRUE' : 'FALSE';
+    }
+    
+    // Handle strings
+    return String(value);
+  }
+
+  // Format numeric values based on Excel number format
+  formatCellValue(value, numFmt) {
+    if (value === null || value === undefined) return '';
+    
+    if (typeof value === 'number') {
+      if (numFmt) {
+        // Percentage format
+        if (numFmt.includes('%')) {
+          return (value * 100).toFixed(2) + '%';
+        }
+        // Currency formats
+        if (numFmt.includes('$') || numFmt.includes('£') || numFmt.includes('€') || numFmt.includes('₹')) {
+          const symbol = numFmt.match(/[$£€₹]/)?.[0] || '$';
+          return symbol + Math.abs(value).toFixed(2);
+        }
+        // Accounting format with parentheses for negative
+        if (numFmt.includes('(') && value < 0) {
+          return '(' + Math.abs(value).toFixed(2) + ')';
+        }
+        // Decimal places
+        const decimalMatch = numFmt.match(/\.([0#]+)/);
+        if (decimalMatch) {
+          const decimals = decimalMatch[1].length;
+          return value.toFixed(decimals);
+        }
+        // Thousands separator
+        if (numFmt.includes(',')) {
+          return value.toLocaleString();
+        }
+      }
+      // Default: show reasonable precision
+      if (Number.isInteger(value)) {
+        return String(value);
+      }
+      return value.toFixed(2);
+    }
+    
+    return String(value);
+  }
+
+  // Helper to convert ARGB to hex color
+  argbToHex(argb) {
+    if (!argb || argb.length < 6) return '#ffffff';
+    // ARGB format: AARRGGBB, we need #RRGGBB
+    const hex = argb.length === 8 ? argb.substring(2) : argb;
+    return '#' + hex.toLowerCase();
   }
 
   // PowerPoint to PDF conversion
@@ -310,6 +558,23 @@ class OfficeConversionService {
         }
       }
 
+      // For Excel conversion, try Python-based conversion first for better table detection
+      if (outputFormat === 'xlsx' || outputFormat === 'xls') {
+        try {
+          const excelPdfService = require('./excelPdfService');
+          const status = await excelPdfService.checkAvailability();
+          if (status.available) {
+            console.log('[officeConversion] Attempting Python-based PDF to Excel conversion...');
+            const excelBuffer = await excelPdfService.convertPdfToExcel(buffer, filename, options);
+            console.log('[officeConversion] Python PDF to Excel conversion successful!');
+            return excelBuffer;
+          }
+        } catch (pythonError) {
+          console.warn('[officeConversion] Python PDF to Excel failed, falling back to basic conversion:', pythonError.message);
+          // Fall through to basic conversion
+        }
+      }
+
       let text = '';
       let pageCount = 1;
 
@@ -411,9 +676,145 @@ class OfficeConversionService {
     }
   }
 
-  // PDF to Excel conversion
+  // PDF to Excel conversion - extracts ALL content (text AND tables)
   async pdfToExcel(text, pageCount, filename) {
-    console.log('Converting PDF to Excel spreadsheet...');
+    console.log('Converting PDF to Excel spreadsheet (extracting all content)...');
+
+    try {
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = 'RobotPDF Converter';
+      workbook.created = new Date();
+
+      // Create worksheet for all content
+      const worksheet = workbook.addWorksheet('Converted Content');
+      
+      // Add metadata header
+      worksheet.addRow([`Converted from: ${filename}`]);
+      worksheet.addRow([`Pages: ${pageCount}`]);
+      worksheet.addRow([`Conversion Date: ${new Date().toLocaleString()}`]);
+      worksheet.addRow([]);
+
+      // Style the metadata rows
+      for (let i = 1; i <= 3; i++) {
+        worksheet.getRow(i).font = { italic: true, color: { argb: 'FF666666' } };
+      }
+
+      // Split text into lines
+      const lines = text.split('\n');
+      
+      // Process ALL lines - both regular text and potential table data
+      let currentRow = 5;
+      let inTableSection = false;
+      let tableStartRow = 0;
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const trimmedLine = line.trim();
+        
+        if (!trimmedLine) {
+          // Empty line - add spacing
+          currentRow++;
+          inTableSection = false;
+          continue;
+        }
+
+        // Check if this line looks like table data (has delimiters)
+        const isTableLine = this.isLikelyTableRow(trimmedLine);
+        
+        if (isTableLine) {
+          // Parse as table row
+          const cells = this.parseTableRow(trimmedLine);
+          const excelRow = worksheet.addRow(cells);
+          
+          // Style first row of a table section as header
+          if (!inTableSection) {
+            inTableSection = true;
+            tableStartRow = currentRow;
+            if (this.looksLikeHeader(cells)) {
+              excelRow.font = { bold: true };
+              excelRow.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFE2E8F0' }
+              };
+            }
+          }
+          
+          // Add borders to table cells
+          excelRow.eachCell({ includeEmpty: false }, (cell) => {
+            cell.border = {
+              top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+              left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+              bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+              right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+            };
+          });
+        } else {
+          // Regular text line - add as single cell
+          inTableSection = false;
+          worksheet.addRow([trimmedLine]);
+        }
+        
+        currentRow++;
+      }
+
+      // Auto-fit columns
+      this.autoFitColumns(worksheet);
+
+      // Generate buffer
+      const buffer = await workbook.xlsx.writeBuffer();
+      return buffer;
+    } catch (error) {
+      console.error('PDF to Excel error:', error);
+      throw new Error(`PDF to Excel conversion failed: ${error.message}`);
+    }
+  }
+
+  // Check if a line looks like a table row
+  isLikelyTableRow(line) {
+    if (!line) return false;
+    
+    // Check for common table delimiters
+    const hasTab = line.includes('\t');
+    const hasPipe = line.includes('|');
+    const hasMultipleSpaces = /\s{3,}/.test(line);
+    const hasCommas = (line.match(/,/g) || []).length >= 2;
+    
+    // Count potential columns
+    let columnCount = 1;
+    if (hasTab) columnCount = line.split('\t').length;
+    else if (hasPipe) columnCount = line.split('|').filter(s => s.trim()).length;
+    else if (hasMultipleSpaces) columnCount = line.split(/\s{3,}/).filter(s => s.trim()).length;
+    else if (hasCommas) columnCount = line.split(',').length;
+    
+    return columnCount >= 2;
+  }
+
+  // Parse a table row into cells
+  parseTableRow(line) {
+    if (!line) return [''];
+    
+    // Try different delimiters in order of preference
+    if (line.includes('\t')) {
+      return line.split('\t').map(cell => cell.trim());
+    }
+    if (line.includes('|')) {
+      return line.split('|').map(cell => cell.trim()).filter(cell => cell);
+    }
+    if (/\s{3,}/.test(line)) {
+      return line.split(/\s{3,}/).map(cell => cell.trim()).filter(cell => cell);
+    }
+    if ((line.match(/,/g) || []).length >= 2) {
+      // CSV-style parsing (handle quoted values)
+      return line.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(cell => cell.trim().replace(/^"|"$/g, ''));
+    }
+    
+    return [line.trim()];
+  }
+
+  // Legacy method for backward compatibility - kept for reference
+  async pdfToExcelLegacy(text, pageCount, filename) {
+    console.log('Converting PDF to Excel spreadsheet (legacy)...');
 
     try {
       const workbook = new ExcelJS.Workbook();
@@ -423,37 +824,94 @@ class OfficeConversionService {
       // Split text into lines
       const lines = text.split('\n').filter(line => line.trim().length > 0);
 
-      // Create worksheet
-      const worksheet = workbook.addWorksheet('Converted Content');
+      // Analyze the content to detect table structures
+      const tableData = this.detectTableStructure(lines);
 
-      // Add header
-      worksheet.addRow([`Converted from: ${filename}`]);
-      worksheet.addRow([`Pages: ${pageCount}`]);
-      worksheet.addRow([`Conversion Date: ${new Date().toLocaleString()}`]);
-      worksheet.addRow([]);
+      if (tableData.isTable && tableData.rows.length > 0) {
+        // Create worksheet with detected table data
+        const worksheet = workbook.addWorksheet('Table Data');
+        
+        // Add metadata header
+        worksheet.addRow([`Converted from: ${filename}`]);
+        worksheet.addRow([`Pages: ${pageCount}`]);
+        worksheet.addRow([`Conversion Date: ${new Date().toLocaleString()}`]);
+        worksheet.addRow([]);
 
-      // Try to detect table-like structures
-      lines.forEach(line => {
-        // Check if line contains multiple spaces or tabs (potential table row)
-        if (line.includes('\t') || /\s{2,}/.test(line)) {
-          const cells = line.split(/\t|\s{2,}/).map(cell => cell.trim());
-          worksheet.addRow(cells);
-        } else {
-          worksheet.addRow([line]);
+        // Style the metadata rows
+        for (let i = 1; i <= 3; i++) {
+          worksheet.getRow(i).font = { italic: true, color: { argb: 'FF666666' } };
         }
-      });
 
-      // Auto-fit columns
-      worksheet.columns.forEach(column => {
-        let maxLength = 0;
-        column.eachCell({ includeEmpty: true }, cell => {
-          const length = cell.value ? cell.value.toString().length : 10;
-          if (length > maxLength) {
-            maxLength = length;
+        // Add table data
+        let headerAdded = false;
+        tableData.rows.forEach((row, index) => {
+          const excelRow = worksheet.addRow(row);
+          
+          // Style first data row as header if it looks like a header
+          if (!headerAdded && this.looksLikeHeader(row)) {
+            excelRow.font = { bold: true };
+            excelRow.fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: 'FFE2E8F0' }
+            };
+            headerAdded = true;
           }
         });
-        column.width = Math.min(maxLength + 2, 50);
-      });
+
+        // Auto-fit columns with better width calculation
+        this.autoFitColumns(worksheet);
+
+        // Add borders to data cells
+        const dataStartRow = 5;
+        for (let rowNum = dataStartRow; rowNum <= worksheet.rowCount; rowNum++) {
+          const row = worksheet.getRow(rowNum);
+          row.eachCell({ includeEmpty: false }, (cell) => {
+            cell.border = {
+              top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+              left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+              bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+              right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+            };
+          });
+        }
+      } else {
+        // Fallback: Create worksheet with text content
+        const worksheet = workbook.addWorksheet('Converted Content');
+
+        // Add header
+        worksheet.addRow([`Converted from: ${filename}`]);
+        worksheet.addRow([`Pages: ${pageCount}`]);
+        worksheet.addRow([`Conversion Date: ${new Date().toLocaleString()}`]);
+        worksheet.addRow([]);
+
+        // Style the metadata rows
+        for (let i = 1; i <= 3; i++) {
+          worksheet.getRow(i).font = { italic: true, color: { argb: 'FF666666' } };
+        }
+
+        // Process lines with improved table detection
+        lines.forEach(line => {
+          // Check if line contains multiple spaces or tabs (potential table row)
+          if (line.includes('\t')) {
+            const cells = line.split('\t').map(cell => cell.trim());
+            worksheet.addRow(cells);
+          } else if (/\s{3,}/.test(line)) {
+            // Multiple spaces (3+) indicate columns
+            const cells = line.split(/\s{3,}/).map(cell => cell.trim()).filter(c => c);
+            if (cells.length > 1) {
+              worksheet.addRow(cells);
+            } else {
+              worksheet.addRow([line.trim()]);
+            }
+          } else {
+            worksheet.addRow([line.trim()]);
+          }
+        });
+
+        // Auto-fit columns
+        this.autoFitColumns(worksheet);
+      }
 
       // Generate buffer
       const buffer = await workbook.xlsx.writeBuffer();
@@ -462,6 +920,116 @@ class OfficeConversionService {
       console.error('PDF to Excel error:', error);
       throw new Error(`PDF to Excel conversion failed: ${error.message}`);
     }
+  }
+
+  // Detect table structure in text lines
+  detectTableStructure(lines) {
+    const result = { isTable: false, rows: [], columnCount: 0 };
+    
+    if (lines.length < 2) return result;
+
+    // Analyze delimiter patterns
+    let tabDelimited = 0;
+    let spaceDelimited = 0;
+    let pipeDelimited = 0;
+    let commaDelimited = 0;
+
+    const sampleLines = lines.slice(0, Math.min(50, lines.length));
+    
+    sampleLines.forEach(line => {
+      if (line.includes('\t')) tabDelimited++;
+      if (/\s{3,}/.test(line)) spaceDelimited++;
+      if (line.includes('|')) pipeDelimited++;
+      if (line.includes(',') && !line.includes(', ')) commaDelimited++;
+    });
+
+    // Determine the most likely delimiter
+    let delimiter = null;
+    let delimiterRegex = null;
+    const threshold = sampleLines.length * 0.3; // 30% of lines should have the pattern
+
+    if (tabDelimited > threshold) {
+      delimiter = '\t';
+      delimiterRegex = /\t/;
+    } else if (pipeDelimited > threshold) {
+      delimiter = '|';
+      delimiterRegex = /\s*\|\s*/;
+    } else if (spaceDelimited > threshold) {
+      delimiterRegex = /\s{3,}/;
+    } else if (commaDelimited > threshold) {
+      delimiter = ',';
+      delimiterRegex = /,(?=(?:[^"]*"[^"]*")*[^"]*$)/; // CSV-aware split
+    }
+
+    if (!delimiterRegex) return result;
+
+    // Parse rows
+    const rows = [];
+    let maxColumns = 0;
+
+    lines.forEach(line => {
+      const cells = line.split(delimiterRegex).map(cell => cell.trim()).filter(c => c);
+      if (cells.length > 1) {
+        rows.push(cells);
+        maxColumns = Math.max(maxColumns, cells.length);
+      } else if (cells.length === 1 && cells[0]) {
+        rows.push(cells);
+      }
+    });
+
+    // Normalize row lengths
+    rows.forEach(row => {
+      while (row.length < maxColumns) {
+        row.push('');
+      }
+    });
+
+    // Check if this looks like a table (consistent column count)
+    const columnCounts = rows.map(r => r.length);
+    const mostCommonCount = this.getMostCommon(columnCounts);
+    const consistentRows = columnCounts.filter(c => c === mostCommonCount).length;
+    
+    result.isTable = consistentRows > rows.length * 0.5 && mostCommonCount > 1;
+    result.rows = rows;
+    result.columnCount = maxColumns;
+
+    return result;
+  }
+
+  // Check if a row looks like a header
+  looksLikeHeader(row) {
+    if (!row || row.length === 0) return false;
+    
+    // Headers typically have no numbers or are all text
+    const hasNumbers = row.some(cell => /^\d+([.,]\d+)?$/.test(String(cell).trim()));
+    const allText = row.every(cell => !/^\d+([.,]\d+)?$/.test(String(cell).trim()));
+    
+    // Headers often have shorter text
+    const avgLength = row.reduce((sum, cell) => sum + String(cell).length, 0) / row.length;
+    
+    return allText || (!hasNumbers && avgLength < 30);
+  }
+
+  // Get most common value in array
+  getMostCommon(arr) {
+    const counts = {};
+    arr.forEach(val => { counts[val] = (counts[val] || 0) + 1; });
+    return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || 0;
+  }
+
+  // Auto-fit columns in worksheet
+  autoFitColumns(worksheet) {
+    worksheet.columns.forEach((column, index) => {
+      let maxLength = 10;
+      column.eachCell({ includeEmpty: false }, cell => {
+        const cellValue = cell.value ? String(cell.value) : '';
+        const length = cellValue.length;
+        if (length > maxLength) {
+          maxLength = length;
+        }
+      });
+      column.width = Math.min(Math.max(maxLength + 2, 10), 50);
+    });
   }
 
   // PDF to PowerPoint conversion
@@ -582,7 +1150,7 @@ class OfficeConversionService {
     return await this.convertPdfToOffice(buffer, 'docx', 'document.pdf');
   }
 
-  async pdfToExcel(buffer) {
+  async pdfBufferToExcel(buffer) {
     return await this.convertPdfToOffice(buffer, 'xlsx', 'document.pdf');
   }
 

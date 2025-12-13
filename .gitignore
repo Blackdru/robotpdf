@@ -79,3 +79,22 @@ yarn-error.log
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+# Python virtual environment
+Lib/
+Scripts/
+Include/
+pyvenv.cfg
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Python virtual environment (Linux)
+lib/
+bin/
+share/
+lib64/
