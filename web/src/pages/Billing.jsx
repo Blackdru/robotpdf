@@ -66,12 +66,12 @@ const Billing = () => {
     if (!subscription) return <CreditCard className="h-5 w-5" />
     
     switch (subscription.plan) {
-      case 'premium':
-        return <Crown className="h-5 w-5 text-blue-500" />
+      case 'devs':
+        return <Crown className="h-5 w-5 text-purple-500" />
       case 'pro':
-        return <ArrowUpCircle className="h-5 w-5 text-purple-500" />
+        return <ArrowUpCircle className="h-5 w-5 text-blue-500" />
       default:
-        return <CreditCard className="h-5 w-5 text-blue-500" />
+        return <CreditCard className="h-5 w-5 text-gray-500" />
     }
   }
 

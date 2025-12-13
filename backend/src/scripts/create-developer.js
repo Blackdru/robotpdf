@@ -77,7 +77,7 @@ Options:
   -e, --email <email>        Contact email
   -l, --limit <number>       Monthly request limit (default: 1000)
   -r, --rate <number>        Requests per minute (default: 100)
-  -p, --plan <plan>          Plan type (free/basic/pro/enterprise)
+  -p, --plan <plan>          Plan type (free/pro/devs)
   -c, --company <company>    Company name (for metadata)
   -h, --help                 Show this help message
 

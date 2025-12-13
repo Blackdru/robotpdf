@@ -166,77 +166,55 @@ const CURRENCIES = {
 // Plan prices in INR (monthly) - Primary currency
 // All users will pay in INR via Razorpay
 const PLAN_PRICES = {
-  basic: {
-    INR: 9900, // ₹99 (in paise)
-    USD: 100, // $1.00 (in cents) - for display only
-    EUR: 100, // €1.00
-    GBP: 100, // £1.00
-    CAD: 135, // C$1.35
-    AUD: 150, // A$1.50
-    JPY: 150, // ¥150
-    BRL: 500, // R$5.00
-    MXN: 1800, // MX$18
-    SGD: 135, // S$1.35
-    CHF: 90, // CHF 0.90
-    CNY: 700, // ¥7
-    SEK: 1050, // 10.50 kr
-    NOK: 1050, // 10.50 kr
-    DKK: 700, // 7 kr
-    PLN: 400, // 4 zł
-    NZD: 165, // NZ$1.65
-    ZAR: 1800, // R18
-    AED: 370, // 3.70 د.إ
-    SAR: 375 // 3.75 ر.س
-  },
   pro: {
-    INR: 49900, // ₹499 (in paise)
-    USD: 1000, // $10.00 (in cents) - for display only
-    EUR: 1000, // €10.00
-    GBP: 900, // £9.00
-    CAD: 1350, // C$13.50
-    AUD: 1500, // A$15.00
-    JPY: 1500, // ¥1500
-    BRL: 5000, // R$50.00
-    MXN: 18000, // MX$180
-    SGD: 1350, // S$13.50
-    CHF: 900, // CHF 9.00
-    CNY: 7000, // ¥70
-    SEK: 10500, // 105 kr
-    NOK: 10500, // 105 kr
-    DKK: 7000, // 70 kr
-    PLN: 4000, // 40 zł
-    NZD: 1650, // NZ$16.50
-    ZAR: 18000, // R180
-    AED: 3700, // 37 د.إ
-    SAR: 3750 // 37.50 ر.س
+    INR: 16900, // ₹169 (in paise)
+    USD: 200, // $2.00 (in cents) - for display only
+    EUR: 200, // €2.00
+    GBP: 170, // £1.70
+    CAD: 270, // C$2.70
+    AUD: 300, // A$3.00
+    JPY: 300, // ¥300
+    BRL: 1000, // R$10.00
+    MXN: 3600, // MX$36
+    SGD: 270, // S$2.70
+    CHF: 180, // CHF 1.80
+    CNY: 1400, // ¥14
+    SEK: 2100, // 21 kr
+    NOK: 2100, // 21 kr
+    DKK: 1400, // 14 kr
+    PLN: 800, // 8 zł
+    NZD: 330, // NZ$3.30
+    ZAR: 3600, // R36
+    AED: 740, // 7.40 د.إ
+    SAR: 750 // 7.50 ر.س
+  },
+  devs: {
+    INR: 45900, // ₹459 (in paise)
+    USD: 600, // $6.00 (in cents) - for display only
+    EUR: 550, // €5.50
+    GBP: 500, // £5.00
+    CAD: 800, // C$8.00
+    AUD: 900, // A$9.00
+    JPY: 900, // ¥900
+    BRL: 3000, // R$30.00
+    MXN: 10800, // MX$108
+    SGD: 800, // S$8.00
+    CHF: 540, // CHF 5.40
+    CNY: 4200, // ¥42
+    SEK: 6300, // 63 kr
+    NOK: 6300, // 63 kr
+    DKK: 4200, // 42 kr
+    PLN: 2400, // 24 zł
+    NZD: 990, // NZ$9.90
+    ZAR: 10800, // R108
+    AED: 2200, // 22 د.إ
+    SAR: 2250 // 22.50 ر.س
   }
 };
 
 // Stripe Price IDs for different currencies
 // These should be created in Stripe Dashboard and added to environment variables
 const STRIPE_PRICE_IDS = {
-  basic: {
-    USD: process.env.STRIPE_PRICE_BASIC_USD || process.env.STRIPE_PRICE_ID_PRO || 'price_basic_usd',
-    EUR: process.env.STRIPE_PRICE_BASIC_EUR || 'price_basic_eur',
-    GBP: process.env.STRIPE_PRICE_BASIC_GBP || 'price_basic_gbp',
-    INR: process.env.STRIPE_PRICE_BASIC_INR || 'price_basic_inr',
-    CAD: process.env.STRIPE_PRICE_BASIC_CAD || 'price_basic_cad',
-    AUD: process.env.STRIPE_PRICE_BASIC_AUD || 'price_basic_aud',
-    JPY: process.env.STRIPE_PRICE_BASIC_JPY || 'price_basic_jpy',
-    BRL: process.env.STRIPE_PRICE_BASIC_BRL || 'price_basic_brl',
-    MXN: process.env.STRIPE_PRICE_BASIC_MXN || 'price_basic_mxn',
-    SGD: process.env.STRIPE_PRICE_BASIC_SGD || 'price_basic_sgd',
-    CHF: process.env.STRIPE_PRICE_BASIC_CHF || 'price_basic_chf',
-    CNY: process.env.STRIPE_PRICE_BASIC_CNY || 'price_basic_cny',
-    SEK: process.env.STRIPE_PRICE_BASIC_SEK || 'price_basic_sek',
-    NOK: process.env.STRIPE_PRICE_BASIC_NOK || 'price_basic_nok',
-    DKK: process.env.STRIPE_PRICE_BASIC_DKK || 'price_basic_dkk',
-    PLN: process.env.STRIPE_PRICE_BASIC_PLN || 'price_basic_pln',
-    NZD: process.env.STRIPE_PRICE_BASIC_NZD || 'price_basic_nzd',
-    ZAR: process.env.STRIPE_PRICE_BASIC_ZAR || 'price_basic_zar',
-    AED: process.env.STRIPE_PRICE_BASIC_AED || 'price_basic_aed',
-    SAR: process.env.STRIPE_PRICE_BASIC_SAR || 'price_basic_sar'
-  },
   pro: {
     USD: process.env.STRIPE_PRICE_PRO_USD || process.env.STRIPE_PRICE_ID_PRO || 'price_pro_usd',
     EUR: process.env.STRIPE_PRICE_PRO_EUR || 'price_pro_eur',
@@ -258,6 +236,28 @@ const STRIPE_PRICE_IDS = {
     ZAR: process.env.STRIPE_PRICE_PRO_ZAR || 'price_pro_zar',
     AED: process.env.STRIPE_PRICE_PRO_AED || 'price_pro_aed',
     SAR: process.env.STRIPE_PRICE_PRO_SAR || 'price_pro_sar'
+  },
+  devs: {
+    USD: process.env.STRIPE_PRICE_DEVS_USD || process.env.STRIPE_PRICE_ID_DEVS || 'price_devs_usd',
+    EUR: process.env.STRIPE_PRICE_DEVS_EUR || 'price_devs_eur',
+    GBP: process.env.STRIPE_PRICE_DEVS_GBP || 'price_devs_gbp',
+    INR: process.env.STRIPE_PRICE_DEVS_INR || 'price_devs_inr',
+    CAD: process.env.STRIPE_PRICE_DEVS_CAD || 'price_devs_cad',
+    AUD: process.env.STRIPE_PRICE_DEVS_AUD || 'price_devs_aud',
+    JPY: process.env.STRIPE_PRICE_DEVS_JPY || 'price_devs_jpy',
+    BRL: process.env.STRIPE_PRICE_DEVS_BRL || 'price_devs_brl',
+    MXN: process.env.STRIPE_PRICE_DEVS_MXN || 'price_devs_mxn',
+    SGD: process.env.STRIPE_PRICE_DEVS_SGD || 'price_devs_sgd',
+    CHF: process.env.STRIPE_PRICE_DEVS_CHF || 'price_devs_chf',
+    CNY: process.env.STRIPE_PRICE_DEVS_CNY || 'price_devs_cny',
+    SEK: process.env.STRIPE_PRICE_DEVS_SEK || 'price_devs_sek',
+    NOK: process.env.STRIPE_PRICE_DEVS_NOK || 'price_devs_nok',
+    DKK: process.env.STRIPE_PRICE_DEVS_DKK || 'price_devs_dkk',
+    PLN: process.env.STRIPE_PRICE_DEVS_PLN || 'price_devs_pln',
+    NZD: process.env.STRIPE_PRICE_DEVS_NZD || 'price_devs_nzd',
+    ZAR: process.env.STRIPE_PRICE_DEVS_ZAR || 'price_devs_zar',
+    AED: process.env.STRIPE_PRICE_DEVS_AED || 'price_devs_aed',
+    SAR: process.env.STRIPE_PRICE_DEVS_SAR || 'price_devs_sar'
   }
 };
 

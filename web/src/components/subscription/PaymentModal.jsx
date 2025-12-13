@@ -9,7 +9,7 @@ import SubscriptionSuccessModal from '../SubscriptionSuccessModal';
 import { Loader2, MapPin, CreditCard } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const PaymentModal = ({ isOpen, onClose, plan, onSuccess }) => {
+const PaymentModal = ({ isOpen, onClose, plan, onSuccess, billingPeriod = 'monthly' }) => {
   const { user, session } = useAuth();
   const [loading, setLoading] = useState(false);
   const [paymentData, setPaymentData] = useState(null);
@@ -61,7 +61,8 @@ const PaymentModal = ({ isOpen, onClose, plan, onSuccess }) => {
         },
         body: JSON.stringify({
           plan: plan.id,
-          countryCode: userLocation
+          countryCode: userLocation,
+          billingPeriod: billingPeriod
         })
       });
 
@@ -173,7 +174,7 @@ const PaymentModal = ({ isOpen, onClose, plan, onSuccess }) => {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Price</span>
                   <span className="font-bold text-foreground">
-                    ₹{plan?.id === 'basic' ? '99' : '499'}/month
+                    ₹{plan?.id === 'pro' ? '169' : plan?.id === 'devs' ? '459' : '0'}/month
                   </span>
                 </div>
                 <div className="flex items-center justify-between">

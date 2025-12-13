@@ -906,9 +906,9 @@ const DeveloperDocs = () => {
                   <CodeBlock 
                     code={`{
   "error": "Monthly quota exceeded",
-  "message": "You have reached your monthly limit of 1000 requests. Upgrade your plan or wait for the next billing cycle.",
-  "limit": 1000,
-  "used": 1000,
+  "message": "You have reached your monthly limit of 1500 requests. Upgrade your plan or wait for the next billing cycle.",
+  "limit": 1500,
+  "used": 1500,
   "remaining": 0,
   "reset_date": 1735689600000
 }`}

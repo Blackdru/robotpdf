@@ -3,12 +3,12 @@ import { useSubscription } from '../contexts/SubscriptionContext';
 
 /**
  * Ad-Free Badge Component
- * Shows a badge for Basic and Pro users indicating they have an ad-free experience
+ * Shows a badge for Pro and Devs users indicating they have an ad-free experience
  */
 const AdFreeBadge = ({ variant = 'default', className = '' }) => {
   const { subscription } = useSubscription();
 
-  // Only show for Basic and Pro users
+  // Only show for Pro and Devs users
   if (!subscription || subscription.plan === 'free') {
     return null;
   }
@@ -49,12 +49,12 @@ const AdFreeBadge = ({ variant = 'default', className = '' }) => {
 
 /**
  * Ad-Free Banner Component
- * Shows a prominent banner for Basic and Pro users
+ * Shows a prominent banner for Pro and Devs users
  */
 export const AdFreeBanner = ({ className = '' }) => {
   const { subscription } = useSubscription();
 
-  // Only show for Basic and Pro users
+  // Only show for Pro and Devs users
   if (!subscription || subscription.plan === 'free') {
     return null;
   }
@@ -97,7 +97,7 @@ export const AdFreeBanner = ({ className = '' }) => {
 export const AdFreeNotice = ({ className = '' }) => {
   const { subscription } = useSubscription();
 
-  // Only show for Basic and Pro users
+  // Only show for Pro and Devs users
   if (!subscription || subscription.plan === 'free') {
     return null;
   }

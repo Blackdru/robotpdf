@@ -3,6 +3,7 @@ const PLAN_LIMITS = {
   free: {
     name: 'Free',
     price: 0,
+    priceYearly: 0,
     filesPerMonth: -1, // unlimited use of free tools
     maxFileSize: 10 * 1024 * 1024, // 10MB
     storageLimit: 0, // no storage
@@ -20,18 +21,23 @@ const PLAN_LIMITS = {
       ocrFilesPerMonth: 0, // No OCR operations
       summaryLength: 'none', // No AI summaries
       chatMessages: 0, // No AI chat
+      summaries: 0, // No AI summaries
       aiChatAccess: false, // No AI chat
       ocrAccess: false, // No OCR
       advancedTools: false // No advanced tools
     }
   },
-  basic: {
-    name: 'Basic',
-    price: 1,
-    filesPerMonth: 50,
-    maxFileSize: 50 * 1024 * 1024, // 50MB
-    storageLimit: 500 * 1024 * 1024, // 500MB
-    aiOperations: 75, // 25 OCR + 25 chat + 25 summaries
+  pro: {
+    name: 'Pro',
+    price: 169, // INR per month
+    priceYearly: 1500, // INR per year
+    filesPerMonth: -1, // unlimited files processing
+    maxFileSize: 50 * 1024 * 1024, // 50MB monthly, 100MB yearly (handled in code)
+    maxFileSizeYearly: 100 * 1024 * 1024, // 100MB for yearly plan
+    storageLimit: 500 * 1024 * 1024, // 500MB monthly
+    storageLimitYearly: 1024 * 1024 * 1024, // 1GB for yearly plan
+    aiOperations: 150, // 50 OCR + 50 chat + 50 summaries monthly
+    aiOperationsYearly: 1500, // 500 OCR + 500 chat + 500 summaries yearly
     apiCalls: 0,
     batchOperations: 10,
     features: [
@@ -46,30 +52,38 @@ const PLAN_LIMITS = {
       'summaries',
       'search',
       'advanced_tools',
-      'advanced_settings'
+      'advanced_settings',
+      'ad_free'
     ],
     restrictions: {
       maxFilesPerBatch: 10,
-      ocrPages: 25, // 25 Advanced OCR pages
-      ocrFilesPerMonth: 50,
+      ocrPages: 50, // 50 Advanced OCR pages per month
+      ocrPagesYearly: 500, // 500 Advanced OCR pages per year
+      ocrFilesPerMonth: -1, // unlimited
       summaryLength: 'detailed',
-      chatMessages: 25, // 25 AI chat messages
+      chatMessages: 50, // 50 AI chat messages per month
+      chatMessagesYearly: 500, // 500 AI chat messages per year
+      summaries: 50, // 50 AI summaries per month
+      summariesYearly: 500, // 500 AI summaries per year
       aiChatAccess: true,
       ocrAccess: true,
       advancedTools: true, // Access to all advanced tools
       encryptAccess: true,
       digitalSignatureAccess: true,
-      advancedSettings: true // Enable advanced settings for basic users
+      advancedSettings: true,
+      adFree: true // Ad-free experience
     }
   },
-  pro: {
-    name: 'Pro',
-    price: 10,
+  devs: {
+    name: 'Devs',
+    price: 459, // INR per month
+    priceYearly: 5000, // INR per year
     filesPerMonth: -1, // unlimited
     maxFileSize: 200 * 1024 * 1024, // 200MB
     storageLimit: -1, // unlimited
-    aiOperations: -1, // unlimited
-    apiCalls: 10000,
+    aiOperations: -1, // unlimited for personal use
+    apiCalls: 1500, // 1500 API requests per month
+    apiCallsYearly: 20000, // 20000 API requests per year
     batchOperations: -1, // unlimited
     features: [
       'all_features',
@@ -78,7 +92,8 @@ const PLAN_LIMITS = {
       'advanced_analytics',
       'custom_workflows',
       'white_label',
-      'advanced_settings'
+      'advanced_settings',
+      'ad_free'
     ],
     restrictions: {
       maxFilesPerBatch: -1, // unlimited
@@ -86,10 +101,12 @@ const PLAN_LIMITS = {
       ocrFilesPerMonth: -1, // unlimited
       summaryLength: 'comprehensive',
       chatMessages: -1, // unlimited AI chat
+      summaries: -1, // unlimited AI summaries
       aiChatAccess: true,
       ocrAccess: true,
       advancedTools: true, // All advanced tools
-      advancedSettings: true // All advanced settings
+      advancedSettings: true, // All advanced settings
+      adFree: true // Ad-free experience
     }
   }
 };
@@ -210,8 +227,10 @@ const formatNumber = (num) => {
 
 // Stripe price IDs (to be set in environment variables)
 const STRIPE_PRICE_IDS = {
-  basic: process.env.STRIPE_PRICE_ID_BASIC || 'price_basic_monthly',
-  pro: process.env.STRIPE_PRICE_ID_PRO || 'price_pro_monthly'
+  pro: process.env.STRIPE_PRICE_ID_PRO || 'price_pro_monthly',
+  pro_yearly: process.env.STRIPE_PRICE_ID_PRO_YEARLY || 'price_pro_yearly',
+  devs: process.env.STRIPE_PRICE_ID_DEVS || 'price_devs_monthly',
+  devs_yearly: process.env.STRIPE_PRICE_ID_DEVS_YEARLY || 'price_devs_yearly'
 };
 
 // Plan comparison data for frontend
@@ -219,74 +238,74 @@ const PLAN_COMPARISON = [
   {
     feature: 'Advertisements',
     free: 'Supported by ads',
-    basic: '✨ Ad-Free',
-    pro: '✨ Ad-Free'
+    pro: '✨ Ad-Free',
+    devs: '✨ Ad-Free'
   },
   {
     feature: 'Free Tools Usage',
     free: 'Unlimited',
-    basic: 'Unlimited',
-    pro: 'Unlimited'
+    pro: 'Unlimited',
+    devs: 'Unlimited'
   },
   {
     feature: 'Files per month',
     free: 'Unlimited (Free Tools)',
-    basic: '50',
-    pro: 'Unlimited'
+    pro: 'Unlimited',
+    devs: 'Unlimited'
   },
   {
     feature: 'Max file size',
     free: '10 MB',
-    basic: '50 MB',
-    pro: '200 MB'
+    pro: '50 MB / 100 MB (yearly)',
+    devs: '200 MB'
   },
   {
     feature: 'Storage',
     free: 'No Storage',
-    basic: '500 MB',
-    pro: 'Unlimited'
+    pro: '500 MB / 1 GB (yearly)',
+    devs: 'Unlimited'
   },
   {
     feature: 'Advanced OCR Pages',
     free: 'None',
-    basic: '25',
-    pro: 'Unlimited'
+    pro: '50/month or 500/year',
+    devs: 'Unlimited'
   },
   {
     feature: 'AI Chat Messages',
     free: 'None',
-    basic: '25',
-    pro: 'Unlimited'
+    pro: '50/month or 500/year',
+    devs: 'Unlimited'
   },
   {
     feature: 'AI Summaries',
     free: 'None',
-    basic: '25',
-    pro: 'Unlimited'
+    pro: '50/month or 500/year',
+    devs: 'Unlimited'
   },
   {
     feature: 'Advanced Tools Access',
     free: false,
-    basic: true,
-    pro: true
+    pro: true,
+    devs: true
   },
   {
     feature: 'Advanced Settings',
     free: false,
-    basic: true,
-    pro: true
+    pro: true,
+    devs: true
   },
   {
     feature: 'Priority Support',
     free: false,
-    basic: false,
-    pro: true
+    pro: false,
+    devs: true
   },
   {
     feature: 'API Access',
     free: false,
-    basic: false,
-    pro: true
+    pro: false,
+    devs: '1500/month or 20000/year'
   }
 ];
 

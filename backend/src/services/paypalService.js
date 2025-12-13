@@ -414,7 +414,7 @@ class PayPalService {
    */
   async updateSubscriptionInDatabase(paypalSubscription, userId, planId) {
     // Extract plan name from plan_id or use default
-    const plan = this.extractPlanFromId(planId) || 'basic';
+    const plan = this.extractPlanFromId(planId) || 'pro';
 
     const subscriptionData = {
       user_id: userId,
@@ -455,10 +455,10 @@ class PayPalService {
   extractPlanFromId(planId) {
     if (!planId) return null;
     
-    if (planId.includes('basic') || planId === process.env.PAYPAL_PLAN_BASIC) {
-      return 'basic';
-    } else if (planId.includes('pro') || planId === process.env.PAYPAL_PLAN_PRO) {
+    if (planId.includes('pro') || planId === process.env.PAYPAL_PLAN_PRO) {
       return 'pro';
+    } else if (planId.includes('devs') || planId === process.env.PAYPAL_PLAN_DEVS) {
+      return 'devs';
     }
     
     return null;
@@ -469,17 +469,17 @@ class PayPalService {
    */
   getPlanDetails(plan) {
     const plans = {
-      basic: {
-        name: 'Basic',
-        amount: 100, // $1.00
-        currency: 'USD',
-        paypalPlanId: process.env.PAYPAL_PLAN_BASIC || 'P-BASIC'
-      },
       pro: {
         name: 'Pro',
-        amount: 1000, // $10.00
+        amount: 200, // $2.00 (approx ₹169)
         currency: 'USD',
         paypalPlanId: process.env.PAYPAL_PLAN_PRO || 'P-PRO'
+      },
+      devs: {
+        name: 'Devs',
+        amount: 600, // $6.00 (approx ₹459)
+        currency: 'USD',
+        paypalPlanId: process.env.PAYPAL_PLAN_DEVS || 'P-DEVS'
       }
     };
 
@@ -491,44 +491,12 @@ class PayPalService {
    */
   async createPlans() {
     try {
-      // Create Basic plan
-      const basicPlanRequest = new paypal.v1.billing.PlansCreateRequest();
-      basicPlanRequest.requestBody({
-        product_id: process.env.PAYPAL_PRODUCT_ID,
-        name: 'Basic Plan',
-        description: 'Basic subscription plan with 100 files per month',
-        status: 'ACTIVE',
-        billing_cycles: [{
-          frequency: {
-            interval_unit: 'MONTH',
-            interval_count: 1
-          },
-          tenure_type: 'REGULAR',
-          sequence: 1,
-          total_cycles: 0, // Infinite
-          pricing_scheme: {
-            fixed_price: {
-              value: '1.00',
-              currency_code: 'USD'
-            }
-          }
-        }],
-        payment_preferences: {
-          auto_bill_outstanding: true,
-          setup_fee_failure_action: 'CONTINUE',
-          payment_failure_threshold: 3
-        }
-      });
-
-      const basicPlanResponse = await client().execute(basicPlanRequest);
-      console.log('Basic Plan created:', basicPlanResponse.result.id);
-
       // Create Pro plan
       const proPlanRequest = new paypal.v1.billing.PlansCreateRequest();
       proPlanRequest.requestBody({
         product_id: process.env.PAYPAL_PRODUCT_ID,
         name: 'Pro Plan',
-        description: 'Pro subscription plan with unlimited files',
+        description: 'Pro subscription plan with unlimited files processing and AI features',
         status: 'ACTIVE',
         billing_cycles: [{
           frequency: {
@@ -540,7 +508,7 @@ class PayPalService {
           total_cycles: 0, // Infinite
           pricing_scheme: {
             fixed_price: {
-              value: '10.00',
+              value: '2.00',
               currency_code: 'USD'
             }
           }
@@ -555,9 +523,41 @@ class PayPalService {
       const proPlanResponse = await client().execute(proPlanRequest);
       console.log('Pro Plan created:', proPlanResponse.result.id);
 
+      // Create Devs plan
+      const devsPlanRequest = new paypal.v1.billing.PlansCreateRequest();
+      devsPlanRequest.requestBody({
+        product_id: process.env.PAYPAL_PRODUCT_ID,
+        name: 'Devs Plan',
+        description: 'Devs subscription plan with API access and unlimited features',
+        status: 'ACTIVE',
+        billing_cycles: [{
+          frequency: {
+            interval_unit: 'MONTH',
+            interval_count: 1
+          },
+          tenure_type: 'REGULAR',
+          sequence: 1,
+          total_cycles: 0, // Infinite
+          pricing_scheme: {
+            fixed_price: {
+              value: '6.00',
+              currency_code: 'USD'
+            }
+          }
+        }],
+        payment_preferences: {
+          auto_bill_outstanding: true,
+          setup_fee_failure_action: 'CONTINUE',
+          payment_failure_threshold: 3
+        }
+      });
+
+      const devsPlanResponse = await client().execute(devsPlanRequest);
+      console.log('Devs Plan created:', devsPlanResponse.result.id);
+
       return {
-        basicPlan: basicPlanResponse.result,
-        proPlan: proPlanResponse.result
+        proPlan: proPlanResponse.result,
+        devsPlan: devsPlanResponse.result
       };
     } catch (error) {
       console.error('Error creating PayPal plans:', error);

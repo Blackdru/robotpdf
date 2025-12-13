@@ -1,7 +1,7 @@
 const express = require('express');
 const { supabase, supabaseAdmin } = require('../config/supabase');
 const { authenticateUser, optionalAuth } = require('../middleware/auth');
-const { requireProPlan, requireBasicPlan, trackUsage } = require('../middleware/subscriptionMiddleware');
+const { requireProPlan, trackUsage } = require('../middleware/subscriptionMiddleware');
 const advancedPdfService = require('../services/advancedPdfService');
 const ocrService = require('../services/ocrService');
 const { validateRequest } = require('../middleware/validation');
@@ -959,7 +959,7 @@ router.post('/annotate',
 // Enhanced OCR with AI processing
 router.post('/enhanced-ocr',
   authenticateUser,
-  requireBasicPlan,
+  requireProPlan,
   trackUsage('ocr_operation', 1),
   validateRequest({
     body: Joi.object({

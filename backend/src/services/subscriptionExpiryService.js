@@ -13,7 +13,7 @@ class SubscriptionExpiryService {
         .from('subscriptions')
         .select('id, user_id, plan, current_period_end')
         .eq('status', 'active')
-        .in('plan', ['basic', 'pro', 'premium'])
+        .in('plan', ['pro', 'devs'])
         .lt('current_period_end', now);
 
       if (findError) {

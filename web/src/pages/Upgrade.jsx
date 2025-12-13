@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
@@ -11,16 +11,27 @@ import {
   X, 
   Star, 
   Zap, 
-  Crown,
+  Code,
   ArrowLeft,
   Sparkles
 } from 'lucide-react'
 
 const Upgrade = () => {
   const navigate = useNavigate()
+  const location = useLocation()
   const { plans, subscription, loading } = useSubscription()
   const [showModal, setShowModal] = useState(false)
   const [selectedPlan, setSelectedPlan] = useState(null)
+  const [billingPeriod, setBillingPeriod] = useState(location.state?.billingPeriod || 'monthly')
+
+  useEffect(() => {
+    if (location.state?.selectedPlan) {
+      setSelectedPlan(location.state.selectedPlan)
+    }
+    if (location.state?.billingPeriod) {
+      setBillingPeriod(location.state.billingPeriod)
+    }
+  }, [location.state])
 
   const handleSelectPlan = (planId) => {
     setSelectedPlan(planId)
@@ -36,68 +47,80 @@ const Upgrade = () => {
     {
       feature: 'Monthly Price',
       free: 'Free',
-      basic: '₹99/month',
-      pro: '₹499/month'
+      pro: '₹169/month',
+      devs: '₹459/month'
+    },
+    {
+      feature: 'Yearly Price',
+      free: 'Free',
+      pro: '₹1,500/year',
+      devs: '₹5,000/year'
     },
     {
       feature: 'Free Tools Usage',
       free: 'Unlimited',
-      basic: 'Unlimited',
-      pro: 'Unlimited'
+      pro: 'Unlimited',
+      devs: 'Unlimited'
     },
     {
-      feature: 'Files per month',
+      feature: 'Files processing',
       free: 'Unlimited (Free Tools)',
-      basic: '50',
-      pro: 'Unlimited'
+      pro: 'Unlimited',
+      devs: 'Unlimited'
     },
     {
       feature: 'Max file size',
       free: '10 MB',
-      basic: '50 MB',
-      pro: '200 MB'
+      pro: '50-100 MB',
+      devs: '200 MB'
     },
     {
       feature: 'Storage',
       free: 'No Storage',
-      basic: '500 MB',
-      pro: 'Unlimited'
+      pro: '500MB-1GB',
+      devs: 'Unlimited'
     },
     {
       feature: 'Advanced OCR Pages',
       free: 'None',
-      basic: '25',
-      pro: 'Unlimited'
+      pro: '50-500',
+      devs: 'Unlimited'
     },
     {
       feature: 'AI Chat Messages',
       free: 'None',
-      basic: '25',
-      pro: 'Unlimited'
+      pro: '50-500',
+      devs: 'Unlimited'
     },
     {
       feature: 'AI Summaries',
       free: 'None',
-      basic: '25',
-      pro: 'Unlimited'
+      pro: '50-500',
+      devs: 'Unlimited'
     },
     {
       feature: 'Advanced Tools Access',
       free: false,
-      basic: true,
-      pro: true
+      pro: true,
+      devs: true
     },
     {
       feature: 'Advanced Settings',
       free: false,
-      basic: false,
-      pro: true
+      pro: true,
+      devs: true
     },
     {
       feature: 'Priority Support',
       free: false,
-      basic: false,
-      pro: true
+      pro: false,
+      devs: true
+    },
+    {
+      feature: 'API Access',
+      free: false,
+      pro: false,
+      devs: '1500-20000 req'
     }
   ]
 
@@ -195,22 +218,22 @@ const Upgrade = () => {
                     <th className="text-left py-3 px-4 font-medium text-card-foreground">Feature</th>
                     <th className="text-center py-3 px-4">
                       <div className="flex items-center justify-center gap-2">
-                        <Star className="h-4 w-4 text-blue-400" />
+                        <Zap className="h-4 w-4 text-gray-400" />
                         <span className="font-medium text-card-foreground">Free</span>
                       </div>
                     </th>
                     <th className="text-center py-3 px-4">
                       <div className="flex items-center justify-center gap-2">
-                        <Zap className="h-4 w-4 text-purple-400" />
-                        <span className="font-medium text-card-foreground">Basic</span>
+                        <Star className="h-4 w-4 text-blue-400" />
+                        <span className="font-medium text-card-foreground">Pro</span>
                         <Badge className="ml-1 badge-purple">Popular</Badge>
                       </div>
                     </th>
                     <th className="text-center py-3 px-4">
                       <div className="flex items-center justify-center gap-2">
-                        <Crown className="h-4 w-4 text-blue-400" />
-                        <span className="font-medium text-card-foreground">Pro</span>
-                        <Badge className="ml-1 badge-blue">Best Value</Badge>
+                        <Code className="h-4 w-4 text-purple-400" />
+                        <span className="font-medium text-card-foreground">Devs</span>
+                        <Badge className="ml-1 badge-blue">API</Badge>
                       </div>
                     </th>
                   </tr>
@@ -223,10 +246,10 @@ const Upgrade = () => {
                         {renderFeatureValue(row.free)}
                       </td>
                       <td className="py-3 px-4 text-center text-card-foreground">
-                        {renderFeatureValue(row.basic)}
+                        {renderFeatureValue(row.pro)}
                       </td>
                       <td className="py-3 px-4 text-center text-card-foreground">
-                        {renderFeatureValue(row.pro)}
+                        {renderFeatureValue(row.devs)}
                       </td>
                     </tr>
                   ))}
@@ -288,18 +311,18 @@ const Upgrade = () => {
           <div className="flex justify-center gap-4">
             <Button 
               size="lg"
-              onClick={() => handleSelectPlan('basic')}
+              onClick={() => handleSelectPlan('pro')}
               className="btn-purple"
             >
-              Start Basic Plan
+              Start Pro Plan
             </Button>
             <Button 
               size="lg" 
               variant="outline"
-              onClick={() => handleSelectPlan('pro')}
+              onClick={() => handleSelectPlan('devs')}
               className="btn-dark-outline"
             >
-              Go Pro
+              Go Devs (API)
             </Button>
           </div>
         </div>

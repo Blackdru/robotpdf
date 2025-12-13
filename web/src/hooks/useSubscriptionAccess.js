@@ -25,18 +25,18 @@ const TOOL_REQUIREMENTS = {
   'ai-resume-generator': 'pro',
   'text-to-pdf-pro': 'pro',
   
-  // Premium tools - require premium
+  // Devs tools - require devs plan
   'encrypt-pro': 'pro',
   'digital-sign': 'pro',
-  'batch-advanced': 'premium',
-  'api-access': 'premium'
+  'batch-advanced': 'devs',
+  'api-access': 'devs'
 }
 
 // Plan hierarchy for comparison
 const PLAN_HIERARCHY = {
   'free': 0,
   'pro': 1, 
-  'premium': 2
+  'devs': 2
 }
 
 export const useSubscriptionAccess = () => {
@@ -109,12 +109,12 @@ export const useSubscriptionAccess = () => {
     
     if (currentPlan === 'free') {
       if (requiredPlan === 'pro') {
-        return 'Upgrade to Pro ($1/month) to access this feature'
-      } else if (requiredPlan === 'premium') {
-        return 'Upgrade to Premium ($10/month) to access this feature'
+        return 'Upgrade to Pro (₹169/month) to access this feature'
+      } else if (requiredPlan === 'devs') {
+        return 'Upgrade to Devs (₹459/month) to access this feature'
       }
-    } else if (currentPlan === 'pro' && requiredPlan === 'premium') {
-      return 'Upgrade to Premium ($10/month) to access this feature'
+    } else if (currentPlan === 'pro' && requiredPlan === 'devs') {
+      return 'Upgrade to Devs (₹459/month) to access this feature'
     }
     
     return 'Upgrade your plan to access this feature'

@@ -157,7 +157,7 @@ const ModernNavbar = () => {
                             {user.name || user.user_metadata?.name || 'User'}
                           </div>
                           <div className="text-xs text-slate-500">
-                            {subscription?.plan === 'pro' ? 'Pro' : subscription?.plan === 'basic' ? 'Basic' : 'Free'} Plan
+                            {subscription?.plan === 'devs' ? 'Devs' : subscription?.plan === 'pro' ? 'Pro' : 'Free'} Plan
                           </div>
                         </div>
                         <ChevronDown className="h-4 w-4 text-slate-400" />
@@ -177,13 +177,13 @@ const ModernNavbar = () => {
                             <p className="text-xs text-slate-500">{user.email}</p>
                             <div className="flex items-center gap-1 mt-1">
                               <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-md ${
-                                subscription?.plan === 'pro' 
+                                subscription?.plan === 'devs' 
                                   ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white'
-                                  : subscription?.plan === 'basic'
+                                  : subscription?.plan === 'pro'
                                   ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
                                   : 'bg-gray-100 text-gray-600'
                               }`}>
-                                {subscription?.plan === 'pro' ? 'PRO' : subscription?.plan === 'basic' ? 'BASIC' : 'FREE'} PLAN
+                                {subscription?.plan === 'devs' ? 'DEVS' : subscription?.plan === 'pro' ? 'PRO' : 'FREE'} PLAN
                               </span>
                             </div>
                           </div>

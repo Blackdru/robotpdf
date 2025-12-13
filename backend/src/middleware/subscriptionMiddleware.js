@@ -176,10 +176,10 @@ const requireProPlan = async (req, res, next) => {
 
     const subscription = await subscriptionService.getUserSubscription(userId);
     
-    if (!['pro', 'premium'].includes(subscription.plan)) {
+    if (!['pro', 'devs'].includes(subscription.plan)) {
       return res.status(403).json({
         error: 'Pro plan required',
-        message: 'This feature requires a Pro or Premium subscription.',
+        message: 'This feature requires a Pro or Devs subscription.',
         currentPlan: subscription.plan,
         requiredPlan: 'pro'
       });
@@ -194,7 +194,37 @@ const requireProPlan = async (req, res, next) => {
 };
 
 /**
- * Middleware to require Basic plan or higher
+ * Middleware to require Devs plan (for API access)
+ */
+const requireDevsPlan = async (req, res, next) => {
+  try {
+    const userId = req.user?.id;
+    
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const subscription = await subscriptionService.getUserSubscription(userId);
+    
+    if (subscription.plan !== 'devs') {
+      return res.status(403).json({
+        error: 'Devs plan required',
+        message: 'This feature requires a Devs subscription for API access.',
+        currentPlan: subscription.plan,
+        requiredPlan: 'devs'
+      });
+    }
+
+    req.subscription = subscription;
+    next();
+  } catch (error) {
+    console.error('Error checking Devs plan requirement:', error);
+    res.status(500).json({ error: 'Failed to verify plan requirements' });
+  }
+};
+
+/**
+ * Middleware to require Basic plan or higher (kept for backward compatibility)
  */
 const requireBasicPlan = async (req, res, next) => {
   try {
@@ -206,25 +236,26 @@ const requireBasicPlan = async (req, res, next) => {
 
     const subscription = await subscriptionService.getUserSubscription(userId);
     
-    if (!['basic', 'pro', 'premium'].includes(subscription.plan)) {
+    // Pro and Devs plans have access to all features
+    if (!['pro', 'devs'].includes(subscription.plan)) {
       return res.status(403).json({
-        error: 'Basic plan required',
-        message: 'This feature requires a Basic, Pro, or Premium subscription.',
+        error: 'Pro plan required',
+        message: 'This feature requires a Pro or Devs subscription.',
         currentPlan: subscription.plan,
-        requiredPlan: 'basic'
+        requiredPlan: 'pro'
       });
     }
 
     req.subscription = subscription;
     next();
   } catch (error) {
-    console.error('Error checking Basic plan requirement:', error);
+    console.error('Error checking plan requirement:', error);
     res.status(500).json({ error: 'Failed to verify plan requirements' });
   }
 };
 
 /**
- * Middleware to require Premium plan
+ * Middleware to require Premium plan (kept for backward compatibility, maps to devs)
  */
 const requirePremiumPlan = async (req, res, next) => {
   try {
@@ -236,19 +267,19 @@ const requirePremiumPlan = async (req, res, next) => {
 
     const subscription = await subscriptionService.getUserSubscription(userId);
     
-    if (subscription.plan !== 'premium') {
+    if (subscription.plan !== 'devs') {
       return res.status(403).json({
-        error: 'Premium plan required',
-        message: 'This feature requires a Premium subscription.',
+        error: 'Devs plan required',
+        message: 'This feature requires a Devs subscription.',
         currentPlan: subscription.plan,
-        requiredPlan: 'premium'
+        requiredPlan: 'devs'
       });
     }
 
     req.subscription = subscription;
     next();
   } catch (error) {
-    console.error('Error checking Premium plan requirement:', error);
+    console.error('Error checking Devs plan requirement:', error);
     res.status(500).json({ error: 'Failed to verify plan requirements' });
   }
 };
@@ -427,6 +458,7 @@ module.exports = {
   requireProPlan,
   requireBasicPlan,
   requirePremiumPlan,
+  requireDevsPlan,
   requireFeature,
   enforceAILimit,
   enforceAPILimit,

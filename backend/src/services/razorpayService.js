@@ -384,7 +384,7 @@ class RazorpayService {
   async updateSubscriptionInDatabase(razorpaySubscription, userId, plan) {
     const subscriptionData = {
       user_id: userId,
-      plan: plan || 'basic',
+      plan: plan || 'pro',
       status: razorpaySubscription.status,
       razorpay_subscription_id: razorpaySubscription.id,
       current_period_start: new Date(razorpaySubscription.start_at * 1000).toISOString(),
@@ -417,32 +417,48 @@ class RazorpayService {
    * India: Full payment options (UPI, Cards, Net Banking, Wallets)
    * International: Card payments only
    */
-  getPlanDetails(plan, currency = 'INR') {
+  getPlanDetails(plan, currency = 'INR', billingPeriod = 'monthly') {
     const plans = {
-      basic: {
-        INR: {
-          name: 'Basic',
-          amount: 9900, // ₹99 in paise
-          currency: 'INR',
-          period: 'monthly',
-          interval: 1,
-          razorpayPlanId: process.env.RAZORPAY_PLAN_BASIC || 'plan_basic'
-        }
-      },
       pro: {
-        INR: {
+        monthly: {
           name: 'Pro',
-          amount: 49900, // ₹499 in paise
+          amount: 16900, // ₹169 in paise
           currency: 'INR',
           period: 'monthly',
           interval: 1,
           razorpayPlanId: process.env.RAZORPAY_PLAN_PRO || 'plan_pro'
+        },
+        yearly: {
+          name: 'Pro Yearly',
+          amount: 150000, // ₹1500 in paise
+          currency: 'INR',
+          period: 'yearly',
+          interval: 1,
+          razorpayPlanId: process.env.RAZORPAY_PLAN_PRO_YEARLY || 'plan_pro_yearly'
+        }
+      },
+      devs: {
+        monthly: {
+          name: 'Devs',
+          amount: 45900, // ₹459 in paise
+          currency: 'INR',
+          period: 'monthly',
+          interval: 1,
+          razorpayPlanId: process.env.RAZORPAY_PLAN_DEVS || 'plan_devs'
+        },
+        yearly: {
+          name: 'Devs Yearly',
+          amount: 500000, // ₹5000 in paise
+          currency: 'INR',
+          period: 'yearly',
+          interval: 1,
+          razorpayPlanId: process.env.RAZORPAY_PLAN_DEVS_YEARLY || 'plan_devs_yearly'
         }
       }
     };
 
-    // Always return INR pricing
-    return plans[plan]?.['INR'];
+    // Return plan based on billing period
+    return plans[plan]?.[billingPeriod] || plans[plan]?.['monthly'];
   }
 
   /**
@@ -451,35 +467,63 @@ class RazorpayService {
    */
   async createPlans() {
     try {
-      // Create Basic plan - ₹99/month
-      const basicPlan = await razorpay.plans.create({
-        period: 'monthly',
-        interval: 1,
-        item: {
-          name: 'Basic Plan',
-          amount: 9900, // ₹99 in paise
-          currency: 'INR',
-          description: 'Basic subscription plan with 50 files per month, 25 OCR pages, 25 AI chat messages, 25 AI summaries'
-        }
-      });
-
-      console.log('Basic Plan created:', basicPlan.id);
-
-      // Create Pro plan - ₹499/month
-      const proPlan = await razorpay.plans.create({
+      // Create Pro plan - ₹169/month
+      const proMonthlyPlan = await razorpay.plans.create({
         period: 'monthly',
         interval: 1,
         item: {
           name: 'Pro Plan',
-          amount: 49900, // ₹499 in paise
+          amount: 16900, // ₹169 in paise
           currency: 'INR',
-          description: 'Pro subscription plan with unlimited files, OCR, AI chat, and AI summaries'
+          description: 'Pro plan - Unlimited files, 50 OCR/chat/summaries per month, 50MB files, 500MB storage'
         }
       });
 
-      console.log('Pro Plan created:', proPlan.id);
+      console.log('Pro Monthly Plan created:', proMonthlyPlan.id);
 
-      return { basicPlan, proPlan };
+      // Create Pro Yearly plan - ₹1500/year
+      const proYearlyPlan = await razorpay.plans.create({
+        period: 'yearly',
+        interval: 1,
+        item: {
+          name: 'Pro Yearly Plan',
+          amount: 150000, // ₹1500 in paise
+          currency: 'INR',
+          description: 'Pro yearly plan - Unlimited files, 500 OCR/chat/summaries per year, 100MB files, 1GB storage'
+        }
+      });
+
+      console.log('Pro Yearly Plan created:', proYearlyPlan.id);
+
+      // Create Devs plan - ₹459/month
+      const devsMonthlyPlan = await razorpay.plans.create({
+        period: 'monthly',
+        interval: 1,
+        item: {
+          name: 'Devs Plan',
+          amount: 45900, // ₹459 in paise
+          currency: 'INR',
+          description: 'Developer plan - 1500 API requests/month, all endpoints, unlimited AI features'
+        }
+      });
+
+      console.log('Devs Monthly Plan created:', devsMonthlyPlan.id);
+
+      // Create Devs Yearly plan - ₹5000/year
+      const devsYearlyPlan = await razorpay.plans.create({
+        period: 'yearly',
+        interval: 1,
+        item: {
+          name: 'Devs Yearly Plan',
+          amount: 500000, // ₹5000 in paise
+          currency: 'INR',
+          description: 'Developer yearly plan - 20000 API requests/year, all endpoints, unlimited AI features'
+        }
+      });
+
+      console.log('Devs Yearly Plan created:', devsYearlyPlan.id);
+
+      return { proMonthlyPlan, proYearlyPlan, devsMonthlyPlan, devsYearlyPlan };
     } catch (error) {
       console.error('Error creating Razorpay plans:', error);
       throw error;

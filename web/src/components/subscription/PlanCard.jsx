@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { Check, Crown, Zap, Star } from 'lucide-react'
+import { Check, Code, Zap, Star } from 'lucide-react'
 import { useSubscription } from '../../contexts/SubscriptionContext'
 import { Button } from '../ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../ui/card'
 import { Badge } from '../ui/badge'
 
-const PlanCard = ({ plan, isCurrentPlan = false, onSelectPlan }) => {
+const PlanCard = ({ plan, isCurrentPlan = false, onSelectPlan, billingPeriod = 'monthly' }) => {
   const [loading, setLoading] = useState(false)
   const { subscription, isActive } = useSubscription()
 
@@ -23,11 +23,11 @@ const PlanCard = ({ plan, isCurrentPlan = false, onSelectPlan }) => {
   const getPlanIcon = () => {
     switch (plan.id) {
       case 'free':
-        return <Star className="h-5 w-5 sm:h-6 sm:w-6 text-blue-500" />
-      case 'basic':
-        return <Zap className="h-5 w-5 sm:h-6 sm:w-6 text-purple-500" />
+        return <Zap className="h-5 w-5 sm:h-6 sm:w-6 text-gray-500" />
       case 'pro':
-        return <Crown className="h-5 w-5 sm:h-6 sm:w-6 text-blue-500" />
+        return <Star className="h-5 w-5 sm:h-6 sm:w-6 text-blue-500" />
+      case 'devs':
+        return <Code className="h-5 w-5 sm:h-6 sm:w-6 text-purple-500" />
       default:
         return <Star className="h-5 w-5 sm:h-6 sm:w-6" />
     }
@@ -37,10 +37,10 @@ const PlanCard = ({ plan, isCurrentPlan = false, onSelectPlan }) => {
     switch (plan.id) {
       case 'free':
         return 'border-grey-700'
-      case 'basic':
-        return 'border-purple-500/30 shadow-lg shadow-purple-500/20'
       case 'pro':
-        return 'border-blue-500/30 shadow-xl shadow-blue-500/20'
+        return 'border-blue-500/30 shadow-lg shadow-blue-500/20'
+      case 'devs':
+        return 'border-purple-500/30 shadow-xl shadow-purple-500/20'
       default:
         return 'border-grey-700'
     }
@@ -54,7 +54,7 @@ const PlanCard = ({ plan, isCurrentPlan = false, onSelectPlan }) => {
   const canUpgrade = () => {
     if (!subscription) return plan.id !== 'free'
     
-    const planHierarchy = { free: 0, basic: 1, pro: 2 }
+    const planHierarchy = { free: 0, pro: 1, devs: 2 }
     const currentLevel = planHierarchy[subscription.plan] || 0
     const targetLevel = planHierarchy[plan.id] || 0
     
@@ -64,7 +64,7 @@ const PlanCard = ({ plan, isCurrentPlan = false, onSelectPlan }) => {
   const canDowngrade = () => {
     if (!subscription) return false
     
-    const planHierarchy = { free: 0, basic: 1, pro: 2 }
+    const planHierarchy = { free: 0, pro: 1, devs: 2 }
     const currentLevel = planHierarchy[subscription.plan] || 0
     const targetLevel = planHierarchy[plan.id] || 0
     
@@ -73,6 +73,7 @@ const PlanCard = ({ plan, isCurrentPlan = false, onSelectPlan }) => {
 
   // Get plan-specific features to display
   const getPlanFeatures = () => {
+    const isYearly = billingPeriod === 'yearly'
     switch (plan.id) {
       case 'free':
         return [
@@ -82,25 +83,42 @@ const PlanCard = ({ plan, isCurrentPlan = false, onSelectPlan }) => {
           'No AI features',
           'No advanced tools access'
         ]
-      case 'basic':
-        return [
-          '50 files per month',
+      case 'pro':
+        return isYearly ? [
+          '✨ Ad-Free Experience',
+          'Unlimited files processing',
+          '100 MB max file size',
+          '1 GB storage',
+          '500 Advanced OCR pages/year',
+          '500 AI chat messages/year',
+          '500 AI summaries/year',
+          'Access to all advanced tools'
+        ] : [
+          '✨ Ad-Free Experience',
+          'Unlimited files processing',
           '50 MB max file size',
           '500 MB storage',
-          '25 Advanced OCR pages',
-          '25 AI chat messages',
-          '25 AI summaries',
+          '50 Advanced OCR pages/month',
+          '50 AI chat messages/month',
+          '50 AI summaries/month',
           'Access to all advanced tools'
         ]
-      case 'pro':
-        return [
-          'Unlimited files per month',
+      case 'devs':
+        return isYearly ? [
+          '✨ Ad-Free Experience',
+          '20000 API requests/year',
+          'Access to all API endpoints',
           '200 MB max file size',
           'Unlimited storage',
-          'Unlimited OCR pages',
-          'Unlimited AI chat',
-          'Unlimited AI summaries',
-          'All advanced tools & settings',
+          'Unlimited OCR, AI chat & summaries',
+          'Priority support'
+        ] : [
+          '✨ Ad-Free Experience',
+          '1500 API requests/month',
+          'Access to all API endpoints',
+          '200 MB max file size',
+          'Unlimited storage',
+          'Unlimited OCR, AI chat & summaries',
           'Priority support'
         ]
       default:
@@ -110,17 +128,22 @@ const PlanCard = ({ plan, isCurrentPlan = false, onSelectPlan }) => {
 
   const planFeatures = getPlanFeatures()
 
+  const getPrice = () => {
+    if (plan.price === 0) return 0
+    return billingPeriod === 'yearly' ? (plan.priceYearly || plan.price * 12) : plan.price
+  }
+
   return (
     <Card className={`relative transition-all duration-200 hover:shadow-lg dark-card ${getPlanColor()}`}>
-      {plan.id === 'basic' && (
-        <Badge className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-purple-500 hover:bg-purple-600 text-xs sm:text-sm">
+      {plan.id === 'pro' && (
+        <Badge className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-blue-500 hover:bg-blue-600 text-xs sm:text-sm">
           Most Popular
         </Badge>
       )}
       
-      {plan.id === 'pro' && (
-        <Badge className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-blue-500 hover:bg-blue-600 text-xs sm:text-sm">
-          Best Value
+      {plan.id === 'devs' && (
+        <Badge className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-purple-500 hover:bg-purple-600 text-xs sm:text-sm">
+          API Access
         </Badge>
       )}
 
@@ -130,19 +153,19 @@ const PlanCard = ({ plan, isCurrentPlan = false, onSelectPlan }) => {
         </div>
         <CardTitle className="text-xl sm:text-2xl font-bold text-foreground">{plan.name}</CardTitle>
         <CardDescription className="text-base sm:text-lg text-card-foreground">
-          {plan.price === 0 ? (
+          {getPrice() === 0 ? (
             <span className="text-xl sm:text-2xl font-bold">Free</span>
           ) : (
             <>
-              <span className="text-2xl sm:text-3xl font-bold">₹{plan.id === 'basic' ? '99' : '499'}</span>
-              <span className="text-xs sm:text-sm text-muted-foreground">/month</span>
+              <span className="text-2xl sm:text-3xl font-bold">₹{getPrice()}</span>
+              <span className="text-xs sm:text-sm text-muted-foreground">/{billingPeriod === 'yearly' ? 'year' : 'month'}</span>
             </>
           )}
         </CardDescription>
         <p className="text-xs sm:text-sm text-muted-foreground mt-2">
           {plan.id === 'free' && 'Perfect for getting started'}
-          {plan.id === 'basic' && 'Great for regular users'}
-          {plan.id === 'pro' && 'For power users and teams'}
+          {plan.id === 'pro' && 'Great for regular users'}
+          {plan.id === 'devs' && 'For developers & API access'}
         </p>
       </CardHeader>
 

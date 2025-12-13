@@ -5,27 +5,30 @@ const SubscriptionSuccessModal = ({ isOpen, onClose, plan, details }) => {
   if (!isOpen) return null;
 
   const planName = plan?.charAt(0).toUpperCase() + plan?.slice(1);
-  const price = plan === 'basic' ? '₹99' : '₹499';
+  const price = plan === 'pro' ? '₹169' : plan === 'devs' ? '₹459' : '₹0';
   
-  const features = plan === 'basic' ? [
-    '50 files per month',
-    '50MB max file size',
-    '500MB storage',
-    '25 Advanced OCR pages',
-    '25 AI chat messages',
-    '25 AI summaries',
-    'Advanced tools access',
-    'Ad-free experience'
-  ] : [
-    'Unlimited files',
-    '200MB max file size',
+  const features = plan === 'pro' ? [
+    '✨ Ad-Free Experience',
+    'Unlimited files processing',
+    '50 MB max file size',
+    '500 MB storage',
+    '50 Advanced OCR pages/month',
+    '50 AI chat messages/month',
+    '50 AI summaries/month',
+    'Access to all advanced tools'
+  ] : plan === 'devs' ? [
+    '✨ Ad-Free Experience',
+    '1500 API requests/month',
+    'Access to all API endpoints',
+    '200 MB max file size',
     'Unlimited storage',
-    'Unlimited OCR',
-    'Unlimited AI chat',
-    'Unlimited AI summaries',
-    'All advanced tools',
-    'Priority support',
-    'API access'
+    'Unlimited OCR pages',
+    'Unlimited AI chat & summaries',
+    'Priority support'
+  ] : [
+    'Unlimited use of free tools',
+    '10 MB max file size',
+    'Supported by ads'
   ];
 
   return (

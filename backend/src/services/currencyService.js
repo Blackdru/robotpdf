@@ -184,7 +184,7 @@ class CurrencyService {
    * Get pricing information for all plans in a specific currency
    */
   getPricingForCurrency(currencyCode = 'USD') {
-    const plans = ['basic', 'pro'];
+    const plans = ['pro', 'devs'];
     const pricing = {};
 
     plans.forEach(plan => {
@@ -248,8 +248,8 @@ class CurrencyService {
   async convertCurrency(amount, fromCurrency, toCurrency) {
     // In production, use a service like exchangerate-api.com or fixer.io
     // For now, we'll use approximate rates based on our pricing
-    const fromPrice = getPlanPrice('basic', fromCurrency);
-    const toPrice = getPlanPrice('basic', toCurrency);
+    const fromPrice = getPlanPrice('pro', fromCurrency);
+    const toPrice = getPlanPrice('pro', toCurrency);
     
     if (fromPrice === 0) return amount;
     

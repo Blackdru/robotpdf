@@ -8,6 +8,7 @@ const pdfParse = require('pdf-parse');
 const fs = require('fs').promises;
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
+const enhancedPdfConversion = require('../../../services/enhancedPdfConversionService');
 
 class OfficeConversionService {
   constructor() {

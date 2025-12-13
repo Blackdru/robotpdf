@@ -10,6 +10,7 @@ import {
   Star, 
   Zap, 
   Crown,
+  Code,
   Sparkles,
   ArrowRight,
   Shield,
@@ -23,12 +24,12 @@ const Pricing = () => {
   const { user } = useAuth()
   const [billingPeriod, setBillingPeriod] = useState('monthly')
 
-  const handleSelectPlan = (planId) => {
+  const handleSelectPlan = (planId, period = 'monthly') => {
     if (!user) {
       navigate('/register')
       return
     }
-    navigate('/upgrade')
+    navigate('/upgrade', { state: { selectedPlan: planId, billingPeriod: period } })
   }
 
   // Static plan data - All prices in INR
@@ -37,6 +38,7 @@ const Pricing = () => {
       id: 'free',
       name: 'Free',
       price: 0,
+      priceYearly: 0,
       currency: 'INR',
       description: 'Perfect for getting started',
       icon: Zap,
@@ -51,47 +53,77 @@ const Pricing = () => {
       ]
     },
     {
-      id: 'basic',
-      name: 'Basic',
-      price: 99,
+      id: 'pro',
+      name: 'Pro',
+      price: 169,
+      priceYearly: 1500,
       currency: 'INR',
       description: 'Great for regular users',
       popular: true,
       icon: Star,
       gradient: 'from-blue-500 to-cyan-500',
-      features: [
+      featuresMonthly: [
         { text: '✨ Ad-Free Experience', included: true, highlight: true },
-        { text: '50 files per month', included: true },
+        { text: 'Unlimited files processing', included: true },
         { text: '50 MB max file size', included: true },
         { text: '500 MB storage', included: true },
-        { text: '25 Advanced OCR pages', included: true },
-        { text: '25 AI chat messages', included: true },
-        { text: '25 AI summaries', included: true },
+        { text: '50 Advanced OCR pages/month', included: true },
+        { text: '50 AI chat messages/month', included: true },
+        { text: '50 AI summaries/month', included: true },
+        { text: 'Access to all advanced tools', included: true }
+      ],
+      featuresYearly: [
+        { text: '✨ Ad-Free Experience', included: true, highlight: true },
+        { text: 'Unlimited files processing', included: true },
+        { text: '100 MB max file size', included: true, highlight: true },
+        { text: '1 GB storage', included: true, highlight: true },
+        { text: '500 Advanced OCR pages/year', included: true },
+        { text: '500 AI chat messages/year', included: true },
+        { text: '500 AI summaries/year', included: true },
         { text: 'Access to all advanced tools', included: true }
       ]
     },
     {
-      id: 'pro',
-      name: 'Pro',
-      price: 499,
+      id: 'devs',
+      name: 'Devs',
+      price: 459,
+      priceYearly: 5000,
       currency: 'INR',
-      description: 'For power users and teams',
+      description: 'For developers & API access',
       bestValue: true,
-      icon: Crown,
+      icon: Code,
       gradient: 'from-purple-500 to-indigo-500',
-      features: [
+      featuresMonthly: [
         { text: '✨ Ad-Free Experience', included: true, highlight: true },
-        { text: 'Unlimited files per month', included: true, highlight: true },
+        { text: '1500 API requests/month', included: true, highlight: true },
+        { text: 'Access to all API endpoints', included: true },
         { text: '200 MB max file size', included: true },
-        { text: 'Unlimited storage', included: true, highlight: true },
+        { text: 'Unlimited storage', included: true },
         { text: 'Unlimited OCR pages', included: true },
-        { text: 'Unlimited AI chat', included: true },
-        { text: 'Unlimited AI summaries', included: true },
-        { text: 'All advanced tools & settings', included: true },
+        { text: 'Unlimited AI chat & summaries', included: true },
+        { text: 'Priority support', included: true, highlight: true }
+      ],
+      featuresYearly: [
+        { text: '✨ Ad-Free Experience', included: true, highlight: true },
+        { text: '20000 API requests/year', included: true, highlight: true },
+        { text: 'Access to all API endpoints', included: true },
+        { text: '200 MB max file size', included: true },
+        { text: 'Unlimited storage', included: true },
+        { text: 'Unlimited OCR pages', included: true },
+        { text: 'Unlimited AI chat & summaries', included: true },
         { text: 'Priority support', included: true, highlight: true }
       ]
     }
   ]
+
+  const getFeatures = (plan) => {
+    if (plan.id === 'free') return plan.features
+    return billingPeriod === 'yearly' ? plan.featuresYearly : plan.featuresMonthly
+  }
+
+  const getPrice = (plan) => {
+    return billingPeriod === 'yearly' ? plan.priceYearly : plan.price
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50">
@@ -114,6 +146,49 @@ const Pricing = () => {
           <p className="text-lg text-slate-600 max-w-2xl mx-auto">
             Start free and upgrade as you grow. All plans include core features with flexible limits.
           </p>
+
+          {/* Billing Period Toggle */}
+          <div className="flex items-center justify-center gap-4 mt-8">
+            <button
+              type="button"
+              onClick={() => setBillingPeriod('monthly')}
+              className={`text-sm font-medium cursor-pointer px-3 py-1 rounded-lg transition-colors ${
+                billingPeriod === 'monthly' 
+                  ? 'text-slate-900 bg-slate-100' 
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              Monthly
+            </button>
+            <button
+              type="button"
+              onClick={() => setBillingPeriod(billingPeriod === 'monthly' ? 'yearly' : 'monthly')}
+              className={`relative w-14 h-7 rounded-full transition-colors cursor-pointer ${
+                billingPeriod === 'yearly' ? 'bg-purple-500' : 'bg-slate-300'
+              }`}
+              aria-label="Toggle billing period"
+            >
+              <span
+                className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-200 ${
+                  billingPeriod === 'yearly' ? 'translate-x-8' : 'translate-x-1'
+                }`}
+              />
+            </button>
+            <button
+              type="button"
+              onClick={() => setBillingPeriod('yearly')}
+              className={`text-sm font-medium cursor-pointer px-3 py-1 rounded-lg transition-colors ${
+                billingPeriod === 'yearly' 
+                  ? 'text-slate-900 bg-slate-100' 
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              Yearly
+            </button>
+            {billingPeriod === 'yearly' && (
+              <Badge className="bg-green-100 text-green-700 text-xs">Save up to 26%</Badge>
+            )}
+          </div>
         </div>
 
         {/* Plan Cards */}
@@ -153,10 +228,10 @@ const Pricing = () => {
                 </CardDescription>
                 <div className="mt-6">
                   <span className="text-5xl font-bold text-slate-900">
-                    {plan.price === 0 ? 'Free' : `₹${plan.price}`}
+                    {getPrice(plan) === 0 ? 'Free' : `₹${getPrice(plan)}`}
                   </span>
-                  {plan.price !== 0 && (
-                    <span className="text-slate-500 ml-2">/month</span>
+                  {getPrice(plan) !== 0 && (
+                    <span className="text-slate-500 ml-2">/{billingPeriod === 'yearly' ? 'year' : 'month'}</span>
                   )}
                 </div>
               </CardHeader>
@@ -164,7 +239,7 @@ const Pricing = () => {
               <CardContent>
                 {/* Features */}
                 <div className="space-y-3 mb-8">
-                  {plan.features.map((feature, index) => (
+                  {getFeatures(plan).map((feature, index) => (
                     <div key={index} className="flex items-start">
                       {feature.included ? (
                         <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mr-3 mt-0.5 ${
@@ -190,7 +265,7 @@ const Pricing = () => {
 
                 {/* CTA Button */}
                 <Button
-                  onClick={() => handleSelectPlan(plan.id)}
+                  onClick={() => handleSelectPlan(plan.id, billingPeriod)}
                   className={`w-full rounded-xl py-3 font-semibold transition-all ${
                     plan.id === 'free' 
                       ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -232,31 +307,32 @@ const Pricing = () => {
                   </th>
                   <th className="text-center px-6 py-4 text-sm font-semibold text-slate-900">
                     <div className="flex items-center justify-center gap-2">
-                      Basic
+                      Pro
                       <Badge className="bg-blue-100 text-blue-700 text-xs">Popular</Badge>
                     </div>
                   </th>
                   <th className="text-center px-6 py-4 text-sm font-semibold text-slate-900">
                     <div className="flex items-center justify-center gap-2">
-                      Pro
-                      <Badge className="bg-purple-100 text-purple-700 text-xs">Best</Badge>
+                      Devs
+                      <Badge className="bg-purple-100 text-purple-700 text-xs">API</Badge>
                     </div>
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {[
-                  { feature: 'Monthly Price', free: 'Free', basic: '₹99', pro: '₹499' },
-                  { feature: 'Advertisements', free: '✓ Ads shown', basic: '✨ Ad-Free', pro: '✨ Ad-Free', highlight: true },
-                  { feature: 'Files per month', free: 'Unlimited', basic: '50', pro: 'Unlimited' },
-                  { feature: 'Max file size', free: '10 MB', basic: '50 MB', pro: '200 MB' },
-                  { feature: 'Cloud storage', free: '-', basic: '500 MB', pro: 'Unlimited' },
-                  { feature: 'OCR pages', free: '-', basic: '25/month', pro: 'Unlimited' },
-                  { feature: 'AI Chat', free: '-', basic: '25 messages', pro: 'Unlimited' },
-                  { feature: 'AI Summaries', free: '-', basic: '25/month', pro: 'Unlimited' },
-                  { feature: 'Advanced tools', free: '-', basic: '✓', pro: '✓' },
-                  { feature: 'Priority support', free: '-', basic: '-', pro: '✓' },
-                  { feature: 'API Access', free: '-', basic: 'Limited', pro: 'Full access' },
+                  { feature: 'Monthly Price', free: 'Free', pro: '₹169', devs: '₹459' },
+                  { feature: 'Yearly Price', free: 'Free', pro: '₹1,500', devs: '₹5,000' },
+                  { feature: 'Advertisements', free: '✓ Ads shown', pro: '✨ Ad-Free', devs: '✨ Ad-Free', highlight: true },
+                  { feature: 'Files processing', free: 'Unlimited', pro: 'Unlimited', devs: 'Unlimited' },
+                  { feature: 'Max file size', free: '10 MB', pro: '50-100 MB', devs: '200 MB' },
+                  { feature: 'Cloud storage', free: '-', pro: '500MB-1GB', devs: 'Unlimited' },
+                  { feature: 'OCR pages', free: '-', pro: '50-500', devs: 'Unlimited' },
+                  { feature: 'AI Chat', free: '-', pro: '50-500 msg', devs: 'Unlimited' },
+                  { feature: 'AI Summaries', free: '-', pro: '50-500', devs: 'Unlimited' },
+                  { feature: 'Advanced tools', free: '-', pro: '✓', devs: '✓' },
+                  { feature: 'Priority support', free: '-', pro: '-', devs: '✓' },
+                  { feature: 'API Access', free: '-', pro: '-', devs: '1500-20000 req' },
                 ].map((row, index) => (
                   <tr key={index} className={`border-b border-gray-100 ${index % 2 === 0 ? 'bg-gray-50/50' : ''}`}>
                     <td className="px-6 py-4 text-sm font-medium text-slate-700">
@@ -272,21 +348,21 @@ const Pricing = () => {
                       )}
                     </td>
                     <td className={`text-center px-6 py-4 text-sm ${row.highlight ? 'font-semibold text-blue-600' : 'text-slate-600'}`}>
-                      {row.basic === '✓' ? (
-                        <Check className="h-5 w-5 text-green-500 mx-auto" />
-                      ) : row.basic === '-' ? (
-                        <X className="h-5 w-5 text-gray-300 mx-auto" />
-                      ) : (
-                        row.basic
-                      )}
-                    </td>
-                    <td className={`text-center px-6 py-4 text-sm ${row.highlight ? 'font-semibold text-purple-600' : 'text-slate-600'}`}>
                       {row.pro === '✓' ? (
                         <Check className="h-5 w-5 text-green-500 mx-auto" />
                       ) : row.pro === '-' ? (
                         <X className="h-5 w-5 text-gray-300 mx-auto" />
                       ) : (
                         row.pro
+                      )}
+                    </td>
+                    <td className={`text-center px-6 py-4 text-sm ${row.highlight ? 'font-semibold text-purple-600' : 'text-slate-600'}`}>
+                      {row.devs === '✓' ? (
+                        <Check className="h-5 w-5 text-green-500 mx-auto" />
+                      ) : row.devs === '-' ? (
+                        <X className="h-5 w-5 text-gray-300 mx-auto" />
+                      ) : (
+                        row.devs
                       )}
                     </td>
                   </tr>

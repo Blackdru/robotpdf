@@ -239,7 +239,7 @@ const sendSubscriptionUpgradeEmail = async (email, name, plan, details) => {
   try {
     const transporter = createTransporter();
     const planName = plan.charAt(0).toUpperCase() + plan.slice(1);
-    const price = plan === 'basic' ? '₹99' : '₹499';
+    const price = plan === 'pro' ? '₹169' : plan === 'devs' ? '₹459' : '₹0';
 
     const html = `
       <!DOCTYPE html>
@@ -275,25 +275,26 @@ const sendSubscriptionUpgradeEmail = async (email, name, plan, details) => {
             
             <h3>Your ${planName} Features:</h3>
             <div>
-              ${plan === 'basic' ? `
-                <div class="feature">✓ 50 files per month</div>
-                <div class="feature">✓ 50MB max file size</div>
-                <div class="feature">✓ 500MB storage</div>
-                <div class="feature">✓ 25 Advanced OCR pages</div>
-                <div class="feature">✓ 25 AI chat messages</div>
-                <div class="feature">✓ 25 AI summaries</div>
-                <div class="feature">✓ Advanced tools access</div>
-                <div class="feature">✓ Ad-free experience</div>
-              ` : `
-                <div class="feature">✓ Unlimited files</div>
-                <div class="feature">✓ 200MB max file size</div>
+              ${plan === 'pro' ? `
+                <div class="feature">✓ Ad-Free Experience</div>
+                <div class="feature">✓ Unlimited files processing</div>
+                <div class="feature">✓ 50 MB max file size</div>
+                <div class="feature">✓ 500 MB storage</div>
+                <div class="feature">✓ 50 Advanced OCR pages/month</div>
+                <div class="feature">✓ 50 AI chat messages/month</div>
+                <div class="feature">✓ 50 AI summaries/month</div>
+                <div class="feature">✓ Access to all advanced tools</div>
+              ` : plan === 'devs' ? `
+                <div class="feature">✓ Ad-Free Experience</div>
+                <div class="feature">✓ 1500 API requests/month</div>
+                <div class="feature">✓ Access to all API endpoints</div>
+                <div class="feature">✓ 200 MB max file size</div>
                 <div class="feature">✓ Unlimited storage</div>
-                <div class="feature">✓ Unlimited OCR</div>
-                <div class="feature">✓ Unlimited AI chat</div>
-                <div class="feature">✓ Unlimited AI summaries</div>
-                <div class="feature">✓ All advanced tools</div>
+                <div class="feature">✓ Unlimited OCR, AI chat & summaries</div>
                 <div class="feature">✓ Priority support</div>
-                <div class="feature">✓ API access</div>
+              ` : `
+                <div class="feature">✓ Unlimited use of free tools</div>
+                <div class="feature">✓ 10 MB max file size</div>
               `}
             </div>
             

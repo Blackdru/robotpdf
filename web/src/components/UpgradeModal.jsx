@@ -32,10 +32,10 @@ const UpgradeModal = ({ isOpen, onClose, requiredPlan = 'pro', toolName = '', to
 
   const getPlanIcon = (planId) => {
     switch (planId) {
-      case 'basic':
-        return <Zap className="h-6 w-6 text-purple-500" />
       case 'pro':
-        return <Crown className="h-6 w-6 text-blue-500" />
+        return <Star className="h-6 w-6 text-blue-500" />
+      case 'devs':
+        return <Crown className="h-6 w-6 text-purple-500" />
       default:
         return <Star className="h-6 w-6 text-blue-500" />
     }
@@ -43,10 +43,10 @@ const UpgradeModal = ({ isOpen, onClose, requiredPlan = 'pro', toolName = '', to
 
   const getPlanColor = (planId) => {
     switch (planId) {
-      case 'basic':
-        return 'from-purple-500 to-pink-500'
       case 'pro':
-        return 'from-blue-500 to-indigo-500'
+        return 'from-blue-500 to-cyan-500'
+      case 'devs':
+        return 'from-purple-500 to-indigo-500'
       default:
         return 'from-blue-500 to-purple-500'
     }
@@ -56,16 +56,16 @@ const UpgradeModal = ({ isOpen, onClose, requiredPlan = 'pro', toolName = '', to
     // Always use hardcoded plans with correct pricing
     return [
       {
-        id: 'basic',
-        name: 'Basic',
-        price: 99,
-        features: ['50 files/month', '25 OCR pages', '25 AI chat messages', '25 AI summaries', 'All advanced tools']
-      },
-      {
         id: 'pro',
         name: 'Pro',
-        price: 499,
-        features: ['Unlimited files', 'Unlimited OCR', 'Unlimited AI chat', 'Unlimited AI summaries', 'All advanced tools & settings', 'Priority support']
+        price: 169,
+        features: ['✨ Ad-Free Experience', 'Unlimited files processing', '50 MB max file size', '500 MB storage', '50 OCR/Chat/Summaries per month', 'All advanced tools']
+      },
+      {
+        id: 'devs',
+        name: 'Devs',
+        price: 459,
+        features: ['✨ Ad-Free Experience', '1500 API requests/month', 'Access to all API endpoints', '200 MB max file size', 'Unlimited storage & AI', 'Priority support']
       }
     ]
   }
@@ -118,20 +118,20 @@ const UpgradeModal = ({ isOpen, onClose, requiredPlan = 'pro', toolName = '', to
               <div
                 key={plan.id}
                 className={`relative bg-elevated rounded-xl border-2 transition-all duration-300 hover:scale-[1.02] hover:shadow-xl ${
-                  plan.id === 'basic' 
+                  plan.id === 'pro' 
                     ? 'border-blue-500/20 hover:border-blue-500/40' 
                     : 'border-purple-500/20 hover:border-purple-500/40'
                 }`}
               >
-                {plan.id === 'basic' && (
+                {plan.id === 'pro' && (
                   <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-3 py-1 text-xs font-semibold shadow-md">
                     Most Popular
                   </Badge>
                 )}
                 
-                {plan.id === 'pro' && (
+                {plan.id === 'devs' && (
                   <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white px-3 py-1 text-xs font-semibold shadow-md">
-                    Best Value
+                    For Developers
                   </Badge>
                 )}
 
@@ -139,11 +139,11 @@ const UpgradeModal = ({ isOpen, onClose, requiredPlan = 'pro', toolName = '', to
                   {/* Icon */}
                   <div className="flex justify-center mb-3 sm:mb-4">
                     <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center ${
-                      plan.id === 'basic' 
+                      plan.id === 'pro' 
                         ? 'bg-gradient-to-br from-blue-500 to-cyan-500' 
                         : 'bg-gradient-to-br from-purple-500 to-indigo-500'
                     }`}>
-                      {plan.id === 'basic' ? <Zap className="h-6 w-6 sm:h-7 sm:w-7 text-white" /> : <Crown className="h-6 w-6 sm:h-7 sm:w-7 text-white" />}
+                      {plan.id === 'pro' ? <Star className="h-6 w-6 sm:h-7 sm:w-7 text-white" /> : <Crown className="h-6 w-6 sm:h-7 sm:w-7 text-white" />}
                     </div>
                   </div>
 
@@ -155,13 +155,13 @@ const UpgradeModal = ({ isOpen, onClose, requiredPlan = 'pro', toolName = '', to
                       <span className="text-xs sm:text-sm text-muted-foreground font-medium">/month</span>
                     </div>
                     <p className="text-muted-foreground text-xs sm:text-sm">
-                      {plan.id === 'basic' ? 'Perfect for regular users' : 'For power users and teams'}
+                      {plan.id === 'pro' ? 'Perfect for regular users' : 'For developers & API access'}
                     </p>
                   </div>
 
                   {/* Features */}
                   <div className="space-y-2 sm:space-y-2.5 mb-4 sm:mb-6">
-                    {(plan.features || []).slice(0, plan.id === 'basic' ? 5 : 6).map((feature, index) => (
+                    {(plan.features || []).slice(0, 6).map((feature, index) => (
                       <div key={index} className="flex items-center text-xs sm:text-sm text-muted-foreground">
                         <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0 mr-2 sm:mr-3">
                           <Check className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-green-500" />
@@ -176,7 +176,7 @@ const UpgradeModal = ({ isOpen, onClose, requiredPlan = 'pro', toolName = '', to
                     onClick={() => handleUpgrade(plan.id)}
                     disabled={loading}
                     className={`w-full text-white hover:shadow-lg transition-all duration-200 py-2 sm:py-2.5 font-semibold rounded-xl text-sm ${
-                      plan.id === 'basic' 
+                      plan.id === 'pro' 
                         ? 'bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600' 
                         : 'bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600'
                     }`}

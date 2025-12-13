@@ -18,11 +18,15 @@ async function setupRazorpayPlans() {
     const plans = await razorpayService.createPlans();
     
     console.log('✅ Razorpay plans created successfully!\n');
-    console.log('Basic Plan ID:', plans.basicPlan.id);
-    console.log('Pro Plan ID:', plans.proPlan.id);
+    console.log('Pro Monthly Plan ID:', plans.proMonthlyPlan.id);
+    console.log('Pro Yearly Plan ID:', plans.proYearlyPlan.id);
+    console.log('Devs Monthly Plan ID:', plans.devsMonthlyPlan.id);
+    console.log('Devs Yearly Plan ID:', plans.devsYearlyPlan.id);
     console.log('\nAdd these to your .env file:');
-    console.log(`RAZORPAY_PLAN_BASIC=${plans.basicPlan.id}`);
-    console.log(`RAZORPAY_PLAN_PRO=${plans.proPlan.id}`);
+    console.log(`RAZORPAY_PLAN_PRO=${plans.proMonthlyPlan.id}`);
+    console.log(`RAZORPAY_PLAN_PRO_YEARLY=${plans.proYearlyPlan.id}`);
+    console.log(`RAZORPAY_PLAN_DEVS=${plans.devsMonthlyPlan.id}`);
+    console.log(`RAZORPAY_PLAN_DEVS_YEARLY=${plans.devsYearlyPlan.id}`);
     
     return plans;
   } catch (error) {
@@ -38,11 +42,11 @@ async function setupPayPalPlans() {
     const plans = await paypalService.createPlans();
     
     console.log('✅ PayPal plans created successfully!\n');
-    console.log('Basic Plan ID:', plans.basicPlan.id);
     console.log('Pro Plan ID:', plans.proPlan.id);
+    console.log('Devs Plan ID:', plans.devsPlan.id);
     console.log('\nAdd these to your .env file:');
-    console.log(`PAYPAL_PLAN_BASIC=${plans.basicPlan.id}`);
     console.log(`PAYPAL_PLAN_PRO=${plans.proPlan.id}`);
+    console.log(`PAYPAL_PLAN_DEVS=${plans.devsPlan.id}`);
     
     return plans;
   } catch (error) {
@@ -94,11 +98,13 @@ async function main() {
     console.log('\n✅ All payment plans created successfully!\n');
     console.log('=== Summary ===\n');
     console.log('Razorpay Plans:');
-    console.log(`  Basic: ${razorpayPlans.basicPlan.id} (₹83/month)`);
-    console.log(`  Pro: ${razorpayPlans.proPlan.id} (₹830/month)`);
+    console.log(`  Pro Monthly: ${razorpayPlans.proMonthlyPlan.id} (₹169/month)`);
+    console.log(`  Pro Yearly: ${razorpayPlans.proYearlyPlan.id} (₹1500/year)`);
+    console.log(`  Devs Monthly: ${razorpayPlans.devsMonthlyPlan.id} (₹459/month)`);
+    console.log(`  Devs Yearly: ${razorpayPlans.devsYearlyPlan.id} (₹5000/year)`);
     console.log('\nPayPal Plans:');
-    console.log(`  Basic: ${paypalPlans.basicPlan.id} ($1/month)`);
-    console.log(`  Pro: ${paypalPlans.proPlan.id} ($10/month)`);
+    console.log(`  Pro: ${paypalPlans.proPlan.id} ($2/month)`);
+    console.log(`  Devs: ${paypalPlans.devsPlan.id} ($6/month)`);
     console.log('\n📝 Next Steps:');
     console.log('1. Copy the plan IDs above to your .env file');
     console.log('2. Configure webhooks in Razorpay and PayPal dashboards');
