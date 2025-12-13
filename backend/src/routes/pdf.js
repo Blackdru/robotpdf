@@ -927,6 +927,42 @@ router.post('/simple-convert', optionalAuth, async (req, res) => {
   }
 });
 
+// Check PDF to Word conversion service status (pdf2docx availability)
+router.get('/conversion-status', async (req, res) => {
+  try {
+    const pdf2docxService = require('../services/pdf2docxService');
+    // Force a fresh check to ensure accurate status
+    const status = await pdf2docxService.checkAvailability(true);
+    
+    res.json({
+      pdf2docx: {
+        available: status.available,
+        reason: status.reason || null,
+        pythonCommand: status.pythonCommand || null,
+        description: status.available 
+          ? 'PDF to Word conversion with exact format preservation is available'
+          : 'PDF to Word will use basic text extraction (install pdf2docx for better results)'
+      },
+      basicConversion: {
+        available: true,
+        description: 'Basic PDF to Word conversion using text extraction'
+      }
+    });
+  } catch (error) {
+    res.json({
+      pdf2docx: {
+        available: false,
+        reason: error.message,
+        description: 'PDF to Word will use basic text extraction'
+      },
+      basicConversion: {
+        available: true,
+        description: 'Basic PDF to Word conversion using text extraction'
+      }
+    });
+  }
+});
+
 // Convert direct text input to PDF with advanced options
 router.post('/convert/direct-text-to-pdf', optionalAuth, async (req, res) => {
   try {

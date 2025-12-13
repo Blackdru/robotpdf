@@ -1585,10 +1585,32 @@ class AdvancedPdfService {
       const pdfBytes = await sourcePdf.save();
       const pdfBuffer = Buffer.from(pdfBytes);
       
+      // Pass all options to the conversion service
+      const conversionOptions = {
+        pageRange,
+        startPage: pagesToConvert.length > 0 ? pagesToConvert[0] : 0,
+        endPage: pagesToConvert.length > 0 ? pagesToConvert[pagesToConvert.length - 1] + 1 : null,
+        preserveFormatting,
+        preserveImages,
+        preserveTables,
+        preserveHyperlinks,
+        preserveHeaders,
+        preserveBookmarks,
+        detectTables,
+        detectColumns,
+        preserveFonts,
+        preserveColors,
+        createTOC,
+        imageQuality,
+        conversionQuality,
+        ocrLanguage
+      };
+      
       const convertedBuffer = await officeConversionService.convertPdfToOffice(
         pdfBuffer,
         outputFormat.toLowerCase(),
-        file.filename
+        file.filename,
+        conversionOptions
       );
       
       const mimeType = officeConversionService.getMimeType(outputFormat.toLowerCase());

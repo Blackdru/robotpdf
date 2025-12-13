@@ -8,7 +8,6 @@ const pdfParse = require('pdf-parse');
 const fs = require('fs').promises;
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
-const enhancedPdfConversion = require('../../../services/enhancedPdfConversionService');
 
 class OfficeConversionService {
   constructor() {
@@ -292,10 +291,25 @@ class OfficeConversionService {
   }
 
   // PDF to Office - Convert PDF to Word, Excel, PowerPoint
-  async convertPdfToOffice(buffer, outputFormat, filename) {
+  async convertPdfToOffice(buffer, outputFormat, filename, options = {}) {
     console.log(`Converting PDF to ${outputFormat}...`);
+    console.log('[officeConversion] Options received:', JSON.stringify(options));
 
     try {
+      // For Word conversion, try pdf2docx first for exact format preservation
+      if (outputFormat === 'docx' || outputFormat === 'doc') {
+        try {
+          const pdf2docxService = require('./pdf2docxService');
+          console.log('[officeConversion] Attempting pdf2docx conversion for exact format preservation...');
+          const wordBuffer = await pdf2docxService.convertPdfToWord(buffer, filename, options);
+          console.log('[officeConversion] pdf2docx conversion successful!');
+          return wordBuffer;
+        } catch (pdf2docxError) {
+          console.warn('[officeConversion] pdf2docx failed, falling back to basic conversion:', pdf2docxError.message);
+          // Fall through to basic conversion
+        }
+      }
+
       let text = '';
       let pageCount = 1;
 
