@@ -57,16 +57,30 @@ const Footer = () => {
             </div>
           </div>
 
-          {/* Developers */}
+          {/* Popular Tools */}
           <div>
-            <h3 className="text-slate-900 font-semibold mb-4">Developers</h3>
+            <h3 className="text-slate-900 font-semibold mb-4">Popular Tools</h3>
             <div className="space-y-3">
+              <Link
+                to="/pdf-to-excel"
+                className="flex items-center text-slate-600 hover:text-emerald-600 transition-colors text-sm"
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                PDF to Excel
+              </Link>
+              <Link
+                to="/ai-enhanced-ocr-pdf"
+                className="flex items-center text-slate-600 hover:text-indigo-600 transition-colors text-sm"
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                AI OCR
+              </Link>
               <Link
                 to="/developers/docs"
                 className="flex items-center text-slate-600 hover:text-indigo-600 transition-colors text-sm"
               >
                 <Book className="h-4 w-4 mr-2" />
-                API Documentation
+                API Docs
               </Link>
             </div>
           </div>

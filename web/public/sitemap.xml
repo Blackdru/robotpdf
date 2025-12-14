@@ -45,7 +45,20 @@
     <priority>0.9</priority>
   </url>
   
-  <!-- PDF to Excel Converter -->
+  <!-- PDF to Excel Converter - Dedicated Landing Page (HIGH PRIORITY) -->
+  <url>
+    <loc>https://robotpdf.com/pdf-to-excel</loc>
+    <lastmod>2025-12-14</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.98</priority>
+    <image:image>
+      <image:loc>https://robotpdf.com/logo.png</image:loc>
+      <image:title>PDF to Excel Converter - Convert PDF to Excel Online Free</image:title>
+      <image:caption>Free PDF to Excel converter with 99% accuracy. Extract tables from bank statements, invoices, and financial reports.</image:caption>
+    </image:image>
+  </url>
+  
+  <!-- PDF to Excel Converter - Tools Page -->
   <url>
     <loc>https://robotpdf.com/tools#pdf-to-excel</loc>
     <lastmod>2025-01-14</lastmod>

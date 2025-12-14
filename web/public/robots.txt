@@ -7,6 +7,7 @@ Allow: /
 # Public tool pages - High priority for SEO
 Allow: /tools
 Allow: /advanced-tools
+Allow: /pdf-to-excel
 Allow: /ai-enhanced-ocr-pdf
 Allow: /ai-chat-with-pdf
 Allow: /ai-smart-summary
@@ -15,6 +16,9 @@ Allow: /pricing
 Allow: /developers
 Allow: /developers/docs
 Allow: /contact
+
+# PDF to Excel - Priority landing page
+# Convert PDF to Excel online free, bank statement converter, invoice to spreadsheet
 
 # Disallow authenticated-only areas
 Disallow: /dashboard
@@ -46,4 +50,6 @@ Sitemap: https://robotpdf.com/sitemap.xml
 # compress PDF, convert PDF, PDF to Word, PDF to Word converter, PDF to Excel, PDF to JPG, 
 # Word to PDF, Word to PDF converter, img to pdf, jpg to pdf converter, jpeg pdf, PDF OCR, 
 # chat with PDF, AI document processing, PDF converter, edit PDF online, PDF reader AI, 
-# pdf editor, ilovepdf, ilove pdf, mergepdf, combine pdf, adobe acrobat, adobe reader
+# pdf editor, ilovepdf, ilove pdf, mergepdf, combine pdf, adobe acrobat, adobe reader,
+# pdf to excel converter, convert pdf to excel, pdf to xlsx, bank statement to excel,
+# extract tables from pdf, pdf table extractor, invoice to excel, financial pdf converter

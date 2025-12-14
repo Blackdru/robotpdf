@@ -32,6 +32,12 @@ const saveProcessedFile = async (userId, buffer, filename, mimetype, isAnonymous
   const userFolder = userId || 'anonymous';
   const filePath = `${userFolder}/processed/${Date.now()}-${filename}`;
 
+  console.log(`[saveProcessedFile] Saving file: ${filename}, path: ${filePath}, size: ${buffer?.length || 0} bytes`);
+
+  if (!buffer || buffer.length === 0) {
+    throw new Error('Cannot save empty file buffer');
+  }
+
   // Upload to storage with retry logic
   let uploadData, uploadError;
   for (let attempt = 1; attempt <= 3; attempt++) {
@@ -45,7 +51,10 @@ const saveProcessedFile = async (userId, buffer, filename, mimetype, isAnonymous
     uploadData = result.data;
     uploadError = result.error;
     
-    if (!uploadError) break;
+    if (!uploadError) {
+      console.log(`[saveProcessedFile] Upload successful on attempt ${attempt}, path: ${uploadData?.path}`);
+      break;
+    }
     
     console.log(`Upload attempt ${attempt} failed:`, uploadError.message);
     if (attempt < 3) {
@@ -58,6 +67,10 @@ const saveProcessedFile = async (userId, buffer, filename, mimetype, isAnonymous
     throw new Error(`Failed to save processed file after 3 attempts: ${uploadError.message}`);
   }
 
+  // Use the path returned by storage (uploadData.path) which is the actual storage path
+  const storagePath = uploadData.path || filePath;
+  console.log(`[saveProcessedFile] Storage path: ${storagePath}`);
+
   // Save metadata to database
   const { data: fileData, error: dbError } = await supabaseAdmin
     .from('files')
@@ -65,7 +78,7 @@ const saveProcessedFile = async (userId, buffer, filename, mimetype, isAnonymous
       {
         user_id: userId || null,
         filename: filename,
-        path: uploadData.path,
+        path: storagePath,
         type: mimetype,
         size: buffer.length,
         is_anonymous: isAnonymous,
@@ -77,10 +90,11 @@ const saveProcessedFile = async (userId, buffer, filename, mimetype, isAnonymous
 
   if (dbError) {
     // Clean up uploaded file if database insert fails
-    await supabaseAdmin.storage.from('files').remove([uploadData.path]);
+    await supabaseAdmin.storage.from('files').remove([storagePath]);
     throw new Error(`Database error: ${dbError.message}`);
   }
 
+  console.log(`[saveProcessedFile] File saved successfully with ID: ${fileData.id}`);
   return fileData;
 };
 
@@ -898,6 +912,13 @@ router.post('/simple-convert', optionalAuth, async (req, res) => {
       throw new Error(`Failed to convert file: ${error.message}`);
     }
 
+    // Verify converted buffer is valid
+    if (!convertedBuffer || convertedBuffer.length === 0) {
+      throw new Error('Conversion produced empty file');
+    }
+    
+    console.log(`[simple-convert] Converted buffer size: ${convertedBuffer.length} bytes`);
+
     // Save converted file
     const savedFile = await saveProcessedFile(
       req.user?.id || null,
@@ -907,12 +928,15 @@ router.post('/simple-convert', optionalAuth, async (req, res) => {
       isAnonymous
     );
 
+    // Small delay to ensure storage is synced
+    await new Promise(resolve => setTimeout(resolve, 500));
+
     // Log operation (only for authenticated users)
     if (req.user) {
       await logOperation(req.user.id, savedFile.id, conversionType);
     }
 
-    console.log('Simple convert completed successfully:', savedFile.id);
+    console.log('Simple convert completed successfully:', savedFile.id, 'path:', savedFile.path);
 
     res.json({
       message: `File converted successfully to ${outputFormat.toUpperCase()}`,

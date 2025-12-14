@@ -17,16 +17,28 @@ const ProcessingModal = ({
   onCancel = null
 }) => {
   const [elapsedTime, setElapsedTime] = useState(0)
-  const [startTime] = useState(Date.now())
+  const [startTime, setStartTime] = useState(null)
 
+  // Reset timer when modal opens
   useEffect(() => {
-    if (!isOpen) {
+    if (isOpen) {
+      setStartTime(Date.now())
       setElapsedTime(0)
+    } else {
+      setStartTime(null)
+      setElapsedTime(0)
+    }
+  }, [isOpen])
+
+  // Update elapsed time every second
+  useEffect(() => {
+    if (!isOpen || !startTime) {
       return
     }
 
     const interval = setInterval(() => {
-      setElapsedTime(Math.floor((Date.now() - startTime) / 1000))
+      const elapsed = Math.floor((Date.now() - startTime) / 1000)
+      setElapsedTime(elapsed)
     }, 1000)
 
     return () => clearInterval(interval)
@@ -39,8 +51,12 @@ const ProcessingModal = ({
   const isWarning = stage?.toLowerCase().includes('warning')
 
   const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
+    if (seconds === null || seconds === undefined || isNaN(seconds) || seconds < 0) {
+      return '0:00'
+    }
+    const totalSeconds = Math.floor(seconds)
+    const mins = Math.floor(totalSeconds / 60)
+    const secs = totalSeconds % 60
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
@@ -103,9 +119,9 @@ const ProcessingModal = ({
               <Clock className="h-3 w-3" />
               <span>{formatTime(elapsedTime)}</span>
             </div>
-            {estimatedTime && !isCompleted && (
+            {estimatedTime && estimatedTime > 0 && !isCompleted && (
               <div className="px-2 py-1 rounded-full bg-white border border-gray-200">
-                <span>ETA: {formatTime(Math.max(0, estimatedTime - elapsedTime))}</span>
+                <span>ETA: {estimatedTime > elapsedTime ? formatTime(estimatedTime - elapsedTime) : 'Almost done...'}</span>
               </div>
             )}
           </div>

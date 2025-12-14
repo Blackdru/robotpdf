@@ -82,13 +82,42 @@ class OfficeConversionService {
   async excelToPdf(buffer, filename) {
     console.log('Converting Excel spreadsheet to PDF...');
 
+    // Detect orientation from Excel file
+    let detectedOrientation = 'auto';
+    try {
+      const ExcelJS = require('exceljs');
+      const tempWorkbook = new ExcelJS.Workbook();
+      await tempWorkbook.xlsx.load(buffer);
+      
+      // Check first sheet for orientation hints
+      const firstSheet = tempWorkbook.worksheets[0];
+      if (firstSheet) {
+        // Check page setup orientation
+        if (firstSheet.pageSetup && firstSheet.pageSetup.orientation) {
+          detectedOrientation = firstSheet.pageSetup.orientation;
+          console.log(`[officeConversion] Detected Excel orientation: ${detectedOrientation}`);
+        }
+        
+        // Also check column count - if many columns, prefer landscape
+        const colCount = firstSheet.columnCount || 0;
+        if (colCount > 6 && detectedOrientation === 'auto') {
+          detectedOrientation = 'landscape';
+          console.log(`[officeConversion] Auto-detected landscape due to ${colCount} columns`);
+        }
+      }
+    } catch (detectError) {
+      console.warn('[officeConversion] Could not detect Excel orientation:', detectError.message);
+    }
+
     // Try Python-based conversion first for better formatting
     try {
       const excelPdfService = require('./excelPdfService');
       const status = await excelPdfService.checkAvailability();
       if (status.available) {
         console.log('[officeConversion] Using Python-based Excel to PDF conversion...');
-        const pdfBuffer = await excelPdfService.convertExcelToPdf(buffer, filename, {});
+        const pdfBuffer = await excelPdfService.convertExcelToPdf(buffer, filename, {
+          orientation: detectedOrientation
+        });
         console.log('[officeConversion] Python Excel to PDF conversion successful!');
         return pdfBuffer;
       }
@@ -102,10 +131,16 @@ class OfficeConversionService {
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.load(buffer);
       
-      // Create PDF with landscape orientation for better table display
+      // Determine layout based on detected orientation or content
+      let pdfLayout = 'landscape'; // Default to landscape for spreadsheets
+      if (detectedOrientation === 'portrait') {
+        pdfLayout = 'portrait';
+      }
+      
+      // Create PDF with appropriate orientation
       const pdfDoc = new PDFDocument({
         size: 'A4',
-        layout: 'landscape',
+        layout: pdfLayout,
         margins: { top: 40, bottom: 40, left: 40, right: 40 }
       });
 

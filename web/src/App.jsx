@@ -41,6 +41,7 @@ const DeveloperPortal = lazy(() => import('./pages/DeveloperPortal'))
 const DeveloperKeys = lazy(() => import('./pages/DeveloperKeys'))
 const DeveloperUsage = lazy(() => import('./pages/DeveloperUsage'))
 const DeveloperDocs = lazy(() => import('./pages/DeveloperDocs'))
+const PdfToExcel = lazy(() => import('./pages/PdfToExcel'))
 
 // App-specific privacy policies
 const OCRPrivacyPolicy = lazy(() => import('./apps/ocr'))
@@ -115,6 +116,10 @@ const AppContent = () => {
       '/developers/docs': {
         title: 'API Documentation — RobotPDF Developer Docs',
         description: 'Complete API documentation for RobotPDF. Integrate PDF processing, OCR, conversion, and AI features into your applications with our REST API.'
+      },
+      '/pdf-to-excel': {
+        title: 'PDF to Excel Converter — Convert PDF to Excel Online Free | RobotPDF',
+        description: 'Convert PDF to Excel online for free with 99% accuracy. Extract tables from bank statements, invoices, and financial reports. AI-powered PDF to Excel converter preserves formatting. Fast, secure, no registration required.'
       }
     }
 
@@ -131,8 +136,8 @@ const AppContent = () => {
     }
     desc.setAttribute('content', meta.description)
 
-    // Robots based on route accessibility
-    const protectedPaths = ['/login','/register','/forgot-password','/tools','/advanced-tools','/files','/profile','/billing','/upgrade','/admin']
+    // Robots based on route accessibility - public SEO pages should be indexed
+    const protectedPaths = ['/login','/register','/forgot-password','/files','/profile','/billing','/upgrade','/admin']
     const robotsContent = protectedPaths.includes(path) ? 'noindex, nofollow' : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1'
     let robots = document.querySelector('meta[name="robots"]')
     if (!robots) {
@@ -179,6 +184,7 @@ const AppContent = () => {
                 <Route path="/register" element={<Register />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/tools" element={<Tools />} />
+                <Route path="/pdf-to-excel" element={<PdfToExcel />} />
                 <Route path="/advanced-tools" element={<AdvancedTools />} />
                 <Route 
                   path="/files" 

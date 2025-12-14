@@ -481,20 +481,52 @@ class EnhancedOfficeConversionService {
       // Detect file type and use appropriate converter
       if (fileType.includes('excel') || fileType.includes('spreadsheet') || 
           fileType.includes('xlsx') || fileType.includes('xls')) {
+        
+        // Detect orientation from Excel file if not specified
+        let effectiveOrientation = orientation;
+        if (effectiveOrientation === 'auto' || !effectiveOrientation) {
+          try {
+            const ExcelJS = require('exceljs');
+            const tempWorkbook = new ExcelJS.Workbook();
+            await tempWorkbook.xlsx.load(officeBuffer);
+            
+            const firstSheet = tempWorkbook.worksheets[0];
+            if (firstSheet) {
+              // Check page setup orientation
+              if (firstSheet.pageSetup && firstSheet.pageSetup.orientation) {
+                effectiveOrientation = firstSheet.pageSetup.orientation;
+                console.log(`[enhancedOfficeConversion] Detected Excel orientation: ${effectiveOrientation}`);
+              }
+              
+              // Auto-detect based on column count
+              const colCount = firstSheet.columnCount || 0;
+              if (colCount > 6 && (!effectiveOrientation || effectiveOrientation === 'auto')) {
+                effectiveOrientation = 'landscape';
+                console.log(`[enhancedOfficeConversion] Auto-detected landscape due to ${colCount} columns`);
+              }
+            }
+          } catch (detectError) {
+            console.warn('[enhancedOfficeConversion] Could not detect Excel orientation:', detectError.message);
+          }
+        }
+        
+        // Merge detected orientation into options
+        const excelOptions = { ...options, orientation: effectiveOrientation || 'landscape' };
+        
         // Try Python-based conversion first for better formatting
         try {
           const excelPdfService = require('./excelPdfService');
           const status = await excelPdfService.checkAvailability();
           if (status.available) {
             console.log('[enhancedOfficeConversion] Using Python-based Excel to PDF conversion...');
-            const pdfBuffer = await excelPdfService.convertExcelToPdf(officeBuffer, 'spreadsheet.xlsx', options);
+            const pdfBuffer = await excelPdfService.convertExcelToPdf(officeBuffer, 'spreadsheet.xlsx', excelOptions);
             console.log('[enhancedOfficeConversion] Python Excel to PDF conversion successful!');
             return pdfBuffer;
           }
         } catch (pythonError) {
           console.warn('[enhancedOfficeConversion] Python Excel to PDF failed, using fallback:', pythonError.message);
         }
-        return await this.excelToPdfAdvanced(officeBuffer, options);
+        return await this.excelToPdfAdvanced(officeBuffer, excelOptions);
       } else if (fileType.includes('word') || fileType.includes('document') ||
                  fileType.includes('docx') || fileType.includes('doc')) {
         return await this.wordToPdfAdvanced(officeBuffer, options);

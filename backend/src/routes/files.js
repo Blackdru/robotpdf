@@ -416,12 +416,20 @@ router.get('/:id/download', optionalAuth, async (req, res) => {
     }
 
     // Get file from storage
+    console.log(`[Download] Attempting to download file from path: ${fileData.path}`);
+    
     const { data: fileBuffer, error: downloadError } = await supabaseAdmin.storage
       .from('files')
       .download(fileData.path);
 
     if (downloadError) {
-      return res.status(400).json({ error: downloadError.message });
+      console.error(`[Download] Storage download error for path ${fileData.path}:`, downloadError);
+      return res.status(400).json({ error: downloadError.message || 'File not found in storage' });
+    }
+    
+    if (!fileBuffer) {
+      console.error(`[Download] No file buffer returned for path: ${fileData.path}`);
+      return res.status(404).json({ error: 'File content not found' });
     }
 
     // Convert blob to buffer for Node.js
