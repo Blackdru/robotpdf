@@ -1,55 +1,19 @@
-# RobotPDF - AI PDF Tools, Free Online PDF Editor
-# Best alternative to iLovePDF and Adobe Acrobat
-
 User-agent: *
 Allow: /
 
-# Public tool pages - High priority for SEO
-Allow: /tools
-Allow: /advanced-tools
-Allow: /pdf-to-excel
-Allow: /ai-enhanced-ocr-pdf
-Allow: /ai-chat-with-pdf
-Allow: /ai-smart-summary
-Allow: /resume-generator
-Allow: /pricing
-Allow: /developers
-Allow: /developers/docs
-Allow: /contact
-
-# PDF to Excel - Priority landing page
-# Convert PDF to Excel online free, bank statement converter, invoice to spreadsheet
-
-# Disallow authenticated-only areas
-Disallow: /dashboard
-Disallow: /files
-Disallow: /profile
-Disallow: /billing
-Disallow: /upgrade
-Disallow: /admin
-Disallow: /login
-Disallow: /register
-Disallow: /forgot-password
+# Block authenticated and private areas
+Disallow: /dashboard/
+Disallow: /files/
+Disallow: /profile/
+Disallow: /billing/
+Disallow: /upgrade/
+Disallow: /admin/
+Disallow: /login/
+Disallow: /register/
+Disallow: /forgot-password/
 Disallow: /api/
-Disallow: /developers/keys
-Disallow: /developers/usage
+Disallow: /developers/keys/
+Disallow: /developers/usage/
 
-# Google Bot - Allow everything public
-User-agent: Googlebot
-Allow: /
-Crawl-delay: 0
-
-# Bing Bot
-User-agent: Bingbot
-Allow: /
-Crawl-delay: 1
-
+# Sitemap
 Sitemap: https://robotpdf.com/sitemap.xml
-
-# Keywords: AI PDF tools, PDF AI, free PDF tools, online PDF editor, merge PDF, split PDF, 
-# compress PDF, convert PDF, PDF to Word, PDF to Word converter, PDF to Excel, PDF to JPG, 
-# Word to PDF, Word to PDF converter, img to pdf, jpg to pdf converter, jpeg pdf, PDF OCR, 
-# chat with PDF, AI document processing, PDF converter, edit PDF online, PDF reader AI, 
-# pdf editor, ilovepdf, ilove pdf, mergepdf, combine pdf, adobe acrobat, adobe reader,
-# pdf to excel converter, convert pdf to excel, pdf to xlsx, bank statement to excel,
-# extract tables from pdf, pdf table extractor, invoice to excel, financial pdf converter
