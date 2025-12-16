@@ -873,6 +873,11 @@ router.post('/simple-convert', optionalAuth, async (req, res) => {
       outputFilename = file.filename.replace(/\.pdf$/i, '.xlsx');
       outputMimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
       conversionType = 'pdf-to-excel';
+    } else if (outputFormat === 'pptx') {
+      // PDF to PowerPoint
+      outputFilename = file.filename.replace(/\.pdf$/i, '.pptx');
+      outputMimeType = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+      conversionType = 'pdf-to-pptx';
     } else if (outputFormat === 'pdf' && (sourceFormat === 'word' || sourceFormat === 'excel')) {
       // Office to PDF
       outputFilename = file.filename.replace(/\.(doc|docx|xls|xlsx)$/i, '.pdf');
@@ -891,9 +896,13 @@ router.post('/simple-convert', optionalAuth, async (req, res) => {
     const officeConversionService = require('../services/officeConversionService');
     
     try {
-      if (conversionType === 'pdf-to-word' || conversionType === 'pdf-to-excel') {
+      if (conversionType === 'pdf-to-word' || conversionType === 'pdf-to-excel' || conversionType === 'pdf-to-pptx') {
         // PDF to Office conversion
-        const format = conversionType === 'pdf-to-word' ? 'docx' : 'xlsx';
+        let format;
+        if (conversionType === 'pdf-to-word') format = 'docx';
+        else if (conversionType === 'pdf-to-excel') format = 'xlsx';
+        else if (conversionType === 'pdf-to-pptx') format = 'pptx';
+        
         convertedBuffer = await officeConversionService.convertPdfToOffice(
           fileBuffer,
           format,

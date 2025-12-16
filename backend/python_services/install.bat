@@ -40,7 +40,7 @@ echo ERROR: Could not install dependencies. Please ensure Python and pip are ins
 echo.
 echo Manual installation:
 echo   1. Install Python from https://www.python.org/downloads/
-echo   2. Run: pip install pdf2docx PyMuPDF python-docx
+echo   2. Run: pip install pdf2docx PyMuPDF python-docx python-pptx Pillow
 echo.
 
 :end

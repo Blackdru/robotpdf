@@ -610,6 +610,23 @@ class OfficeConversionService {
         }
       }
 
+      // For PowerPoint conversion, try Python-based conversion for high fidelity
+      if (outputFormat === 'pptx') {
+        try {
+          const pdfToPptxService = require('./pdfToPptxService');
+          const status = await pdfToPptxService.checkAvailability();
+          if (status.available) {
+            console.log('[officeConversion] Attempting Python-based PDF to PPTX conversion...');
+            const pptxBuffer = await pdfToPptxService.convertPdfToPptx(buffer, filename, options);
+            console.log('[officeConversion] Python PDF to PPTX conversion successful!');
+            return pptxBuffer;
+          }
+        } catch (pythonError) {
+          console.warn('[officeConversion] Python PDF to PPTX failed, falling back to basic conversion:', pythonError.message);
+          // Fall through to basic conversion
+        }
+      }
+
       let text = '';
       let pageCount = 1;
 
@@ -658,7 +675,8 @@ class OfficeConversionService {
       } else if (outputFormat === 'xlsx' || outputFormat === 'xls') {
         return await this.pdfToExcel(text, pageCount, filename);
       } else if (outputFormat === 'pptx') {
-        return await this.pdfToPowerPoint(text, pageCount, filename);
+        // Pass buffer for better page-by-page extraction
+        return await this.pdfToPowerPoint(text, pageCount, filename, buffer);
       } else if (outputFormat === 'txt') {
         return Buffer.from(text, 'utf-8');
       } else if (outputFormat === 'rtf') {
@@ -1067,70 +1085,131 @@ class OfficeConversionService {
     });
   }
 
-  // PDF to PowerPoint conversion
-  async pdfToPowerPoint(text, pageCount, filename) {
-    console.log('Converting PDF to PowerPoint presentation...');
+  // PDF to PowerPoint conversion - creates one slide per PDF page
+  async pdfToPowerPoint(text, pageCount, filename, pdfBuffer = null) {
+    console.log(`Converting PDF to PowerPoint presentation (${pageCount} pages)...`);
 
     try {
       const pptx = new PptxGenJS();
       pptx.author = 'RobotPDF Converter';
       pptx.title = `Converted from ${filename}`;
+      
+      // Set to portrait layout (7.5 x 10 inches) for better PDF compatibility
+      pptx.defineLayout({ name: 'PORTRAIT', width: 7.5, height: 10 });
+      pptx.layout = 'PORTRAIT';
 
-      // Title slide
-      const titleSlide = pptx.addSlide();
-      titleSlide.addText('PDF Conversion', {
-        x: 1,
-        y: 1,
-        w: 8,
-        h: 1,
-        fontSize: 32,
-        bold: true,
-        align: 'center'
-      });
-      titleSlide.addText(`From: ${filename}`, {
-        x: 1,
-        y: 2.5,
-        w: 8,
-        h: 0.5,
-        fontSize: 18,
-        align: 'center'
-      });
-      titleSlide.addText(`Pages: ${pageCount}`, {
-        x: 1,
-        y: 3.5,
-        w: 8,
-        h: 0.5,
-        fontSize: 14,
-        align: 'center'
-      });
+      // Extract text page by page if buffer is available
+      let pageTexts = [];
+      
+      if (pdfBuffer) {
+        try {
+          // Use pdf-parse with page render to get per-page text
+          const pageTextArray = [];
+          const options = {
+            pagerender: function(pageData) {
+              return pageData.getTextContent().then(function(textContent) {
+                let pageText = '';
+                let lastY = null;
+                
+                for (const item of textContent.items) {
+                  // Add newline when Y position changes significantly
+                  if (lastY !== null && Math.abs(item.transform[5] - lastY) > 5) {
+                    pageText += '\n';
+                  }
+                  pageText += item.str;
+                  lastY = item.transform[5];
+                }
+                
+                pageTextArray.push(pageText);
+                return pageText;
+              });
+            }
+          };
+          
+          await pdfParse(pdfBuffer, options);
+          pageTexts = pageTextArray;
+          console.log(`[pdfToPowerPoint] Extracted text from ${pageTexts.length} pages`);
+        } catch (parseError) {
+          console.warn('[pdfToPowerPoint] Page-by-page extraction failed:', parseError.message);
+        }
+      }
+      
+      // Fallback: distribute text evenly if page extraction failed
+      if (pageTexts.length === 0 || pageTexts.length !== pageCount) {
+        console.log('[pdfToPowerPoint] Using text distribution fallback');
+        pageTexts = [];
+        
+        // First try form feed character
+        if (text.includes('\f')) {
+          pageTexts = text.split('\f').filter(t => t.trim());
+        } else {
+          // Distribute text evenly across pages
+          const lines = text.split('\n');
+          const linesPerPage = Math.ceil(lines.length / pageCount);
+          
+          for (let i = 0; i < pageCount; i++) {
+            const startLine = i * linesPerPage;
+            const endLine = Math.min(startLine + linesPerPage, lines.length);
+            const pageText = lines.slice(startLine, endLine).join('\n');
+            pageTexts.push(pageText || '');
+          }
+        }
+      }
+      
+      // Ensure we have exactly pageCount entries
+      while (pageTexts.length < pageCount) {
+        pageTexts.push('');
+      }
+      if (pageTexts.length > pageCount) {
+        pageTexts = pageTexts.slice(0, pageCount);
+      }
 
-      // Split text into chunks for slides
-      const paragraphs = text.split(/\n\n+/).filter(p => p.trim().length > 0);
-      const slidesCount = Math.min(Math.ceil(paragraphs.length / 5), 20); // Max 20 slides
-
-      for (let i = 0; i < slidesCount; i++) {
+      // Create one slide per page
+      for (let i = 0; i < pageCount; i++) {
         const slide = pptx.addSlide();
-        slide.addText(`Slide ${i + 1}`, {
-          x: 0.5,
-          y: 0.5,
-          w: 9,
-          h: 0.5,
-          fontSize: 20,
-          bold: true
+        const pageText = pageTexts[i] || '';
+        
+        // Add page number header
+        slide.addText(`Page ${i + 1}`, {
+          x: 0.3,
+          y: 0.2,
+          w: 6.9,
+          h: 0.3,
+          fontSize: 10,
+          color: '666666',
+          align: 'right'
         });
 
-        const startIdx = i * 5;
-        const endIdx = Math.min(startIdx + 5, paragraphs.length);
-        const slideText = paragraphs.slice(startIdx, endIdx).join('\n\n');
-
-        slide.addText(slideText, {
-          x: 0.5,
-          y: 1.5,
-          w: 9,
-          h: 5,
-          fontSize: 12,
-          valign: 'top'
-        });
+        // Add main content - use smaller font to fit more content
+        if (pageText.trim()) {
+          // Calculate appropriate font size based on content length
+          let fontSize = 11;
+          if (pageText.length > 2000) fontSize = 9;
+          else if (pageText.length > 1000) fontSize = 10;
+          
+          slide.addText(pageText.trim(), {
+            x: 0.3,
+            y: 0.6,
+            w: 6.9,
+            h: 9.0,
+            fontSize: fontSize,
+            fontFace: 'Arial',
+            valign: 'top',
+            wrap: true,
+            lineSpacing: 14
+          });
+        } else {
+          slide.addText('(No text content on this page)', {
+            x: 0.3,
+            y: 4.5,
+            w: 6.9,
+            h: 1,
+            fontSize: 12,
+            color: '999999',
+            align: 'center',
+            italic: true
+          });
+        }
       }
 
       // Generate buffer

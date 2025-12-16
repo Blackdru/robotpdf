@@ -612,6 +612,18 @@ class ApiClient {
     })
   }
 
+  async convertPDFToPPTX(fileId, outputName = 'converted.pptx') {
+    return this.request('/pdf/simple-convert', {
+      method: 'POST',
+      body: JSON.stringify({ 
+        fileId, 
+        outputFormat: 'pptx',
+        outputName 
+      }),
+      timeout: 180000, // 3 minutes for complex conversions
+    })
+  }
+
   async convertPDFToExcel(fileId, outputName = 'converted.xlsx') {
     return this.request('/pdf/simple-convert', {
       method: 'POST',

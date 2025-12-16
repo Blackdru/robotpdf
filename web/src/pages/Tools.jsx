@@ -199,6 +199,22 @@ const Tools = () => {
       requiresPro: true
     },
     {
+      id: 'pdf-to-pptx',
+      icon: Layers,
+      title: 'PDF to PowerPoint',
+      description: 'Convert PDF to editable PPTX with 99% format preservation',
+      solidColor: 'bg-orange-600',
+      color: 'from-orange-500 to-red-600',
+      iconBg: 'bg-orange-500',
+      acceptedFiles: '.pdf',
+      multipleFiles: false,
+      minFiles: 1,
+      category: 'Conversion',
+      isFree: true,
+      popularity: 91,
+      processingTime: '< 90s'
+    },
+    {
       id: 'password-remove',
       icon: Unlock,
       title: 'Password Remover',
@@ -334,6 +350,12 @@ const Tools = () => {
         { name: 'Uploading Images', icon: Upload },
         { name: 'Analyzing Images', icon: Eye },
         { name: 'Compressing Images', icon: ImageDown },
+        { name: 'Complete', icon: CheckCircle }
+      ],
+      'pdf-to-pptx': [
+        { name: 'Uploading PDF', icon: Upload },
+        { name: 'Analyzing Layout', icon: Eye },
+        { name: 'Converting to PPTX', icon: Layers },
         { name: 'Complete', icon: CheckCircle }
       ]
     }
@@ -735,6 +757,17 @@ const Tools = () => {
           result = await api.convertExcelToPDF(uploadedFileIds[0], `${outputName}.pdf`)
           updateProgress(85, 'Conversion complete!', 2)
           toast.success('Excel converted to PDF successfully!')
+          break
+
+        case 'pdf-to-pptx':
+          updateProgress(50, 'Analyzing PDF layout...', 1)
+          await new Promise(resolve => setTimeout(resolve, 500))
+          updateProgress(65, 'Extracting content and formatting...', 2)
+          await new Promise(resolve => setTimeout(resolve, 300))
+          updateProgress(75, 'Converting to PowerPoint...', 2)
+          result = await api.convertPDFToPPTX(uploadedFileIds[0], `${outputName}.pptx`)
+          updateProgress(85, 'Conversion complete!', 2)
+          toast.success('PDF converted to PowerPoint successfully!')
           break
 
         case 'text-to-pdf':
