@@ -86,9 +86,9 @@ const ImageCompress = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-white via-pink-50/30 to-white overflow-hidden">
       <div className="fixed inset-0 overflow-hidden pointer-events-none"><div className="absolute -top-40 -left-40 w-[600px] h-[600px] bg-gradient-to-br from-pink-100/40 to-rose-100/40 rounded-full blur-3xl"></div><div className="absolute top-40 -right-40 w-[500px] h-[500px] bg-gradient-to-br from-pink-100/30 to-red-100/30 rounded-full blur-3xl"></div></div>
-      <section className="relative pt-8 sm:pt-12 lg:pt-16 pb-8 sm:pb-12 px-4 sm:px-6">
+      <section className="relative pt-6 sm:pt-8 md:pt-12 lg:pt-16 pb-6 sm:pb-8 md:pb-12 px-3 sm:px-4 md:px-6">
         <div className="container mx-auto max-w-6xl">
-          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-12 items-center">
             <div className={`text-center lg:text-left transition-all duration-700 ${isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10'}`}>
               <Badge className="mb-4 sm:mb-6 px-3 sm:px-4 py-1.5 bg-gradient-to-r from-pink-500 to-rose-500 text-white text-xs sm:text-sm font-semibold inline-flex items-center"><Sparkles className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5" />50% SMALLER • FREE</Badge>
               <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-5xl font-bold mb-4 sm:mb-6 leading-tight"><span className="bg-gradient-to-r from-slate-900 via-pink-900 to-slate-900 bg-clip-text text-transparent">Image</span><br /><span className="bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">Compressor Online</span></h1>

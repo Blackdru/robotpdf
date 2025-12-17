@@ -46,24 +46,6 @@ const Tools = () => {
       </div>
 
       <div className="relative z-10 container mx-auto px-4 py-8 max-w-7xl">
-        {/* Header */}
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-full mb-6">
-            <Sparkles className="h-5 w-5 text-indigo-600" />
-            <span className="text-sm font-semibold text-indigo-700">Free PDF Tools</span>
-          </div>
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-slate-900 via-indigo-900 to-slate-800 bg-clip-text text-transparent">
-            All-in-One PDF Toolkit
-          </h1>
-          <p className="text-lg text-slate-600 max-w-2xl mx-auto mb-6">
-            Professional PDF tools to merge, split, compress, and convert your documents.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-slate-500">
-            <div className="flex items-center gap-2"><CheckCircle className="h-5 w-5 text-green-500" /><span>No registration</span></div>
-            <div className="flex items-center gap-2"><Shield className="h-5 w-5 text-blue-500" /><span>Secure & Private</span></div>
-            <div className="flex items-center gap-2"><Zap className="h-5 w-5 text-yellow-500" /><span>Instant processing</span></div>
-          </div>
-        </div>
 
         {/* Category Filter */}
         <div className="flex flex-wrap justify-center gap-2 mb-8">
@@ -122,6 +104,25 @@ const Tools = () => {
               </div>
             </Link>
           ))}
+        </div>
+
+        {/* Header */}
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-full mb-6">
+            <Sparkles className="h-5 w-5 text-indigo-600" />
+            <span className="text-sm font-semibold text-indigo-700">Free PDF Tools</span>
+          </div>
+          <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-slate-900 via-indigo-900 to-slate-800 bg-clip-text text-transparent">
+            All-in-One PDF Toolkit
+          </h1>
+          <p className="text-lg text-slate-600 max-w-2xl mx-auto mb-6">
+            Professional PDF tools to merge, split, compress, and convert your documents.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-slate-500">
+            <div className="flex items-center gap-2"><CheckCircle className="h-5 w-5 text-green-500" /><span>No registration</span></div>
+            <div className="flex items-center gap-2"><Shield className="h-5 w-5 text-blue-500" /><span>Secure & Private</span></div>
+            <div className="flex items-center gap-2"><Zap className="h-5 w-5 text-yellow-500" /><span>Instant processing</span></div>
+          </div>
         </div>
 
         {/* AI Tools CTA */}

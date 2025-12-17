@@ -108,9 +108,9 @@ const SplitPdf = () => {
         <div className="absolute -top-40 -left-40 w-[600px] h-[600px] bg-gradient-to-br from-emerald-100/40 to-teal-100/40 rounded-full blur-3xl"></div>
         <div className="absolute top-40 -right-40 w-[500px] h-[500px] bg-gradient-to-br from-emerald-100/30 to-cyan-100/30 rounded-full blur-3xl"></div>
       </div>
-      <section className="relative pt-8 sm:pt-12 lg:pt-16 pb-8 sm:pb-12 px-4 sm:px-6">
+      <section className="relative pt-6 sm:pt-8 md:pt-12 lg:pt-16 pb-6 sm:pb-8 md:pb-12 px-3 sm:px-4 md:px-6">
         <div className="container mx-auto max-w-6xl">
-          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-12 items-center">
             <div className={`text-center lg:text-left transition-all duration-700 ${isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10'}`}>
               <Badge className="mb-4 sm:mb-6 px-3 sm:px-4 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs sm:text-sm font-semibold inline-flex items-center"><Sparkles className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5" />EXTRACT PAGES • FREE</Badge>
               <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-5xl font-bold mb-4 sm:mb-6 leading-tight">
@@ -166,9 +166,9 @@ const SplitPdf = () => {
       </section>
 
 
-      <section className="py-10 sm:py-16 px-4 sm:px-6 bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50">
+      <section className="py-8 sm:py-10 md:py-16 px-3 sm:px-4 md:px-6 bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50">
         <div className="container mx-auto max-w-6xl">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
             {features.map((feature, index) => (
               <div key={index} className="text-center">
                 <div className="inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 bg-white rounded-xl sm:rounded-2xl shadow-md mb-3 sm:mb-4"><feature.icon className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-600" /></div>
@@ -180,13 +180,13 @@ const SplitPdf = () => {
         </div>
       </section>
 
-      <section className="py-12 sm:py-20 px-4 sm:px-6">
+      <section className="py-10 sm:py-12 md:py-20 px-3 sm:px-4 md:px-6">
         <div className="container mx-auto max-w-5xl">
-          <div className="text-center mb-8 sm:mb-12">
-            <Badge className="mb-3 sm:mb-4 px-3 sm:px-4 py-1.5 bg-gradient-to-r from-emerald-100 to-teal-100 text-emerald-700 text-xs sm:text-sm font-semibold">SIMPLE PROCESS</Badge>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-3 sm:mb-4">How to Split PDF Files</h2>
+          <div className="text-center mb-6 sm:mb-8 md:mb-12">
+            <Badge className="mb-2 sm:mb-3 md:mb-4 px-3 sm:px-4 py-1.5 bg-gradient-to-r from-emerald-100 to-teal-100 text-emerald-700 text-xs sm:text-sm font-semibold">SIMPLE PROCESS</Badge>
+            <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-slate-900 mb-2 sm:mb-3 md:mb-4">How to Split PDF Files</h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
             {[
               { step: '1', title: 'Upload PDF', desc: 'Drag & drop or click to upload your PDF file', icon: Upload },
               { step: '2', title: 'Auto Split', desc: 'We automatically split each page into separate files', icon: Scissors },
@@ -203,10 +203,10 @@ const SplitPdf = () => {
         </div>
       </section>
 
-      <section className="py-12 sm:py-20 px-4 sm:px-6 bg-gradient-to-b from-slate-50 to-white">
+      <section className="py-10 sm:py-12 md:py-20 px-3 sm:px-4 md:px-6 bg-gradient-to-b from-slate-50 to-white">
         <div className="container mx-auto max-w-5xl">
-          <div className="text-center mb-8 sm:mb-12"><h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900">Perfect for Every Use Case</h2></div>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          <div className="text-center mb-6 sm:mb-8 md:mb-12"><h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-slate-900">Perfect for Every Use Case</h2></div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
             {useCases.map((item, index) => (
               <div key={index} className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 border-2 border-gray-100 hover:border-emerald-200 hover:shadow-lg transition-all text-center group">
                 <div className="w-12 h-12 sm:w-14 sm:h-14 bg-emerald-50 rounded-xl flex items-center justify-center mx-auto mb-3 sm:mb-4 group-hover:scale-110 transition-transform"><item.icon className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-600" /></div>
@@ -218,13 +218,13 @@ const SplitPdf = () => {
         </div>
       </section>
 
-      <section className="py-12 sm:py-20 px-4 sm:px-6">
+      <section className="py-10 sm:py-12 md:py-20 px-3 sm:px-4 md:px-6">
         <div className="container mx-auto max-w-4xl">
-          <div className="text-center mb-8 sm:mb-12">
-            <Badge className="mb-3 sm:mb-4 px-3 sm:px-4 py-1.5 bg-gradient-to-r from-emerald-100 to-teal-100 text-emerald-700 text-xs sm:text-sm font-semibold">FAQ</Badge>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-3">Frequently Asked Questions</h2>
+          <div className="text-center mb-6 sm:mb-8 md:mb-12">
+            <Badge className="mb-2 sm:mb-3 md:mb-4 px-3 sm:px-4 py-1.5 bg-gradient-to-r from-emerald-100 to-teal-100 text-emerald-700 text-xs sm:text-sm font-semibold">FAQ</Badge>
+            <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-slate-900 mb-2 sm:mb-3">Frequently Asked Questions</h2>
           </div>
-          <div className="space-y-3 sm:space-y-4">
+          <div className="space-y-2 sm:space-y-3 md:space-y-4">
             {[
               { q: 'How do I split a PDF for free?', a: 'Upload your PDF file above and we\'ll automatically split it into individual pages. Download all pages as a ZIP file instantly.' },
               { q: 'Can I extract specific pages from a PDF?', a: 'Yes! Our splitter extracts each page as a separate PDF file, allowing you to keep only the pages you need.' },
@@ -242,13 +242,13 @@ const SplitPdf = () => {
         </div>
       </section>
 
-      <section className="py-10 sm:py-16 px-4 sm:px-6 bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50">
+      <section className="py-8 sm:py-10 md:py-16 px-3 sm:px-4 md:px-6 bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50">
         <div className="container mx-auto max-w-5xl">
-          <div className="text-center mb-8 sm:mb-10">
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-900 mb-2">Trusted by 50,000+ Users</h2>
-            <div className="flex items-center justify-center gap-1 mb-4">{[...Array(5)].map((_, i) => (<Star key={i} className="h-4 w-4 sm:h-5 sm:w-5 fill-yellow-400 text-yellow-400" />))}<span className="ml-2 text-sm text-slate-600">4.8/5 rating</span></div>
+          <div className="text-center mb-6 sm:mb-8 md:mb-10">
+            <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-slate-900 mb-2">Trusted by 50,000+ Users</h2>
+            <div className="flex items-center justify-center gap-1 mb-3 sm:mb-4">{[...Array(5)].map((_, i) => (<Star key={i} className="h-3 w-3 sm:h-4 sm:w-4 md:h-5 md:w-5 fill-yellow-400 text-yellow-400" />))}<span className="ml-2 text-xs sm:text-sm text-slate-600">4.8/5 rating</span></div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
             {[
               { text: "Split a 200-page PDF in seconds. Exactly what I needed!", author: "Mike T.", role: "Teacher" },
               { text: "Simple and effective. No watermarks, no signup required.", author: "Anna S.", role: "Designer" },
@@ -264,10 +264,10 @@ const SplitPdf = () => {
         </div>
       </section>
 
-      <section className="py-12 sm:py-20 px-4 sm:px-6">
+      <section className="py-10 sm:py-12 md:py-20 px-3 sm:px-4 md:px-6">
         <div className="container mx-auto max-w-5xl">
-          <div className="text-center mb-8 sm:mb-10"><h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-900 mb-2">Related PDF Tools</h2></div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+          <div className="text-center mb-6 sm:mb-8 md:mb-10"><h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-slate-900 mb-2">Related PDF Tools</h2></div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
             {[
               { to: '/merge-pdf', icon: Combine, title: 'Merge PDF', color: 'text-blue-600', bg: 'bg-blue-50' },
               { to: '/compress-pdf', icon: Minimize2, title: 'Compress PDF', color: 'text-orange-600', bg: 'bg-orange-50' },
