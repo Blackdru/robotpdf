@@ -42,6 +42,17 @@ const DeveloperKeys = lazy(() => import('./pages/DeveloperKeys'))
 const DeveloperUsage = lazy(() => import('./pages/DeveloperUsage'))
 const DeveloperDocs = lazy(() => import('./pages/DeveloperDocs'))
 const PdfToExcel = lazy(() => import('./pages/PdfToExcel'))
+const MergePdf = lazy(() => import('./pages/MergePdf'))
+const SplitPdf = lazy(() => import('./pages/SplitPdf'))
+const CompressPdf = lazy(() => import('./pages/CompressPdf'))
+const ImageToPdf = lazy(() => import('./pages/ImageToPdf'))
+const PdfToWord = lazy(() => import('./pages/PdfToWord'))
+const WordToPdf = lazy(() => import('./pages/WordToPdf'))
+const ExcelToPdf = lazy(() => import('./pages/ExcelToPdf'))
+const HtmlToPdf = lazy(() => import('./pages/HtmlToPdf'))
+const PasswordRemover = lazy(() => import('./pages/PasswordRemover'))
+const TextToPdf = lazy(() => import('./pages/TextToPdf'))
+const ImageCompress = lazy(() => import('./pages/ImageCompress'))
 
 // App-specific privacy policies
 const OCRPrivacyPolicy = lazy(() => import('./apps/ocr'))
@@ -120,6 +131,51 @@ const AppContent = () => {
       '/pdf-to-excel': {
         title: 'PDF to Excel Converter — Convert PDF to Excel Online Free | RobotPDF',
         description: 'Convert PDF to Excel online for free with 99% accuracy. Extract tables from bank statements, invoices, and financial reports. AI-powered PDF to Excel converter preserves formatting. Fast, secure, no registration required.'
+      },
+      '/merge-pdf': {
+        title: 'Merge PDF Files Online Free — Combine PDFs Instantly | RobotPDF',
+        description: 'Merge multiple PDF files into one document online for free. Combine PDFs in seconds with our fast, secure PDF merger. No registration required. Drag, drop, and merge!'
+      },
+      '/split-pdf': {
+        title: 'Split PDF Online Free — Extract Pages from PDF | RobotPDF',
+        description: 'Split PDF files online for free. Extract specific pages or split into multiple documents. Fast, secure PDF splitter with no registration required.'
+      },
+      '/compress-pdf': {
+        title: 'Compress PDF Online Free — Reduce PDF File Size | RobotPDF',
+        description: 'Compress PDF files online for free. Reduce PDF size by up to 90% while maintaining quality. Fast, secure PDF compressor with no registration required.'
+      },
+
+      '/image-to-pdf': {
+        title: 'Image to PDF Converter — Convert JPG, PNG to PDF Online Free | RobotPDF',
+        description: 'Convert images to PDF online for free. Combine multiple JPG, PNG, GIF, WebP images into one PDF document. Fast, secure image to PDF converter with no registration required.'
+      },
+      '/pdf-to-word': {
+        title: 'PDF to Word Converter — Convert PDF to DOCX Online Free | RobotPDF',
+        description: 'Convert PDF to Word documents online for free. Preserve formatting and layout with our accurate PDF to DOCX converter. Fast, secure, no registration required.'
+      },
+      '/word-to-pdf': {
+        title: 'Word to PDF Converter — Convert DOCX to PDF Online Free | RobotPDF',
+        description: 'Convert Word documents to PDF online for free. Preserve formatting perfectly with our DOCX to PDF converter. Fast, secure, no registration required.'
+      },
+      '/excel-to-pdf': {
+        title: 'Excel to PDF Converter — Convert XLS to PDF Online Free | RobotPDF',
+        description: 'Convert Excel spreadsheets to PDF online for free. Preserve tables and formatting with our XLS/XLSX to PDF converter. Fast, secure, no registration required.'
+      },
+      '/html-to-pdf': {
+        title: 'HTML to PDF Converter — Convert Webpage to PDF Online Free | RobotPDF',
+        description: 'Convert HTML webpages to PDF online for free. Save any URL as a PDF document. Fast, secure HTML to PDF converter with no registration required.'
+      },
+      '/password-remover': {
+        title: 'PDF Password Remover — Unlock PDF Online Free | RobotPDF',
+        description: 'Remove password protection from PDF files online for free. Unlock encrypted PDFs instantly. Fast, secure PDF unlocker with no registration required.'
+      },
+      '/text-to-pdf': {
+        title: 'Text to PDF Converter — Convert Text to PDF Online Free | RobotPDF',
+        description: 'Convert text to PDF online for free. Type or paste text and create professional PDF documents instantly. Fast, secure, no registration required.'
+      },
+      '/image-compress': {
+        title: 'Image Compressor — Compress Images Online Free | RobotPDF',
+        description: 'Compress JPG, PNG, WebP images online for free. Reduce image file size by 50% while maintaining quality. Fast, secure image compressor.'
       }
     }
 
@@ -185,6 +241,17 @@ const AppContent = () => {
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/tools" element={<Tools />} />
                 <Route path="/pdf-to-excel" element={<PdfToExcel />} />
+                <Route path="/merge-pdf" element={<MergePdf />} />
+                <Route path="/split-pdf" element={<SplitPdf />} />
+                <Route path="/compress-pdf" element={<CompressPdf />} />
+                <Route path="/image-to-pdf" element={<ImageToPdf />} />
+                <Route path="/pdf-to-word" element={<PdfToWord />} />
+                <Route path="/word-to-pdf" element={<WordToPdf />} />
+                <Route path="/excel-to-pdf" element={<ExcelToPdf />} />
+                <Route path="/html-to-pdf" element={<HtmlToPdf />} />
+                <Route path="/password-remover" element={<PasswordRemover />} />
+                <Route path="/text-to-pdf" element={<TextToPdf />} />
+                <Route path="/image-compress" element={<ImageCompress />} />
                 <Route path="/advanced-tools" element={<AdvancedTools />} />
                 <Route 
                   path="/files" 

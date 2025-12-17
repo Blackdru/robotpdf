@@ -304,14 +304,16 @@ router.post('/split', optionalAuth, async (req, res) => {
 });
 
 // Compress PDF - supports both authenticated and anonymous users
+// Uses Ghostscript for real compression when available, falls back to pdf-lib
 router.post('/compress', optionalAuth, async (req, res) => {
   try {
-    const { fileId, quality = 0.7, outputName = 'compressed.pdf' } = req.body;
+    const { fileId, quality = 'medium', outputName = 'compressed.pdf' } = req.body;
     const isAnonymous = !req.user;
 
     console.log('=== COMPRESS PDF REQUEST ===');
     console.log('User:', req.user?.id || 'anonymous');
     console.log('File ID:', fileId);
+    console.log('Quality:', quality);
 
     if (!fileId) {
       return res.status(400).json({ error: 'File ID is required' });
@@ -341,35 +343,95 @@ router.post('/compress', optionalAuth, async (req, res) => {
     }
 
     const fileBuffer = await getFileBuffer(file.path);
-    const pdf = await PDFDocument.load(fileBuffer);
-
-    // Try multiple compression strategies
     let compressedBuffer;
     let compressionWorked = false;
-    
-    // Strategy 1: Basic compression
+    let compressionMethod = 'pdf-lib';
+
+    // Try Ghostscript first (better compression)
     try {
-      compressedBuffer = Buffer.from(await pdf.save({
-        useObjectStreams: true,
-        addDefaultPage: false,
-        objectsPerTick: 50,
-        updateFieldAppearances: false
-      }));
+      const { spawn } = require('child_process');
+      const fs = require('fs').promises;
+      const os = require('os');
+      
+      const tempDir = os.tmpdir();
+      const inputPath = path.join(tempDir, `input_${Date.now()}.pdf`);
+      const outputPath = path.join(tempDir, `output_${Date.now()}.pdf`);
+      
+      // Write input file
+      await fs.writeFile(inputPath, fileBuffer);
+      
+      // Map quality to Ghostscript settings
+      const qualityMap = {
+        'low': '/screen',
+        'medium': '/ebook',
+        'high': '/printer'
+      };
+      const gsQuality = qualityMap[quality] || '/ebook';
+      
+      // Find Ghostscript
+      const gsCmd = process.platform === 'win32' ? 'gswin64c' : 'gs';
+      
+      const gsResult = await new Promise((resolve, reject) => {
+        const args = [
+          '-sDEVICE=pdfwrite',
+          '-dCompatibilityLevel=1.4',
+          `-dPDFSETTINGS=${gsQuality}`,
+          '-dNOPAUSE',
+          '-dQUIET',
+          '-dBATCH',
+          '-dDetectDuplicateImages=true',
+          '-dCompressFonts=true',
+          '-dSubsetFonts=true',
+          `-sOutputFile=${outputPath}`,
+          inputPath
+        ];
+        
+        const gsProcess = spawn(gsCmd, args, { timeout: 120000 });
+        let stderr = '';
+        
+        gsProcess.stderr.on('data', (data) => { stderr += data.toString(); });
+        
+        gsProcess.on('close', (code) => {
+          if (code === 0) {
+            resolve({ success: true });
+          } else {
+            reject(new Error(`Ghostscript failed: ${stderr}`));
+          }
+        });
+        
+        gsProcess.on('error', (err) => {
+          reject(new Error(`Ghostscript not available: ${err.message}`));
+        });
+      });
+      
+      // Read compressed file
+      compressedBuffer = await fs.readFile(outputPath);
+      
+      // Cleanup temp files
+      await fs.unlink(inputPath).catch(() => {});
+      await fs.unlink(outputPath).catch(() => {});
       
       if (compressedBuffer.length < fileBuffer.length) {
         compressionWorked = true;
+        compressionMethod = 'ghostscript';
+        console.log('Ghostscript compression successful');
+      } else {
+        console.log('Ghostscript did not reduce file size');
       }
-    } catch (error) {
-      console.log('Basic compression failed:', error.message);
+    } catch (gsError) {
+      console.log('Ghostscript compression failed, falling back to pdf-lib:', gsError.message);
     }
-    
-    // Strategy 2: More aggressive compression if basic didn't work
+
+    // Fallback to pdf-lib if Ghostscript didn't work
     if (!compressionWorked) {
+      const pdf = await PDFDocument.load(fileBuffer);
+      
+      // Strategy 1: Basic compression
       try {
         compressedBuffer = Buffer.from(await pdf.save({
-          useObjectStreams: false,
+          useObjectStreams: true,
           addDefaultPage: false,
-          objectsPerTick: 10,
+          objectsPerTick: 50,
           updateFieldAppearances: false
         }));
         
@@ -377,13 +439,30 @@ router.post('/compress', optionalAuth, async (req, res) => {
           compressionWorked = true;
         }
       } catch (error) {
-        console.log('Aggressive compression failed:', error.message);
+        console.log('Basic pdf-lib compression failed:', error.message);
+      }
+      
+      // Strategy 2: More aggressive compression if basic didn't work
+      if (!compressionWorked) {
+        try {
+          compressedBuffer = Buffer.from(await pdf.save({
+            useObjectStreams: false,
+            addDefaultPage: false,
+            objectsPerTick: 10,
+            updateFieldAppearances: false
+          }));
+          
+          if (compressedBuffer.length < fileBuffer.length) {
+            compressionWorked = true;
+          }
+        } catch (error) {
+          console.log('Aggressive pdf-lib compression failed:', error.message);
+        }
       }
     }
     
     // If no compression worked, return the original with a message
     if (!compressionWorked || compressedBuffer.length >= fileBuffer.length) {
-      // Return original file as "compressed" with a note
       const savedFile = await saveProcessedFile(
         req.user?.id || null,
         fileBuffer,
@@ -392,7 +471,6 @@ router.post('/compress', optionalAuth, async (req, res) => {
         isAnonymous
       );
       
-      // Log operation (only for authenticated users)
       if (req.user) {
         await logOperation(req.user.id, savedFile.id, 'compress');
       }
@@ -405,7 +483,7 @@ router.post('/compress', optionalAuth, async (req, res) => {
         originalSize: file.size,
         compressedSize: file.size,
         compressionRatio: '0%',
-        note: 'File was already optimized',
+        note: 'File was already optimized. Try a PDF with images for better compression.',
         isAnonymous: isAnonymous
       });
     }
@@ -418,14 +496,14 @@ router.post('/compress', optionalAuth, async (req, res) => {
       isAnonymous
     );
 
-    // Log operation (only for authenticated users)
     if (req.user) {
       await logOperation(req.user.id, savedFile.id, 'compress');
     }
 
     const compressionRatio = ((file.size - compressedBuffer.length) / file.size * 100).toFixed(1);
 
-    console.log('Compress completed successfully:', savedFile.id);
+    console.log(`Compress completed successfully (${compressionMethod}):`, savedFile.id);
+    console.log(`Original: ${file.size} bytes, Compressed: ${compressedBuffer.length} bytes (${compressionRatio}% reduction)`);
 
     res.json({
       message: 'PDF compressed successfully',
@@ -433,6 +511,7 @@ router.post('/compress', optionalAuth, async (req, res) => {
       originalSize: file.size,
       compressedSize: compressedBuffer.length,
       compressionRatio: `${compressionRatio}%`,
+      method: compressionMethod,
       isAnonymous: isAnonymous
     });
   } catch (error) {

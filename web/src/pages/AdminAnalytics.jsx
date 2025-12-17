@@ -14,7 +14,10 @@ import {
   BarChart3,
   PieChart,
   Activity,
-  RefreshCw
+  RefreshCw,
+  FileText,
+  Wrench,
+  ExternalLink
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -27,6 +30,8 @@ const AdminAnalytics = () => {
   const [visitors, setVisitors] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [pageAnalytics, setPageAnalytics] = useState(null);
+  const [toolStats, setToolStats] = useState(null);
 
   useEffect(() => {
     // Check if user is admin
@@ -39,6 +44,8 @@ const AdminAnalytics = () => {
     // Load analytics data
     loadDashboardData();
     loadVisitors();
+    loadPageAnalytics();
+    loadToolStats();
   }, [timeRange, currentPage]);
 
   const loadDashboardData = async () => {
@@ -65,9 +72,29 @@ const AdminAnalytics = () => {
     }
   };
 
+  const loadPageAnalytics = async () => {
+    try {
+      const response = await api.get(`/analytics/pages?timeRange=${timeRange}`);
+      setPageAnalytics(response);
+    } catch (error) {
+      console.error('Failed to load page analytics:', error);
+    }
+  };
+
+  const loadToolStats = async () => {
+    try {
+      const response = await api.get(`/analytics/tool-stats?timeRange=${timeRange}`);
+      setToolStats(response);
+    } catch (error) {
+      console.error('Failed to load tool stats:', error);
+    }
+  };
+
   const handleRefresh = () => {
     loadDashboardData();
     loadVisitors();
+    loadPageAnalytics();
+    loadToolStats();
     toast.success('Data refreshed');
   };
 
@@ -108,6 +135,7 @@ const AdminAnalytics = () => {
                 className="bg-gray-700 border border-gray-600 rounded-lg px-3 sm:px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 sm:flex-none"
               >
                 <option value="24h">Last 24 Hours</option>
+                <option value="3d">Last 3 Days</option>
                 <option value="7d">Last 7 Days</option>
                 <option value="30d">Last 30 Days</option>
                 <option value="90d">Last 90 Days</option>
@@ -298,6 +326,116 @@ const AdminAnalytics = () => {
               </div>
             </div>
           </>
+        )}
+
+        {/* Page Analytics Section */}
+        {pageAnalytics && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+            {/* Top Pages */}
+            <div className="bg-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-xl">
+              <h3 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 flex items-center">
+                <FileText className="h-5 w-5 sm:h-6 sm:w-6 mr-2 text-cyan-400" />
+                Top Pages
+              </h3>
+              <div className="space-y-3 max-h-80 overflow-y-auto">
+                {pageAnalytics.topPages?.slice(0, 10).map((page, index) => (
+                  <div key={page.url} className="bg-gray-700/50 rounded-lg p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-400 text-xs font-mono">#{index + 1}</span>
+                          <span className="text-sm font-medium truncate">{page.title || page.url}</span>
+                        </div>
+                        <div className="text-xs text-gray-500 truncate mt-1">{page.url}</div>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <div className="text-cyan-400 font-bold">{page.views}</div>
+                        <div className="text-xs text-gray-500">{page.uniqueVisitors} unique</div>
+                      </div>
+                    </div>
+                    <div className="mt-2">
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        page.category === 'tool_page' ? 'bg-blue-500/20 text-blue-400' :
+                        page.category === 'home' ? 'bg-green-500/20 text-green-400' :
+                        page.category === 'ai_tool' ? 'bg-purple-500/20 text-purple-400' :
+                        'bg-gray-500/20 text-gray-400'
+                      }`}>
+                        {page.category}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+                {(!pageAnalytics.topPages || pageAnalytics.topPages.length === 0) && (
+                  <div className="text-gray-500 text-center py-4">No page data available</div>
+                )}
+              </div>
+            </div>
+
+            {/* Category Stats */}
+            <div className="bg-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-xl">
+              <h3 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 flex items-center">
+                <PieChart className="h-5 w-5 sm:h-6 sm:w-6 mr-2 text-pink-400" />
+                Views by Category
+              </h3>
+              <div className="space-y-3">
+                {Object.entries(pageAnalytics.categoryStats || {})
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([category, count]) => {
+                    const total = Object.values(pageAnalytics.categoryStats).reduce((a, b) => a + b, 0);
+                    const percentage = total > 0 ? ((count / total) * 100).toFixed(1) : 0;
+                    const colors = {
+                      home: 'bg-green-500',
+                      tools_menu: 'bg-blue-500',
+                      tool_page: 'bg-cyan-500',
+                      ai_tool: 'bg-purple-500',
+                      pricing: 'bg-yellow-500',
+                      developer: 'bg-orange-500',
+                      other: 'bg-gray-500'
+                    };
+                    return (
+                      <div key={category} className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="capitalize">{category.replace('_', ' ')}</span>
+                          <span className="text-gray-400">{count} ({percentage}%)</span>
+                        </div>
+                        <div className="w-full bg-gray-700 rounded-full h-2">
+                          <div
+                            className={`${colors[category] || 'bg-gray-500'} h-2 rounded-full transition-all`}
+                            style={{ width: `${percentage}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                {Object.keys(pageAnalytics.categoryStats || {}).length === 0 && (
+                  <div className="text-gray-500 text-center py-4">No category data available</div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tool Usage Stats */}
+        {toolStats && toolStats.topTools?.length > 0 && (
+          <div className="bg-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-xl mb-6 sm:mb-8">
+            <h3 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 flex items-center">
+              <Wrench className="h-5 w-5 sm:h-6 sm:w-6 mr-2 text-amber-400" />
+              Tool Usage ({toolStats.summary?.totalUsage || 0} total uses)
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+              {toolStats.topTools.map((tool) => (
+                <div key={tool.toolId} className="bg-gray-700/50 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-sm">{tool.toolName}</span>
+                    <span className="text-amber-400 font-bold">{tool.usageCount}</span>
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {tool.uniqueUsers} unique users
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
 
         {/* Recent Visitors Table */}

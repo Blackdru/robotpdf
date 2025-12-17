@@ -22,7 +22,8 @@ router.post('/track', async (req, res) => {
       country,
       city,
       pageUrl,
-      pageTitle
+      pageTitle,
+      pageCategory
     } = req.body;
 
     if (!visitorId) {
@@ -174,7 +175,7 @@ router.post('/track', async (req, res) => {
       visitorData = data;
     }
 
-    // Track page view
+    // Track page view with category
     if (pageUrl) {
       const { error: pageViewError } = await supabaseAdmin
         .from('page_views')
@@ -182,12 +183,12 @@ router.post('/track', async (req, res) => {
           visitor_id: visitorId,
           page_url: pageUrl,
           page_title: pageTitle,
+          page_category: pageCategory || 'other',
           visited_at: new Date().toISOString()
         }]);
 
       if (pageViewError) {
         console.error('Error tracking page view:', pageViewError);
-        // Don't fail the request if page view tracking fails
       }
     }
 
@@ -425,6 +426,333 @@ router.get('/visitors/:visitorId', authenticateUser, requireAdmin, async (req, r
   } catch (error) {
     console.error('Get visitor details error:', error);
     res.status(500).json({ error: 'Failed to fetch visitor details' });
+  }
+});
+
+/**
+ * Track individual page view
+ * POST /api/analytics/page-view
+ * Public endpoint - no authentication required
+ */
+router.post('/page-view', async (req, res) => {
+  try {
+    const { visitorId, pageUrl, pageTitle, pageCategory, referrer } = req.body;
+
+    if (!visitorId || !pageUrl) {
+      return res.status(400).json({ error: 'Visitor ID and page URL are required' });
+    }
+
+    // Check if visitor exists first (due to foreign key constraint)
+    const { data: existingVisitor } = await supabaseAdmin
+      .from('visitor_analytics')
+      .select('visitor_id')
+      .eq('visitor_id', visitorId)
+      .single();
+
+    // If visitor doesn't exist, skip page view tracking (visitor will be created by /track endpoint)
+    if (!existingVisitor) {
+      return res.json({ success: true, message: 'Page view skipped - visitor not yet tracked' });
+    }
+
+    // Try inserting with new columns, fallback to basic columns if they don't exist
+    let insertData = {
+      visitor_id: visitorId,
+      page_url: pageUrl,
+      page_title: pageTitle || '',
+      visited_at: new Date().toISOString()
+    };
+
+    // Try with extended columns first
+    let { error } = await supabaseAdmin
+      .from('page_views')
+      .insert([{
+        ...insertData,
+        page_category: pageCategory || 'other',
+        referrer: referrer || 'direct'
+      }]);
+
+    // If error mentions column doesn't exist, try without new columns
+    if (error && (error.message?.includes('page_category') || error.message?.includes('referrer'))) {
+      console.log('New columns not available, using basic insert');
+      const { error: basicError } = await supabaseAdmin
+        .from('page_views')
+        .insert([insertData]);
+      error = basicError;
+    }
+
+    if (error) {
+      console.error('Error tracking page view:', error);
+      return res.status(500).json({ error: 'Failed to track page view' });
+    }
+
+    res.json({ success: true, message: 'Page view tracked' });
+  } catch (error) {
+    console.error('Track page view error:', error);
+    res.status(500).json({ error: 'Failed to track page view' });
+  }
+});
+
+/**
+ * Track tool usage
+ * POST /api/analytics/tool-usage
+ * Public endpoint - no authentication required
+ */
+router.post('/tool-usage', async (req, res) => {
+  try {
+    const { visitorId, toolId, toolName } = req.body;
+
+    if (!visitorId || !toolId) {
+      return res.status(400).json({ error: 'Visitor ID and tool ID are required' });
+    }
+
+    // Check if tool_usage table exists by trying to insert
+    const { error } = await supabaseAdmin
+      .from('tool_usage')
+      .insert([{
+        visitor_id: visitorId,
+        tool_id: toolId,
+        tool_name: toolName || toolId,
+        used_at: new Date().toISOString()
+      }]);
+
+    if (error) {
+      // If table doesn't exist, just log and return success (graceful degradation)
+      if (error.message?.includes('relation') || error.code === '42P01') {
+        console.log('tool_usage table not yet created, skipping tracking');
+        return res.json({ success: true, message: 'Tool usage tracking skipped - table not available' });
+      }
+      console.error('Error tracking tool usage:', error);
+      return res.status(500).json({ error: 'Failed to track tool usage' });
+    }
+
+    res.json({ success: true, message: 'Tool usage tracked' });
+  } catch (error) {
+    console.error('Track tool usage error:', error);
+    res.status(500).json({ error: 'Failed to track tool usage' });
+  }
+});
+
+/**
+ * Get page analytics with time range support
+ * GET /api/analytics/pages
+ * Admin only
+ */
+router.get('/pages', authenticateUser, requireAdmin, async (req, res) => {
+  try {
+    const { timeRange = '7d' } = req.query;
+
+    // Calculate date range
+    const now = new Date();
+    let startDate;
+    
+    switch (timeRange) {
+      case '24h':
+        startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        break;
+      case '3d':
+        startDate = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+        break;
+      case '7d':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30d':
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    }
+
+    // Get page views grouped by page URL
+    const { data: pageViewsData, error: pageViewsError } = await supabaseAdmin
+      .from('page_views')
+      .select('page_url, page_title, page_category, visited_at')
+      .gte('visited_at', startDate.toISOString());
+
+    if (pageViewsError) {
+      console.error('Error fetching page views:', pageViewsError);
+      return res.status(500).json({ error: 'Failed to fetch page analytics' });
+    }
+
+    // Aggregate page views by URL
+    const pageStats = {};
+    pageViewsData?.forEach(view => {
+      const url = view.page_url;
+      if (!pageStats[url]) {
+        pageStats[url] = {
+          url,
+          title: view.page_title,
+          category: view.page_category,
+          views: 0,
+          uniqueVisitors: new Set()
+        };
+      }
+      pageStats[url].views++;
+    });
+
+    // Get unique visitors per page
+    const { data: uniqueVisitorsData } = await supabaseAdmin
+      .from('page_views')
+      .select('page_url, visitor_id')
+      .gte('visited_at', startDate.toISOString());
+
+    uniqueVisitorsData?.forEach(view => {
+      if (pageStats[view.page_url]) {
+        pageStats[view.page_url].uniqueVisitors.add(view.visitor_id);
+      }
+    });
+
+    // Convert to array and calculate unique visitors count
+    const topPages = Object.values(pageStats)
+      .map(page => ({
+        url: page.url,
+        title: page.title,
+        category: page.category,
+        views: page.views,
+        uniqueVisitors: page.uniqueVisitors.size
+      }))
+      .sort((a, b) => b.views - a.views)
+      .slice(0, 20);
+
+    // Get views by category
+    const categoryStats = {};
+    pageViewsData?.forEach(view => {
+      const category = view.page_category || 'other';
+      categoryStats[category] = (categoryStats[category] || 0) + 1;
+    });
+
+    // Get hourly trend for last 24h or daily trend for longer periods
+    let trendData = [];
+    if (timeRange === '24h') {
+      // Hourly trend
+      const hourlyStats = {};
+      pageViewsData?.forEach(view => {
+        const hour = new Date(view.visited_at).toISOString().slice(0, 13);
+        hourlyStats[hour] = (hourlyStats[hour] || 0) + 1;
+      });
+      
+      for (let i = 23; i >= 0; i--) {
+        const hour = new Date(now.getTime() - i * 60 * 60 * 1000).toISOString().slice(0, 13);
+        trendData.push({
+          period: hour,
+          views: hourlyStats[hour] || 0
+        });
+      }
+    } else {
+      // Daily trend
+      const dailyStats = {};
+      pageViewsData?.forEach(view => {
+        const date = new Date(view.visited_at).toISOString().split('T')[0];
+        dailyStats[date] = (dailyStats[date] || 0) + 1;
+      });
+      
+      const days = timeRange === '3d' ? 3 : timeRange === '7d' ? 7 : 30;
+      for (let i = days - 1; i >= 0; i--) {
+        const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        trendData.push({
+          period: date,
+          views: dailyStats[date] || 0
+        });
+      }
+    }
+
+    // Get tool-specific page performance
+    const toolPages = topPages.filter(p => p.category === 'tool_page');
+
+    res.json({
+      summary: {
+        totalPageViews: pageViewsData?.length || 0,
+        uniquePages: Object.keys(pageStats).length,
+        avgViewsPerPage: Object.keys(pageStats).length > 0 
+          ? ((pageViewsData?.length || 0) / Object.keys(pageStats).length).toFixed(2)
+          : 0
+      },
+      topPages,
+      toolPages,
+      categoryStats,
+      trend: trendData,
+      timeRange
+    });
+  } catch (error) {
+    console.error('Get page analytics error:', error);
+    res.status(500).json({ error: 'Failed to fetch page analytics' });
+  }
+});
+
+/**
+ * Get tool usage analytics
+ * GET /api/analytics/tool-stats
+ * Admin only
+ */
+router.get('/tool-stats', authenticateUser, requireAdmin, async (req, res) => {
+  try {
+    const { timeRange = '7d' } = req.query;
+
+    const now = new Date();
+    let startDate;
+    
+    switch (timeRange) {
+      case '24h':
+        startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        break;
+      case '3d':
+        startDate = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+        break;
+      case '7d':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30d':
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    }
+
+    const { data: toolUsageData, error } = await supabaseAdmin
+      .from('tool_usage')
+      .select('tool_id, tool_name, visitor_id, used_at')
+      .gte('used_at', startDate.toISOString());
+
+    if (error) {
+      console.error('Error fetching tool usage:', error);
+      return res.status(500).json({ error: 'Failed to fetch tool stats' });
+    }
+
+    // Aggregate by tool
+    const toolStats = {};
+    toolUsageData?.forEach(usage => {
+      const toolId = usage.tool_id;
+      if (!toolStats[toolId]) {
+        toolStats[toolId] = {
+          toolId,
+          toolName: usage.tool_name,
+          usageCount: 0,
+          uniqueUsers: new Set()
+        };
+      }
+      toolStats[toolId].usageCount++;
+      toolStats[toolId].uniqueUsers.add(usage.visitor_id);
+    });
+
+    const topTools = Object.values(toolStats)
+      .map(tool => ({
+        toolId: tool.toolId,
+        toolName: tool.toolName,
+        usageCount: tool.usageCount,
+        uniqueUsers: tool.uniqueUsers.size
+      }))
+      .sort((a, b) => b.usageCount - a.usageCount);
+
+    res.json({
+      summary: {
+        totalUsage: toolUsageData?.length || 0,
+        uniqueTools: Object.keys(toolStats).length
+      },
+      topTools,
+      timeRange
+    });
+  } catch (error) {
+    console.error('Get tool stats error:', error);
+    res.status(500).json({ error: 'Failed to fetch tool stats' });
   }
 });
 

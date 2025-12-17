@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useSubscription } from '../contexts/SubscriptionContext'
 import { api } from '../lib/api'
 import { downloadBlob } from '../lib/utils'
-import { trackPageViewOnce } from '../lib/visitorTracking'
+import { trackPageViewOnce, trackToolUsage } from '../lib/visitorTracking'
 import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
 import toast from 'react-hot-toast'
@@ -164,6 +164,7 @@ const PdfToExcel = () => {
           
           downloadBlob(blob, result.file.filename || `${file.name.replace('.pdf', '')}.xlsx`)
           toast.success('PDF converted to Excel successfully!')
+          trackToolUsage('pdf-to-excel', 'PDF to Excel').catch(err => console.error('Failed to track:', err))
         } catch (downloadError) {
           console.error('Download error:', downloadError)
           // Try alternative download method

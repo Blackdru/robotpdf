@@ -5,7 +5,7 @@ const Footer = () => {
   return (
     <footer className="bg-gradient-to-b from-white to-slate-50 border-t border-gray-200 mt-auto">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-6 md:gap-8">
           {/* Brand */}
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center space-x-3 mb-4">
@@ -57,52 +57,41 @@ const Footer = () => {
             </div>
           </div>
 
-          {/* Popular Tools */}
+          {/* PDF Tools */}
           <div>
-            <h3 className="text-slate-900 font-semibold mb-4">Popular Tools</h3>
-            <div className="space-y-3">
-              <Link
-                to="/pdf-to-excel"
-                className="flex items-center text-slate-600 hover:text-emerald-600 transition-colors text-sm"
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                PDF to Excel
-              </Link>
-              <Link
-                to="/ai-enhanced-ocr-pdf"
-                className="flex items-center text-slate-600 hover:text-indigo-600 transition-colors text-sm"
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                AI OCR
-              </Link>
-              <Link
-                to="/developers/docs"
-                className="flex items-center text-slate-600 hover:text-indigo-600 transition-colors text-sm"
-              >
-                <Book className="h-4 w-4 mr-2" />
-                API Docs
-              </Link>
+            <h3 className="text-slate-900 font-semibold mb-4">PDF Tools</h3>
+            <div className="space-y-2">
+              <Link to="/merge-pdf" className="block text-slate-600 hover:text-blue-600 transition-colors text-sm">Merge PDF</Link>
+              <Link to="/split-pdf" className="block text-slate-600 hover:text-emerald-600 transition-colors text-sm">Split PDF</Link>
+              <Link to="/compress-pdf" className="block text-slate-600 hover:text-orange-600 transition-colors text-sm">Compress PDF</Link>
+              <Link to="/password-remover" className="block text-slate-600 hover:text-amber-600 transition-colors text-sm">Remove Password</Link>
+               <Link to="/ai-enhanced-ocr-pdf" className="block text-slate-600 hover:text-purple-600 transition-colors text-sm">AI OCR</Link>
+              <Link to="/ai-chat-with-pdf" className="block text-slate-600 hover:text-purple-600 transition-colors text-sm">Chat with PDF</Link>
+              <Link to="/ai-smart-summary" className="block text-slate-600 hover:text-purple-600 transition-colors text-sm">AI Summary</Link>
             </div>
           </div>
 
-          {/* Support */}
+          {/* Convert Tools */}
           <div>
-            <h3 className="text-slate-900 font-semibold mb-4">Support</h3>
-            <div className="space-y-3">
-              <Link
-                to="/pricing"
-                className="flex items-center text-slate-600 hover:text-indigo-600 transition-colors text-sm"
-              >
-                <CreditCard className="h-4 w-4 mr-2" />
-                Pricing
-              </Link>
-              <Link
-                to="/contact"
-                className="flex items-center text-slate-600 hover:text-indigo-600 transition-colors text-sm"
-              >
-                <Mail className="h-4 w-4 mr-2" />
-                Contact Us
-              </Link>
+            <h3 className="text-slate-900 font-semibold mb-4">Convert</h3>
+            <div className="space-y-2">
+              <Link to="/image-to-pdf" className="block text-slate-600 hover:text-cyan-600 transition-colors text-sm">Image to PDF</Link>
+              <Link to="/word-to-pdf" className="block text-slate-600 hover:text-indigo-600 transition-colors text-sm">Word to PDF</Link>
+              <Link to="/excel-to-pdf" className="block text-slate-600 hover:text-green-600 transition-colors text-sm">Excel to PDF</Link>
+              <Link to="/pdf-to-excel" className="block text-slate-600 hover:text-green-600 transition-colors text-sm">PDF to Excel</Link>
+              <Link to="/html-to-pdf" className="block text-slate-600 hover:text-teal-600 transition-colors text-sm">HTML to PDF</Link>
+              <Link to="/text-to-pdf" className="block text-slate-600 hover:text-violet-600 transition-colors text-sm">Text to PDF</Link>
+              <Link to="/image-compress" className="block text-slate-600 hover:text-pink-600 transition-colors text-sm">Compress Images</Link>
+            </div>
+          </div>
+
+          {/* Resources */}
+          <div>
+            <h3 className="text-slate-900 font-semibold mb-4">Resources</h3>
+            <div className="space-y-2">
+              <Link to="/developers/docs" className="block text-slate-600 hover:text-indigo-600 transition-colors text-sm">API Docs</Link>
+              <Link to="/pricing" className="block text-slate-600 hover:text-indigo-600 transition-colors text-sm">Pricing</Link>
+              <Link to="/contact" className="block text-slate-600 hover:text-indigo-600 transition-colors text-sm">Contact Us</Link>
             </div>
           </div>
         </div>
