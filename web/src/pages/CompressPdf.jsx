@@ -156,6 +156,18 @@ const CompressPdf = () => {
           </div>
         </div>
       </section>
+
+      {/* Pro Pack Promotion */}
+      <section className="py-6 sm:py-8 px-3 sm:px-4 md:px-6">
+        <div className="container mx-auto max-w-4xl">
+          <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-2xl p-6 sm:p-8 text-center shadow-xl">
+            <p className="text-white text-base sm:text-lg font-medium">
+              Want more control of the output? Try our <Link to="/pricing" className="font-bold underline hover:text-indigo-100 transition-colors">Pro Pack with advanced settings</Link>
+            </p>
+          </div>
+        </div>
+      </section>
+
       <section className="py-10 sm:py-16 px-4 sm:px-6 bg-gradient-to-r from-orange-50 via-amber-50 to-yellow-50">
         <div className="container mx-auto max-w-6xl">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">

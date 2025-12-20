@@ -155,10 +155,13 @@ router.post('/merge',
       return res.status(400).json({ error: 'All files must be PDFs for merging' });
     }
 
+    // Sort files to match the order of fileIds array
+    const orderedFiles = fileIds.map(id => files.find(file => file.id === id)).filter(Boolean);
+
     // Create merged PDF
     const mergedPdf = await PDFDocument.create();
 
-    for (const file of files) {
+    for (const file of orderedFiles) {
       const fileBuffer = await getFileBuffer(file.path);
       const pdf = await PDFDocument.load(fileBuffer);
       const pages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());

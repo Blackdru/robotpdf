@@ -29,7 +29,7 @@ const Tools = () => {
     { id: 'pdf-to-excel', icon: Table2, title: 'PDF to Excel', description: 'Convert PDF files to Excel spreadsheets', path: '/pdf-to-excel', solidColor: 'bg-emerald-700', category: 'Conversion', isFree: true, processingTime: '< 60s' },
     { id: 'excel-to-pdf', icon: Sheet, title: 'Excel to PDF', description: 'Convert Excel spreadsheets to PDF format', path: '/excel-to-pdf', solidColor: 'bg-green-600', category: 'Conversion', isFree: false, processingTime: '< 60s' },
 
-    { id: 'pdf-to-pptx', icon: Layers, title: 'PDF to PowerPoint', description: 'Convert PDF to editable PPTX format', path: '/tools#pdf-to-pptx', solidColor: 'bg-orange-600', category: 'Conversion', isFree: true, processingTime: '< 90s' },
+    { id: 'pdf-to-pptx', icon: Layers, title: 'PDF to PowerPoint', description: 'Convert PDF to editable PPTX format', path: '/pdf-to-powerpoint', solidColor: 'bg-orange-600', category: 'Conversion', isFree: true, processingTime: '< 90s' },
     { id: 'password-remove', icon: Unlock, title: 'Password Remover', description: 'Remove password protection from your PDFs', path: '/password-remover', solidColor: 'bg-amber-600', category: 'Security', isFree: true, processingTime: '< 45s' },
     { id: 'text-to-pdf', icon: Type, title: 'Text to PDF', description: 'Type or paste text to convert into PDF documents', path: '/text-to-pdf', solidColor: 'bg-violet-600', category: 'Conversion', isFree: true, processingTime: '< 30s' },
     { id: 'image-compress', icon: ImageDown, title: 'Image Compressor', description: 'Compress images to 50% size with fixed quality', path: '/image-compress', solidColor: 'bg-pink-600', category: 'Optimization', isFree: true, processingTime: '< 45s' }

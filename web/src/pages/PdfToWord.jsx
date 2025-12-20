@@ -162,6 +162,18 @@ const PdfToWord = () => {
           </div>
         </div>
       </section>
+
+      {/* Pro Pack Promotion */}
+      <section className="py-6 sm:py-8 px-3 sm:px-4 md:px-6">
+        <div className="container mx-auto max-w-4xl">
+          <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-2xl p-6 sm:p-8 text-center shadow-xl">
+            <p className="text-white text-base sm:text-lg font-medium">
+              Want more control of the output? Try our <Link to="/pricing" className="font-bold underline hover:text-indigo-100 transition-colors">Pro Pack with advanced settings</Link>
+            </p>
+          </div>
+        </div>
+      </section>
+
       <section className="py-8 sm:py-10 md:py-16 px-3 sm:px-4 md:px-6 bg-gradient-to-r from-blue-50 via-indigo-50 to-cyan-50">
         <div className="container mx-auto max-w-6xl">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-6">{features.map((feature, index) => (<div key={index} className="text-center p-2 sm:p-3"><div className="inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 bg-white rounded-lg sm:rounded-xl md:rounded-2xl shadow-md mb-2 sm:mb-3 md:mb-4"><feature.icon className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 text-blue-600" /></div><div className="text-xs sm:text-sm md:text-base font-semibold text-slate-900">{feature.title}</div><div className="text-[10px] sm:text-xs md:text-sm text-slate-500">{feature.desc}</div></div>))}</div>

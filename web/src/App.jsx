@@ -53,6 +53,7 @@ const HtmlToPdf = lazy(() => import('./pages/HtmlToPdf'))
 const PasswordRemover = lazy(() => import('./pages/PasswordRemover'))
 const TextToPdf = lazy(() => import('./pages/TextToPdf'))
 const ImageCompress = lazy(() => import('./pages/ImageCompress'))
+const PdfToPowerpoint = lazy(() => import('./pages/PdfToPowerpoint'))
 
 // App-specific privacy policies
 const OCRPrivacyPolicy = lazy(() => import('./apps/ocr'))
@@ -173,6 +174,10 @@ const AppContent = () => {
         title: 'Text to PDF Converter — Convert Text to PDF Online Free | RobotPDF',
         description: 'Convert text to PDF online for free. Type or paste text and create professional PDF documents instantly. Fast, secure, no registration required.'
       },
+      '/pdf-to-powerpoint': {
+        title: 'PDF to PowerPoint Converter — Convert PDF to PPTX Online Free | RobotPDF',
+        description: 'Convert PDF to PowerPoint presentations online for free. Preserve formatting and create editable PPTX slides. Fast, secure, no registration required.'
+      },
       '/image-compress': {
         title: 'Image Compressor — Compress Images Online Free | RobotPDF',
         description: 'Compress JPG, PNG, WebP images online for free. Reduce image file size by 50% while maintaining quality. Fast, secure image compressor.'
@@ -251,6 +256,7 @@ const AppContent = () => {
                 <Route path="/html-to-pdf" element={<HtmlToPdf />} />
                 <Route path="/password-remover" element={<PasswordRemover />} />
                 <Route path="/text-to-pdf" element={<TextToPdf />} />
+                <Route path="/pdf-to-powerpoint" element={<PdfToPowerpoint />} />
                 <Route path="/image-compress" element={<ImageCompress />} />
                 <Route path="/advanced-tools" element={<AdvancedTools />} />
                 <Route 
