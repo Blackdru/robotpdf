@@ -28,22 +28,25 @@ class AIService {
           'X-Title': 'RobotPDF'
         }
       });
-      // Use free models through OpenRouter - mistral-nemo is best for document processing
-      this.model = process.env.AI_MODEL || 'mistralai/mistral-nemo:free';
-      // Fallback models if primary fails
+      // Use free models through OpenRouter
+      this.model = process.env.AI_MODEL || 'google/gemini-2.0-flash-exp:free';
+      
       this.fallbackModels = [
-        'mistralai/mistral-nemo:free',
-        'meta-llama/llama-4-maverick:free',
-        'nousresearch/deephermes-3-llama-3-8b-preview:free',
-        'google/gemma-3-4b-it:free',
-        'meta-llama/llama-3.2-3b-instruct:free',
-        'deepseek/deepseek-chat-v3.1:free'
+        'google/gemini-2.0-flash-exp:free',      // Best: Fast, accurate document processing
+        'meta-llama/llama-3.3-70b-instruct:free', // Excellent: Large model for complex text
+        'google/gemma-3-27b-it:free',             // Great: Good for structured extraction
+        'mistralai/devstral-2512:free',           // Good: Mistral's capable dev model
+        'z-ai/glm-4.5-air:free',                  // Good: Multilingual support
+        'nvidia/nemotron-3-nano-30b-a3b:free',    // Decent: General purpose
+        'xiaomi/mimo-v2-flash:free',              // Fast: Lightweight option
+        'nvidia/nemotron-nano-12b-v2-vl:free'     // Backup: Vision-language model
       ];
-      this.embeddingModel = 'text-embedding-3-small'; // OpenRouter doesn't support embeddings, we'll use a fallback
+      this.embeddingModel = 'text-embedding-3-small';
       this.isUsingOpenRouter = true;
       this.isUsingOpenAI = false;
-      this.maxTokens = 8000; // Most free models support up to 8K tokens
+      this.maxTokens = 8000;
       console.log('- Configured with OpenRouter model:', this.model);
+      console.log('- Fallback models:', this.fallbackModels.length);
     } else if (useOpenAI) {
       this.openai = new OpenAI({
         apiKey: process.env.OPENAI_API_KEY,
@@ -527,15 +530,18 @@ ${rawText}
 
 Please provide only the cleaned and enhanced text without any explanations or comments:`;
 
-      // Use a reliable model for OCR enhancement
-      // Try free models first, fall back to configured model
+      // Use free models for OCR enhancement, sorted by best fit for document processing
+      // Falls back to configured model if all free models fail
       const modelsToTry = this.isUsingOpenRouter 
         ? [
-            'meta-llama/llama-3.3-70b-instruct:free',
-            'mistralai/mistral-nemo:free',
-            'google/gemma-3-4b-it:free',
-            'meta-llama/llama-3.2-3b-instruct:free',
-            this.model // Fall back to configured model
+            'google/gemini-2.0-flash-exp:free',      // Best: Fast, accurate document processing
+            'meta-llama/llama-3.3-70b-instruct:free', // Excellent: Large model for complex text
+            'google/gemma-3-27b-it:free',             // Great: Good for structured extraction
+            'mistralai/devstral-2512:free',           // Good: Mistral's capable dev model
+            'z-ai/glm-4.5-air:free',                  // Good: Multilingual support
+            'nvidia/nemotron-3-nano-30b-a3b:free',    // Decent: General purpose
+            'xiaomi/mimo-v2-flash:free',              // Fast: Lightweight option
+            this.model                                 // Fallback: Configured paid model
           ]
         : [this.model];
       
