@@ -29,12 +29,13 @@ class AIService {
         }
       });
       // Use free models through OpenRouter
-      this.model = process.env.AI_MODEL || 'google/gemini-2.0-flash-exp:free';
+      this.model = process.env.AI_MODEL || 'meta-llama/llama-3.3-70b-instruct:free';
       
+      // FREE models sorted by best fit for PDF/document processing (no Google models)
       this.fallbackModels = [
-        'google/gemini-2.0-flash-exp:free',      // Best: Fast, accurate document processing
-        'meta-llama/llama-3.3-70b-instruct:free', // Excellent: Large model for complex text
-        'google/gemma-3-27b-it:free',             // Great: Good for structured extraction
+        'meta-llama/llama-3.3-70b-instruct:free', // Best: Large 70B model for complex text
+        'nex-agi/deepseek-v3.1-nex-n1:free',      // Excellent: DeepSeek for document processing
+        'tngtech/deepseek-r1t2-chimera:free',     // Great: DeepSeek reasoning model
         'mistralai/devstral-2512:free',           // Good: Mistral's capable dev model
         'z-ai/glm-4.5-air:free',                  // Good: Multilingual support
         'nvidia/nemotron-3-nano-30b-a3b:free',    // Decent: General purpose
@@ -531,12 +532,12 @@ ${rawText}
 Please provide only the cleaned and enhanced text without any explanations or comments:`;
 
       // Use free models for OCR enhancement, sorted by best fit for document processing
-      // Falls back to configured model if all free models fail
+      // Falls back to configured model if all free models fail (no Google models - rate limited)
       const modelsToTry = this.isUsingOpenRouter 
         ? [
-            'google/gemini-2.0-flash-exp:free',      // Best: Fast, accurate document processing
-            'meta-llama/llama-3.3-70b-instruct:free', // Excellent: Large model for complex text
-            'google/gemma-3-27b-it:free',             // Great: Good for structured extraction
+            'meta-llama/llama-3.3-70b-instruct:free', // Best: Large 70B model for complex text
+            'nex-agi/deepseek-v3.1-nex-n1:free',      // Excellent: DeepSeek for document processing
+            'tngtech/deepseek-r1t2-chimera:free',     // Great: DeepSeek reasoning model
             'mistralai/devstral-2512:free',           // Good: Mistral's capable dev model
             'z-ai/glm-4.5-air:free',                  // Good: Multilingual support
             'nvidia/nemotron-3-nano-30b-a3b:free',    // Decent: General purpose
