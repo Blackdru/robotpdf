@@ -19,70 +19,80 @@ const SplitPrivacyPolicy = () => {
       <section className="mb-6">
         <h2 className="text-2xl font-semibold mb-3">2. Information We Collect</h2>
         
-        <h3 className="text-xl font-semibold mb-2 mt-4">2.1 File Access</h3>
+        <h3 className="text-xl font-semibold mb-2 mt-4">2.1 Files and Documents</h3>
         <ul className="list-disc list-inside text-gray-700 space-y-2 mb-4">
-          <li>The app requests permission to access PDF files on your device for splitting</li>
-          <li>Files are processed entirely on your device (client-side processing)</li>
-          <li>No files are uploaded to or stored on our servers</li>
+          <li><strong>Data Collected:</strong> PDF files you upload for splitting</li>
+          <li><strong>Purpose:</strong> App functionality - files are uploaded solely to perform the split operation</li>
+          <li><strong>Processing:</strong> Files are processed ephemerally in memory on our server (app.robotpdf.com)</li>
+          <li><strong>Retention:</strong> Files are deleted immediately after processing completes (typically within milliseconds)</li>
+          <li><strong>Storage:</strong> No files are stored permanently on our servers</li>
+          <li><strong>Required:</strong> Yes - this is core app functionality</li>
         </ul>
 
-        <h3 className="text-xl font-semibold mb-2 mt-4">2.2 Storage Permission</h3>
+        <h3 className="text-xl font-semibold mb-2 mt-4">2.2 Permissions Used</h3>
         <ul className="list-disc list-inside text-gray-700 space-y-2 mb-4">
-          <li>Required to read source PDF files for splitting</li>
-          <li>Required to save the resulting split PDF files to your device</li>
-          <li>All files remain on your device under your control</li>
+          <li><strong>INTERNET:</strong> Required to upload PDF files to our server for processing</li>
+          <li><strong>READ_EXTERNAL_STORAGE:</strong> Required to read PDF files from your device (Android 12 and below)</li>
+          <li><strong>WRITE_EXTERNAL_STORAGE:</strong> Required to save split PDF files to your device (Android 9 and below)</li>
         </ul>
 
         <h3 className="text-xl font-semibold mb-2 mt-4">2.3 Information We Do NOT Collect</h3>
         <ul className="list-disc list-inside text-gray-700 space-y-2 mb-4">
-          <li>We do not collect personal identification information</li>
+          <li>We do not collect personal identification information (name, email, phone, address)</li>
           <li>We do not collect device identifiers or advertising IDs</li>
           <li>We do not collect location data</li>
-          <li>We do not use cookies or tracking technologies</li>
-          <li>We do not collect usage analytics or behavioral data</li>
-          <li>We do not transmit your documents to any server</li>
+          <li>We do not use analytics or tracking SDKs</li>
+          <li>We do not log file contents</li>
+          <li>We do not require user accounts</li>
         </ul>
       </section>
 
       <section className="mb-6">
         <h2 className="text-2xl font-semibold mb-3">3. How We Process Your Files</h2>
         <ul className="list-disc list-inside text-gray-700 space-y-2">
-          <li>All PDF splitting is performed locally on your device</li>
-          <li>Processing uses client-side JavaScript libraries</li>
-          <li>No internet connection is required for the splitting operation</li>
-          <li>Your files never leave your device</li>
-          <li>We have no access to your documents or their contents</li>
+          <li>Files are uploaded to our server (app.robotpdf.com) via HTTPS/TLS encrypted connection</li>
+          <li>Files are processed in memory only - never written to disk on the server</li>
+          <li>Processing typically completes within milliseconds</li>
+          <li>Files are deleted immediately after the split operation completes</li>
+          <li>Split PDF files are sent back to your device and saved locally</li>
+          <li>No copies of your files are retained on our servers</li>
         </ul>
       </section>
 
       <section className="mb-6">
         <h2 className="text-2xl font-semibold mb-3">4. Data Storage and Retention</h2>
         <ul className="list-disc list-inside text-gray-700 space-y-2">
-          <li>All files are stored locally on your device only</li>
-          <li>We do not maintain any copies of your documents</li>
-          <li>No data is retained on our servers because no data is ever transmitted</li>
-          <li>You can delete all app data by clearing browser cache or uninstalling the app</li>
-          <li>You have full control over your split PDF files</li>
+          <li><strong>Server Retention:</strong> Zero retention - files are deleted immediately after processing</li>
+          <li><strong>Processing Duration:</strong> Files exist in server memory only during processing (milliseconds)</li>
+          <li><strong>Local Storage:</strong> Split PDF files are saved to your device under your control</li>
+          <li><strong>No Permanent Storage:</strong> We do not maintain any copies of your documents on our servers</li>
+          <li><strong>Data Deletion:</strong> Not applicable - no data is retained to delete</li>
         </ul>
       </section>
 
       <section className="mb-6">
         <h2 className="text-2xl font-semibold mb-3">5. Data Security</h2>
-        <p className="text-gray-700 mb-4">We implement a privacy-by-design approach:</p>
+        <p className="text-gray-700 mb-4">We implement robust security measures:</p>
         <ul className="list-disc list-inside text-gray-700 space-y-2">
-          <li>100% client-side processing ensures your files never leave your device</li>
-          <li>No server communication means no data breach risk</li>
-          <li>No persistent storage of user documents on any server</li>
-          <li>Your files are as secure as your device's security</li>
+          <li><strong>Encryption in Transit:</strong> All network traffic uses HTTPS/TLS encryption</li>
+          <li><strong>No Cleartext Traffic:</strong> Enforced via network_security_config.xml in production</li>
+          <li><strong>Ephemeral Processing:</strong> Files processed in memory only, never written to disk</li>
+          <li><strong>Instant Deletion:</strong> Files deleted immediately after processing completes</li>
+          <li><strong>No Logging:</strong> File contents are never logged or stored in any logs</li>
+          <li><strong>Minimal Data Collection:</strong> No user accounts or personal data required</li>
         </ul>
       </section>
 
       <section className="mb-6">
         <h2 className="text-2xl font-semibold mb-3">6. Third-Party Services</h2>
         <p className="text-gray-700 mb-4">
-          The PDF Split App does not integrate with any third-party services for file processing. 
-          We do not use third-party analytics, advertising networks, or tracking services. 
-          All functionality is self-contained within the app.
+          The PDF Split App uses the following service:
+        </p>
+        <ul className="list-disc list-inside text-gray-700 space-y-2">
+          <li><strong>RobotPDF API (app.robotpdf.com):</strong> Used for PDF splitting processing. PDF file content is processed ephemerally and not stored.</li>
+        </ul>
+        <p className="text-gray-700 mt-4">
+          We do not use third-party analytics, advertising networks, or tracking services.
         </p>
       </section>
 
