@@ -198,14 +198,17 @@ router.post('/merge',
 });
 
 // Split PDF - supports both authenticated and anonymous users
+// Supports 3 modes: 'all-pages', 'single-pdf', 'individual-pdfs'
 router.post('/split', optionalAuth, async (req, res) => {
   try {
-    const { fileId, pages, outputName = 'split.pdf' } = req.body;
+    const { fileId, pages, splitMode = 'all-pages', outputName = 'split.pdf' } = req.body;
     const isAnonymous = !req.user;
 
     console.log('=== SPLIT PDF REQUEST ===');
     console.log('User:', req.user?.id || 'anonymous');
     console.log('File ID:', fileId);
+    console.log('Split Mode:', splitMode);
+    console.log('Pages:', pages);
 
     if (!fileId) {
       return res.status(400).json({ error: 'File ID is required' });
@@ -238,12 +241,12 @@ router.post('/split', optionalAuth, async (req, res) => {
     const pdf = await PDFDocument.load(fileBuffer);
     const totalPages = pdf.getPageCount();
 
-    // If no specific pages provided, split into individual pages
-    if (!pages || !Array.isArray(pages)) {
+    // Mode 1: Split all pages into individual PDFs
+    if (splitMode === 'all-pages') {
       const archive = archiver('zip', { zlib: { level: 9 } });
       
       res.setHeader('Content-Type', 'application/zip');
-      res.setHeader('Content-Disposition', `attachment; filename="${outputName.replace('.pdf', '')}_split.zip"`);
+      res.setHeader('Content-Disposition', `attachment; filename="${outputName.replace('.pdf', '')}_all_pages.zip"`);
       
       archive.pipe(res);
 
@@ -258,48 +261,85 @@ router.post('/split', optionalAuth, async (req, res) => {
         archive.append(splitBuffer, { name: fileName });
       }
 
-      // Log operation (only for authenticated users)
       if (req.user) {
         await logOperation(req.user.id, file.id, 'split');
       }
       
-      console.log('Split completed successfully (zip)');
+      console.log('Split completed (all pages to individual PDFs)');
       await archive.finalize();
       return;
     }
 
-    // Split specific pages
+    // Validate pages for modes that require them
+    if (!pages || !Array.isArray(pages) || pages.length === 0) {
+      return res.status(400).json({ error: 'Page numbers are required for this split mode' });
+    }
+
     const validPages = pages.filter(p => p >= 1 && p <= totalPages);
     if (validPages.length === 0) {
       return res.status(400).json({ error: 'No valid page numbers provided' });
     }
 
-    const newPdf = await PDFDocument.create();
-    const pageIndices = validPages.map(p => p - 1); // Convert to 0-based index
-    const copiedPages = await newPdf.copyPages(pdf, pageIndices);
-    copiedPages.forEach((page) => newPdf.addPage(page));
+    // Mode 2: Combine specified pages into a single PDF
+    if (splitMode === 'single-pdf') {
+      const newPdf = await PDFDocument.create();
+      const pageIndices = validPages.map(p => p - 1);
+      const copiedPages = await newPdf.copyPages(pdf, pageIndices);
+      copiedPages.forEach((page) => newPdf.addPage(page));
 
-    const splitBuffer = Buffer.from(await newPdf.save());
-    const savedFile = await saveProcessedFile(
-      req.user?.id || null,
-      splitBuffer,
-      outputName,
-      'application/pdf',
-      isAnonymous
-    );
+      const splitBuffer = Buffer.from(await newPdf.save());
+      const savedFile = await saveProcessedFile(
+        req.user?.id || null,
+        splitBuffer,
+        outputName,
+        'application/pdf',
+        isAnonymous
+      );
 
-    // Log operation (only for authenticated users)
-    if (req.user) {
-      await logOperation(req.user.id, savedFile.id, 'split');
+      if (req.user) {
+        await logOperation(req.user.id, savedFile.id, 'split');
+      }
+
+      console.log('Split completed (pages to single PDF):', savedFile.id);
+
+      res.json({
+        message: 'PDF split successfully',
+        file: savedFile,
+        isAnonymous: isAnonymous
+      });
+      return;
     }
 
-    console.log('Split completed successfully:', savedFile.id);
+    // Mode 3: Split specified pages into individual PDFs
+    if (splitMode === 'individual-pdfs') {
+      const archive = archiver('zip', { zlib: { level: 9 } });
+      
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Disposition', `attachment; filename="${outputName.replace('.pdf', '')}_selected_pages.zip"`);
+      
+      archive.pipe(res);
 
-    res.json({
-      message: 'PDF split successfully',
-      file: savedFile,
-      isAnonymous: isAnonymous
-    });
+      for (const pageNum of validPages) {
+        const newPdf = await PDFDocument.create();
+        const [page] = await newPdf.copyPages(pdf, [pageNum - 1]);
+        newPdf.addPage(page);
+
+        const splitBuffer = Buffer.from(await newPdf.save());
+        const fileName = `${outputName.replace('.pdf', '')}_page_${pageNum}.pdf`;
+        
+        archive.append(splitBuffer, { name: fileName });
+      }
+
+      if (req.user) {
+        await logOperation(req.user.id, file.id, 'split');
+      }
+      
+      console.log('Split completed (selected pages to individual PDFs)');
+      await archive.finalize();
+      return;
+    }
+
+    return res.status(400).json({ error: 'Invalid split mode. Use: all-pages, single-pdf, or individual-pdfs' });
   } catch (error) {
     console.error('Split error:', error);
     res.status(500).json({ error: error.message || 'PDF split failed' });
