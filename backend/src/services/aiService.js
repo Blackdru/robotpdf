@@ -527,55 +527,76 @@ ${rawText}
 
 Please provide only the cleaned and enhanced text without any explanations or comments:`;
 
-      // ALWAYS use FREE model for OCR enhancement to save costs
-      const freeModel = this.isUsingOpenRouter 
-        ? 'meta-llama/llama-3.3-70b-instruct:free' // FREE 70B model
-        : this.model;
+      // Use a reliable model for OCR enhancement
+      // Try free models first, fall back to configured model
+      const modelsToTry = this.isUsingOpenRouter 
+        ? [
+            'meta-llama/llama-3.3-70b-instruct:free',
+            'mistralai/mistral-nemo:free',
+            'google/gemma-3-4b-it:free',
+            'meta-llama/llama-3.2-3b-instruct:free',
+            this.model // Fall back to configured model
+          ]
+        : [this.model];
       
-      console.log(`Using FREE AI model for OCR enhancement: ${freeModel}`);
+      let enhancedText = null;
+      let lastError = null;
       
-      try {
-        const response = await this.openai.chat.completions.create({
-          model: freeModel,
-          messages: [
-            {
-              role: 'system',
-              content: 'You are a professional OCR text enhancement expert. Clean up OCR-extracted text while preserving all original information exactly. Focus on fixing OCR errors, improving readability, and maintaining document structure. Return only the enhanced text without any explanations.'
-            },
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          max_tokens: Math.min(2000, Math.ceil(rawText.length * 1.5)),
-          temperature: 0.1, // Very low temperature for consistent corrections
-        });
-
-        const enhancedText = response.choices[0].message.content.trim();
-        console.log('AI enhancement completed with model:', freeModel, 'new length:', enhancedText.length);
+      for (const modelToUse of modelsToTry) {
+        try {
+          console.log(`Trying AI model for OCR enhancement: ${modelToUse}`);
           
-          // Validate that the enhanced text is reasonable
-          if (enhancedText.length > rawText.length * 3) {
-            console.warn('AI enhancement produced text that is too long, using original');
-            return rawText;
-          }
+          const response = await this.openai.chat.completions.create({
+            model: modelToUse,
+            messages: [
+              {
+                role: 'system',
+                content: 'You are a professional OCR text enhancement expert. Clean up OCR-extracted text while preserving all original information exactly. Focus on fixing OCR errors, improving readability, and maintaining document structure. Return only the enhanced text without any explanations.'
+              },
+              {
+                role: 'user',
+                content: prompt
+              }
+            ],
+            max_tokens: Math.min(4000, Math.ceil(rawText.length * 1.5)),
+            temperature: 0.1, // Very low temperature for consistent corrections
+          });
 
-          if (enhancedText.length < rawText.length * 0.3) {
-            console.warn('AI enhancement produced text that is too short, using original');
-            return rawText;
-          }
-
-          // Additional validation for important document information
-          if (this.containsImportantDocumentInfo(rawText) && !this.containsImportantDocumentInfo(enhancedText)) {
-            console.warn('AI enhancement removed important document information, using original');
-            return rawText;
-          }
-
-          return enhancedText;
-      } catch (error) {
-        console.error('AI enhancement failed:', error.message);
-        throw error;
+          enhancedText = response.choices[0].message.content.trim();
+          console.log('AI enhancement completed with model:', modelToUse, 'new length:', enhancedText.length);
+          break; // Success, exit the loop
+          
+        } catch (modelError) {
+          console.warn(`Model ${modelToUse} failed:`, modelError.message);
+          lastError = modelError;
+          // Continue to next model
+        }
       }
+      
+      if (!enhancedText) {
+        console.error('All AI models failed for OCR enhancement');
+        throw lastError || new Error('AI enhancement failed with all models');
+      }
+          
+      // Validate that the enhanced text is reasonable
+      if (enhancedText.length > rawText.length * 3) {
+        console.warn('AI enhancement produced text that is too long, using original');
+        return rawText;
+      }
+
+      if (enhancedText.length < rawText.length * 0.3) {
+        console.warn('AI enhancement produced text that is too short, using original');
+        return rawText;
+      }
+
+      // Additional validation for important document information
+      if (this.containsImportantDocumentInfo(rawText) && !this.containsImportantDocumentInfo(enhancedText)) {
+        console.warn('AI enhancement removed important document information, using original');
+        return rawText;
+      }
+
+      return enhancedText;
+      
     } catch (error) {
       console.error('Error enhancing text with AI:', error);
       throw error;

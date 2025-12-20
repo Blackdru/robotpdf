@@ -101,6 +101,8 @@ router.get('/usage', trackApiUsage('usage_stats'), async (req, res) => {
 // POST /v1/ocr - Enhanced OCR with AI
 router.post('/ocr', trackApiUsage('ocr_pro'), upload.single('file'), async (req, res) => {
   try {
+    console.log('=== V1 OCR API ENDPOINT CALLED ===');
+    
     if (!req.file) {
       return res.status(400).json({
         error: 'No file provided',
@@ -114,6 +116,15 @@ router.post('/ocr', trackApiUsage('ocr_pro'), upload.single('file'), async (req,
       ai_enhanced = 'true',
       extract_original = 'false'
     } = req.body;
+
+    console.log('OCR API Settings:', { 
+      language, 
+      enhance_image, 
+      ai_enhanced, 
+      extract_original,
+      fileType: req.file.mimetype,
+      fileName: req.file.originalname
+    });
 
     // Upload file to storage first
     const userFolder = req.developer.id;
@@ -155,12 +166,29 @@ router.post('/ocr', trackApiUsage('ocr_pro'), upload.single('file'), async (req,
 
     // Perform enhanced OCR
     const fileType = req.file.mimetype.startsWith('image/') ? 'image' : 'pdf';
+    console.log('Calling ocrService.extractTextWithAI with options:', {
+      language: language,
+      enhanceImage: enhance_image === 'true',
+      enhanceWithAI: ai_enhanced === 'true',
+      extractOriginal: extract_original === 'true',
+      fileType: fileType
+    });
+    
     const result = await ocrService.extractTextWithAI(req.file.buffer, {
       language: language,
       enhanceImage: enhance_image === 'true',
-      aiEnhanced: ai_enhanced === 'true',
+      enhanceWithAI: ai_enhanced === 'true',
       extractOriginal: extract_original === 'true',
       fileType: fileType
+    });
+
+    console.log('OCR Result:', {
+      textLength: result.text?.length,
+      originalTextLength: result.originalText?.length,
+      enhancedTextLength: result.enhancedText?.length,
+      aiEnhanced: result.aiEnhanced,
+      localCleaned: result.localCleaned,
+      confidence: result.confidence
     });
 
     // Clean up uploaded file
