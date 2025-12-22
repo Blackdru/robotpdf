@@ -1,6 +1,10 @@
 User-agent: *
 Allow: /
 
+# Explicitly allow ads.txt and app-ads.txt for ad network crawlers
+Allow: /ads.txt
+Allow: /app-ads.txt
+
 # Block authenticated and private areas
 Disallow: /dashboard/
 Disallow: /files/

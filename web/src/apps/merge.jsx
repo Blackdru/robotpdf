@@ -19,70 +19,77 @@ const MergePrivacyPolicy = () => {
       <section className="mb-6">
         <h2 className="text-2xl font-semibold mb-3">2. Information We Collect</h2>
         
-        <h3 className="text-xl font-semibold mb-2 mt-4">2.1 File Access</h3>
+        <h3 className="text-xl font-semibold mb-2 mt-4">2.1 Data Types Collected</h3>
         <ul className="list-disc list-inside text-gray-700 space-y-2 mb-4">
-          <li>The app requests permission to access PDF files on your device for merging</li>
-          <li>Files are processed entirely on your device (client-side processing)</li>
-          <li>No files are uploaded to or stored on our servers</li>
+          <li><strong>Documents and Files:</strong> PDF files you upload for merging</li>
+          <li><strong>Images:</strong> Any images contained within your PDF documents</li>
         </ul>
 
-        <h3 className="text-xl font-semibold mb-2 mt-4">2.2 Storage Permission</h3>
+        <h3 className="text-xl font-semibold mb-2 mt-4">2.2 File Access and Processing</h3>
+        <ul className="list-disc list-inside text-gray-700 space-y-2 mb-4">
+          <li>The app requests permission to access PDF files on your device for merging</li>
+          <li>Your files are temporarily uploaded to RobotPDF servers for processing</li>
+          <li>Files are transmitted securely over HTTPS with TLS 1.2+ encryption</li>
+          <li>Processing is performed on our secure servers to ensure optimal performance</li>
+        </ul>
+
+        <h3 className="text-xl font-semibold mb-2 mt-4">2.3 Storage Permission</h3>
         <ul className="list-disc list-inside text-gray-700 space-y-2 mb-4">
           <li>Required to read multiple PDF files for combining</li>
           <li>Required to save the resulting merged PDF file to your device</li>
-          <li>All files remain on your device under your control</li>
         </ul>
 
-        <h3 className="text-xl font-semibold mb-2 mt-4">2.3 Information We Do NOT Collect</h3>
+        <h3 className="text-xl font-semibold mb-2 mt-4">2.4 Information We Do NOT Collect</h3>
         <ul className="list-disc list-inside text-gray-700 space-y-2 mb-4">
           <li>We do not collect personal identification information</li>
           <li>We do not collect device identifiers or advertising IDs</li>
           <li>We do not collect location data</li>
           <li>We do not use cookies or tracking technologies</li>
           <li>We do not collect usage analytics or behavioral data</li>
-          <li>We do not transmit your documents to any server</li>
         </ul>
       </section>
 
       <section className="mb-6">
         <h2 className="text-2xl font-semibold mb-3">3. How We Process Your Files</h2>
         <ul className="list-disc list-inside text-gray-700 space-y-2">
-          <li>All PDF merging is performed locally on your device</li>
-          <li>Processing uses client-side JavaScript libraries</li>
-          <li>No internet connection is required for the merge operation</li>
-          <li>Your files never leave your device</li>
-          <li>We have no access to your documents or their contents</li>
+          <li>Your PDF files are temporarily uploaded to RobotPDF servers for merging</li>
+          <li>All data transmission is encrypted using HTTPS/TLS 1.2+ protocols</li>
+          <li>Files are processed in secure, isolated server environments</li>
+          <li>The merged PDF is returned to your device immediately after processing</li>
+          <li>An internet connection is required for the merge operation</li>
         </ul>
       </section>
 
       <section className="mb-6">
         <h2 className="text-2xl font-semibold mb-3">4. Data Storage and Retention</h2>
         <ul className="list-disc list-inside text-gray-700 space-y-2">
-          <li>All files are stored locally on your device only</li>
-          <li>We do not maintain any copies of your documents</li>
-          <li>No data is retained on our servers because no data is ever transmitted</li>
-          <li>You can delete all app data by clearing browser cache or uninstalling the app</li>
-          <li>You have full control over your merged PDF files</li>
+          <li><strong>Temporary Server Storage:</strong> Files are temporarily stored on RobotPDF servers only during processing</li>
+          <li><strong>Automatic Deletion:</strong> All uploaded files and processed documents are automatically deleted from our servers immediately after processing is complete</li>
+          <li><strong>No Long-term Storage:</strong> We do not retain, backup, or store any copies of your documents on our servers</li>
+          <li><strong>Local Storage:</strong> The final merged PDF is saved to your device and remains under your control</li>
+          <li><strong>Data Removal:</strong> You can delete all local app data by clearing browser cache or uninstalling the app</li>
         </ul>
       </section>
 
       <section className="mb-6">
         <h2 className="text-2xl font-semibold mb-3">5. Data Security</h2>
-        <p className="text-gray-700 mb-4">We implement a privacy-by-design approach:</p>
+        <p className="text-gray-700 mb-4">We implement industry-standard security measures to protect your data:</p>
         <ul className="list-disc list-inside text-gray-700 space-y-2">
-          <li>100% client-side processing ensures your files never leave your device</li>
-          <li>No server communication means no data breach risk</li>
-          <li>No persistent storage of user documents on any server</li>
-          <li>Your files are as secure as your device's security</li>
+          <li>All data transmission is encrypted using HTTPS/TLS 1.2+ protocols</li>
+          <li>Files are processed in secure, isolated server environments</li>
+          <li>No persistent storage of user documents on our servers</li>
+          <li>Automatic deletion of all files immediately after processing</li>
+          <li>Regular security audits and vulnerability assessments</li>
+          <li>Access to processing systems is strictly controlled and logged</li>
         </ul>
       </section>
 
       <section className="mb-6">
         <h2 className="text-2xl font-semibold mb-3">6. Third-Party Services</h2>
         <p className="text-gray-700 mb-4">
-          The PDF Merge App does not integrate with any third-party services for file processing. 
+          PDF merging is performed by RobotPDF servers. We do not share your documents with any third-party services. 
           We do not use third-party analytics, advertising networks, or tracking services. 
-          All functionality is self-contained within the app.
+          Your files are processed exclusively on our secure servers and are not transmitted to any external parties.
         </p>
       </section>
 

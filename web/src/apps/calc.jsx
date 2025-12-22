@@ -3,11 +3,11 @@
 const CalPrivacyPolicy = () => {
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6">Privacy Policy for Note Cal - Smart Note Calc</h1>
+      <h1 className="text-3xl font-bold mb-6">Privacy Policy for Note Cal - Note Calculator</h1>
       <p className="text-sm text-gray-600 mb-8">Last Updated: December 2025</p>
 
       <p className="text-gray-700 mb-8">
-        Note Cal - Smart Note Calc ("the App") is developed to help users
+        Note Cal - Note Calculator ("the App") is developed to help users
         calculate totals from note-based input. We value your privacy and are
         committed to ensuring your data remains safe.
       </p>

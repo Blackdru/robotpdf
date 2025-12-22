@@ -3,13 +3,13 @@ import React from 'react';
 const SplitPrivacyPolicy = () => {
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6">Privacy Policy - PDF Split App</h1>
+      <h1 className="text-3xl font-bold mb-6">Privacy Policy - Split PDF: Cut to Single Pages</h1>
       <p className="text-sm text-gray-600 mb-8">Last Updated: December 2025</p>
       
       <section className="mb-6">
         <h2 className="text-2xl font-semibold mb-3">1. Introduction</h2>
         <p className="text-gray-700 mb-4">
-          This Privacy Policy describes how PDF Split App ("we", "our", "us", or "the App") developed by 
+          This Privacy Policy describes how Split PDF: Cut to Single Pages ("we", "our", "us", or "the App") developed by 
           RobotPDF handles your information. We are committed to protecting your privacy and ensuring 
           the security of your personal data in compliance with applicable data protection laws including 
           GDPR and CCPA.
@@ -86,7 +86,7 @@ const SplitPrivacyPolicy = () => {
       <section className="mb-6">
         <h2 className="text-2xl font-semibold mb-3">6. Third-Party Services</h2>
         <p className="text-gray-700 mb-4">
-          The PDF Split App uses the following service:
+          The Split PDF: Cut to Single Pages uses the following service:
         </p>
         <ul className="list-disc list-inside text-gray-700 space-y-2">
           <li><strong>RobotPDF API (app.robotpdf.com):</strong> Used for PDF splitting processing. PDF file content is processed ephemerally and not stored.</li>

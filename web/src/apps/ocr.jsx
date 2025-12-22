@@ -19,29 +19,35 @@ const OCRPrivacyPolicy = () => {
       <section className="mb-6">
         <h2 className="text-2xl font-semibold mb-3">2. Information We Collect</h2>
         
-        <h3 className="text-xl font-semibold mb-2 mt-4">2.1 Camera and Photo Library Access</h3>
+        <h3 className="text-xl font-semibold mb-2 mt-4">2.1 Data Types Collected</h3>
+        <ul className="list-disc list-inside text-gray-700 space-y-2 mb-4">
+          <li><strong>Documents and Files:</strong> PDF files and images you upload for OCR text extraction</li>
+          <li><strong>Images:</strong> Photos taken with camera or selected from photo library for text recognition</li>
+        </ul>
+
+        <h3 className="text-xl font-semibold mb-2 mt-4">2.2 Camera and Photo Library Access</h3>
         <ul className="list-disc list-inside text-gray-700 space-y-2 mb-4">
           <li>The app requests camera permission to take photos of documents for OCR processing</li>
           <li>The app requests photo library access to select existing images for text extraction</li>
-          <li>Photos are processed and sent to our secure OCR API for text extraction</li>
-          <li>We do not store your photos on our servers after processing is complete</li>
+          <li>Photos and images are uploaded to RobotPDF servers for OCR processing</li>
+          <li>All files are transmitted securely over HTTPS with TLS 1.2+ encryption</li>
         </ul>
 
-        <h3 className="text-xl font-semibold mb-2 mt-4">2.2 File Access</h3>
+        <h3 className="text-xl font-semibold mb-2 mt-4">2.3 File Access</h3>
         <ul className="list-disc list-inside text-gray-700 space-y-2 mb-4">
           <li>The app requests permission to access PDF files on your device</li>
-          <li>Files are processed solely for text extraction purposes</li>
-          <li>We do not store or retain your files after processing</li>
+          <li>Files are uploaded to RobotPDF servers for text extraction processing</li>
+          <li>We do not store or retain your files after processing is complete</li>
         </ul>
 
-        <h3 className="text-xl font-semibold mb-2 mt-4">2.3 Internet Access</h3>
+        <h3 className="text-xl font-semibold mb-2 mt-4">2.4 Internet Access</h3>
         <ul className="list-disc list-inside text-gray-700 space-y-2 mb-4">
-          <li>The app requires internet connection to send images/PDFs to our OCR API</li>
+          <li>The app requires internet connection to send images/PDFs to RobotPDF servers</li>
           <li>API endpoint: RobotPDF.com</li>
           <li>All data is transmitted securely over HTTPS with TLS 1.2+ encryption</li>
         </ul>
 
-        <h3 className="text-xl font-semibold mb-2 mt-4">2.4 Information We Do NOT Collect</h3>
+        <h3 className="text-xl font-semibold mb-2 mt-4">2.5 Information We Do NOT Collect</h3>
         <ul className="list-disc list-inside text-gray-700 space-y-2 mb-4">
           <li>We do not collect personal identification information</li>
           <li>We do not collect device identifiers or advertising IDs</li>
@@ -54,9 +60,11 @@ const OCRPrivacyPolicy = () => {
       <section className="mb-6">
         <h2 className="text-2xl font-semibold mb-3">3. How We Use Your Information</h2>
         <ul className="list-disc list-inside text-gray-700 space-y-2">
-          <li>Images and PDFs are sent to our OCR service solely for text extraction</li>
+          <li>Images, PDFs, and documents are uploaded to RobotPDF servers for OCR text extraction</li>
+          <li>Files are processed on our secure servers using advanced OCR technology</li>
           <li>Extracted text is returned to your device immediately after processing</li>
-          <li>No personal information is collected, stored, or shared</li>
+          <li>All uploaded files are automatically deleted from our servers after processing is complete</li>
+          <li>No personal information is collected, stored long-term, or shared with third parties</li>
           <li>No analytics, tracking, or profiling is performed</li>
           <li>We do not use your data for advertising purposes</li>
         </ul>
@@ -65,11 +73,11 @@ const OCRPrivacyPolicy = () => {
       <section className="mb-6">
         <h2 className="text-2xl font-semibold mb-3">4. Data Storage and Retention</h2>
         <ul className="list-disc list-inside text-gray-700 space-y-2">
-          <li>All extracted text is stored locally on your device only</li>
-          <li>We do not maintain copies of your documents or extracted text on our servers</li>
-          <li>Files uploaded for OCR processing are automatically deleted within seconds after processing</li>
-          <li>No backup copies of your data are retained</li>
-          <li>You can delete all local data by clearing app data or uninstalling the app</li>
+          <li><strong>Temporary Server Storage:</strong> Files are temporarily stored on RobotPDF servers only during OCR processing</li>
+          <li><strong>Automatic Deletion:</strong> All uploaded files (images, PDFs, documents) are automatically deleted from our servers immediately after processing is complete</li>
+          <li><strong>No Long-term Storage:</strong> We do not maintain, backup, or store any copies of your documents or extracted text on our servers</li>
+          <li><strong>Local Storage:</strong> Extracted text is stored locally on your device only</li>
+          <li><strong>Data Removal:</strong> You can delete all local data by clearing app data or uninstalling the app</li>
         </ul>
       </section>
 
@@ -88,9 +96,10 @@ const OCRPrivacyPolicy = () => {
       <section className="mb-6">
         <h2 className="text-2xl font-semibold mb-3">6. Third-Party Services</h2>
         <p className="text-gray-700 mb-4">
-          OCR processing is performed by RobotPDF.com API. Our API processes your documents securely 
-          and does not share data with any third parties. We do not integrate with any third-party 
-          analytics, advertising, or tracking services.
+          OCR processing is performed exclusively on RobotPDF servers. We do not share your documents 
+          with any third-party services. We do not integrate with any third-party analytics, advertising, 
+          or tracking services. Your files are processed solely on our secure servers and are not transmitted 
+          to any external parties.
         </p>
       </section>
 
