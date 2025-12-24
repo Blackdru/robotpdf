@@ -449,11 +449,21 @@ class OCRService {
         throw new Error(`Image file not accessible: ${imagePath}`);
       }
       
-      // Only use the first language if multiple are specified
-      const primaryLanguage = language.split(',')[0].split('+')[0];
+      // Parse language string - support multiple languages
+      let ocrLanguages = language;
+      
+      // Auto-detect if we should add Hindi for Indian documents
+      // This helps with PAN cards, Aadhaar, and other Indian government docs
+      if (language === 'eng' || language.startsWith('eng')) {
+        // Try with eng+hin for better Indian document support
+        ocrLanguages = 'eng+hin';
+        console.log('Auto-adding Hindi support for better Indian document recognition:', ocrLanguages);
+      }
+      
+      const primaryLanguage = ocrLanguages.split(',')[0].split('+')[0];
       console.log('Using primary language:', primaryLanguage);
       
-      const worker = await Tesseract.createWorker(primaryLanguage, 1, {
+      const worker = await Tesseract.createWorker(ocrLanguages, 1, {
         langPath: this.tessdataDir,
         logger: () => {}, // Disable verbose logging
         errorHandler: (err) => console.error('Tesseract error:', err)
@@ -498,6 +508,34 @@ class OCRService {
       };
     } catch (error) {
       console.error('Error in Tesseract OCR:', error);
+      
+      // Fallback: Try with just English if multi-language fails
+      if (language.includes('+') || language.includes(',')) {
+        console.log('Multi-language OCR failed, retrying with English only...');
+        try {
+          const worker = await Tesseract.createWorker('eng', 1, {
+            langPath: this.tessdataDir,
+            logger: () => {}
+          });
+          
+          await worker.setParameters({
+            tessedit_pageseg_mode: Tesseract.PSM.AUTO,
+            preserve_interword_spaces: '1'
+          });
+          
+          const { data } = await worker.recognize(imagePath);
+          await worker.terminate();
+          
+          return {
+            text: data.text || '',
+            confidence: (data.confidence || 0) / 100,
+            words: []
+          };
+        } catch (fallbackError) {
+          console.error('Fallback OCR also failed:', fallbackError);
+        }
+      }
+      
       throw new Error(`OCR processing failed for language ${language}: ${error.message}`);
     }
   }
