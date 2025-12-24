@@ -5,6 +5,7 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const pdf2pic = require('pdf2pic');
 const pdfParse = require('pdf-parse');
+const { spawn } = require('child_process');
 
 class OCRService {
   constructor() {
@@ -12,10 +13,101 @@ class OCRService {
     this.confidenceThreshold = parseFloat(process.env.OCR_CONFIDENCE_THRESHOLD) || 0.5; // Lower threshold for mixed languages
     this.tempDir = path.join(__dirname, '../../temp');
     this.tessdataDir = path.join(__dirname, '../../tessdata');
+    this.pythonScriptPath = path.join(__dirname, '../../python_services/advanced_ocr.py');
+    this.pythonPath = process.env.PYTHON_PATH || 'python';
+    this._pythonOcrAvailable = null;
     this.ensureTempDir();
     
     // Configure Tesseract.js to use local tessdata directory
     process.env.TESSDATA_PREFIX = this.tessdataDir;
+    
+    // Check Python OCR availability on startup
+    this.checkPythonOCR();
+  }
+
+  // Check if Python OCR (EasyOCR) is available
+  async checkPythonOCR() {
+    if (this._pythonOcrAvailable !== null) {
+      return this._pythonOcrAvailable;
+    }
+    
+    try {
+      const result = await this.runPythonOCR(['engines']);
+      this._pythonOcrAvailable = result.success && result.engines?.easyocr;
+      console.log('🐍 Python OCR (EasyOCR) available:', this._pythonOcrAvailable);
+      return this._pythonOcrAvailable;
+    } catch (error) {
+      console.warn('⚠️ Python OCR not available, using Tesseract.js fallback:', error.message);
+      this._pythonOcrAvailable = false;
+      return false;
+    }
+  }
+
+  // Run Python OCR script
+  runPythonOCR(args) {
+    return new Promise((resolve, reject) => {
+      const proc = spawn(this.pythonPath, [this.pythonScriptPath, ...args], {
+        cwd: path.dirname(this.pythonScriptPath),
+        env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      proc.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+
+      proc.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      proc.on('close', (code) => {
+        if (code === 0) {
+          try {
+            const result = JSON.parse(stdout);
+            resolve(result);
+          } catch (parseError) {
+            reject(new Error(`Failed to parse Python output: ${stdout}`));
+          }
+        } else {
+          reject(new Error(`Python script failed (code ${code}): ${stderr || stdout}`));
+        }
+      });
+
+      proc.on('error', (error) => {
+        reject(new Error(`Failed to spawn Python process: ${error.message}`));
+      });
+
+      // Timeout after 5 minutes
+      setTimeout(() => {
+        proc.kill();
+        reject(new Error('Python OCR timeout'));
+      }, 300000);
+    });
+  }
+
+  // Extract text using Python EasyOCR
+  async extractWithPythonOCR(filePath, languages, fileType = 'image') {
+    const langStr = Array.isArray(languages) ? languages.join(',') : languages;
+    const command = fileType === 'pdf' ? 'extract_pdf' : 'extract';
+    
+    console.log(`🐍 Running Python OCR: ${command} on ${filePath} with languages: ${langStr}`);
+    
+    const result = await this.runPythonOCR([command, filePath, langStr, 'auto']);
+    
+    if (result.success && result.text) {
+      console.log(`✓ Python OCR successful: ${result.text.length} chars, confidence: ${result.confidence}`);
+      return {
+        text: result.text,
+        confidence: result.confidence || 0.9,
+        engine: result.engine || 'easyocr',
+        pages: result.pages || [],
+        pageCount: result.page_count || 1
+      };
+    }
+    
+    throw new Error(result.error || 'Python OCR returned no text');
   }
 
   async ensureTempDir() {
@@ -84,6 +176,44 @@ class OCRService {
       // Save image buffer to temp file
       await fs.writeFile(tempImagePath, imageBuffer);
 
+      // 🐍 TRY PYTHON OCR (EasyOCR) FIRST - Higher accuracy
+      const pythonAvailable = await this.checkPythonOCR();
+      if (pythonAvailable) {
+        try {
+          console.log('🐍 Attempting Python OCR (EasyOCR) for image...');
+          // Always include Hindi for Indian document support (PAN, Aadhaar, etc.)
+          let languages = language.split('+').filter(l => l.trim());
+          if (!languages.includes('hin')) {
+            languages.push('hin');
+            console.log('🇮🇳 Auto-adding Hindi for Indian document support');
+          }
+          const pythonResult = await this.extractWithPythonOCR(tempImagePath, languages, 'image');
+          
+          if (pythonResult.text && pythonResult.confidence > 0.5) {
+            console.log(`✓ Python OCR successful: ${pythonResult.text.length} chars, confidence: ${pythonResult.confidence}`);
+            await this.cleanupFile(tempImagePath);
+            return {
+              text: pythonResult.text,
+              confidence: pythonResult.confidence,
+              pageCount: 1,
+              pages: [{
+                page: 1,
+                text: pythonResult.text,
+                confidence: pythonResult.confidence,
+                words: []
+              }],
+              language: language,
+              engine: pythonResult.engine || 'easyocr'
+            };
+          }
+        } catch (pythonError) {
+          console.warn('⚠️ Python OCR failed, falling back to Tesseract.js:', pythonError.message);
+        }
+      }
+
+      // FALLBACK: Use Tesseract.js
+      console.log('📋 Using Tesseract.js OCR fallback...');
+      
       let bestResult = null;
       let bestConfidence = 0;
       let imagesToTry = [tempImagePath]; // Start with original
@@ -171,7 +301,6 @@ class OCRService {
       await fs.mkdir(tempImagesDir, { recursive: true });
 
       console.log('PDF saved to:', tempPdfPath);
-      console.log('Images directory:', tempImagesDir);
 
       // First, try to extract text directly from PDF (for text-based PDFs)
       console.log('Attempting direct text extraction from PDF...');
@@ -180,6 +309,10 @@ class OCRService {
         if (pdfData.text && pdfData.text.trim().length > 50) {
           console.log('PDF contains extractable text, using direct extraction');
           console.log('Extracted text length:', pdfData.text.length);
+          // Cleanup temp files
+          await this.cleanupFile(tempPdfPath);
+          try { await fs.rmdir(tempImagesDir); } catch (e) {}
+          
           return {
             text: pdfData.text,
             confidence: 0.95, // High confidence for direct extraction
@@ -198,6 +331,44 @@ class OCRService {
       } catch (parseError) {
         console.log('Direct PDF text extraction failed, proceeding with OCR:', parseError.message);
       }
+
+      // 🐍 TRY PYTHON OCR (EasyOCR) FIRST - Higher accuracy for scanned PDFs
+      const pythonAvailable = await this.checkPythonOCR();
+      if (pythonAvailable) {
+        try {
+          console.log('🐍 Attempting Python OCR (EasyOCR) for PDF...');
+          const languages = language.split('+').filter(l => l.trim());
+          const pythonResult = await this.extractWithPythonOCR(tempPdfPath, languages, 'pdf');
+          
+          if (pythonResult.text && pythonResult.confidence > 0.5) {
+            console.log(`✓ Python PDF OCR successful: ${pythonResult.text.length} chars, confidence: ${pythonResult.confidence}`);
+            // Cleanup temp files
+            await this.cleanupFile(tempPdfPath);
+            try { await fs.rmdir(tempImagesDir); } catch (e) {}
+            
+            return {
+              text: pythonResult.text,
+              confidence: pythonResult.confidence,
+              pageCount: pythonResult.pageCount || 1,
+              pages: pythonResult.pages || [{
+                page: 1,
+                text: pythonResult.text,
+                confidence: pythonResult.confidence,
+                words: []
+              }],
+              language: language,
+              engine: pythonResult.engine || 'easyocr',
+              method: 'python_ocr'
+            };
+          }
+        } catch (pythonError) {
+          console.warn('⚠️ Python PDF OCR failed, falling back to Tesseract.js:', pythonError.message);
+        }
+      }
+
+      // FALLBACK: Use Tesseract.js with pdf2pic
+      console.log('📋 Using Tesseract.js OCR fallback for PDF...');
+      console.log('Images directory:', tempImagesDir);
 
       // Convert PDF to images (optimized DPI)
       let convert;
