@@ -39,7 +39,7 @@ class AdvancedOCR:
     def preprocess_image(self, image_path: str) -> str:
         """Preprocess image for better OCR accuracy."""
         try:
-            from PIL import Image, ImageEnhance
+            from PIL import Image, ImageEnhance, ImageFilter
             
             img = Image.open(image_path)
             
@@ -47,20 +47,26 @@ class AdvancedOCR:
             if img.mode != 'RGB':
                 img = img.convert('RGB')
             
-            # Resize if too small
+            # Resize if too small (important for Hindi/Devanagari)
             min_dim = min(img.size)
-            if min_dim < 1500:
-                scale = 2000 / min_dim
+            if min_dim < 2000:
+                scale = 2500 / min_dim
                 new_size = (int(img.size[0] * scale), int(img.size[1] * scale))
                 img = img.resize(new_size, Image.LANCZOS)
             
-            # Enhance contrast
-            enhancer = ImageEnhance.Contrast(img)
-            img = enhancer.enhance(1.8)
+            # Convert to grayscale for better OCR
+            img = img.convert('L')
             
-            # Enhance sharpness
+            # Enhance contrast strongly
+            enhancer = ImageEnhance.Contrast(img)
+            img = enhancer.enhance(2.0)
+            
+            # Enhance sharpness (critical for Devanagari script)
             enhancer = ImageEnhance.Sharpness(img)
-            img = enhancer.enhance(2.5)
+            img = enhancer.enhance(3.0)
+            
+            # Apply slight blur to reduce noise
+            img = img.filter(ImageFilter.MedianFilter(size=3))
             
             # Save preprocessed image
             output_path = image_path.replace('.', '_preprocessed.')
@@ -86,12 +92,20 @@ class AdvancedOCR:
             # Load image
             img = Image.open(image_path)
             
-            # Get detailed OCR data
+            # Convert to RGB if needed
+            if img.mode != 'RGB':
+                img = img.convert('RGB')
+            
+            # Get detailed OCR data with optimized config for Hindi/Devanagari
+            # PSM 6 = Assume uniform block of text (better for documents)
+            # OEM 1 = LSTM only (better for non-Latin scripts)
+            config = '--psm 6 --oem 1 -c preserve_interword_spaces=1'
+            
             data = pytesseract.image_to_data(
                 img,
                 lang=tess_langs,
                 output_type=pytesseract.Output.DICT,
-                config='--psm 3 --oem 3'
+                config=config
             )
             
             # Extract text and confidence
