@@ -352,15 +352,33 @@ class OCRService {
       // Verify the input file exists before processing
       await fs.access(imagePath);
       
-      // Strategy 1: Optimized enhancement
-      await sharp(imagePath)
-        .resize({ width: 2000, height: 2000, fit: 'inside', withoutEnlargement: false }) // Optimized resolution
-        .grayscale() // Convert to grayscale
-        .normalize() // Normalize contrast
-        .sharpen({ sigma: 2.0 }) // Strong sharpening
-        .linear(1.5, -30) // High contrast, reduce brightness
-        .threshold(128) // Binary threshold
-        .png({ quality: 100 })
+      // Get image metadata to determine best enhancement strategy
+      const metadata = await sharp(imagePath).metadata();
+      
+      // Strategy: Adaptive enhancement based on image characteristics
+      let sharpInstance = sharp(imagePath)
+        .resize({ width: 3000, height: 3000, fit: 'inside', withoutEnlargement: false }) // Higher resolution for better OCR
+        .grayscale(); // Convert to grayscale
+      
+      // Apply adaptive enhancement
+      if (metadata.density && metadata.density < 150) {
+        // Low DPI image - apply stronger enhancement
+        sharpInstance = sharpInstance
+          .normalize() // Normalize contrast
+          .sharpen({ sigma: 2.5 }) // Strong sharpening
+          .linear(1.8, -40) // High contrast
+          .threshold(120); // Binary threshold
+      } else {
+        // Good quality image - apply moderate enhancement
+        sharpInstance = sharpInstance
+          .normalize()
+          .sharpen({ sigma: 1.5 })
+          .linear(1.4, -20)
+          .median(3); // Remove noise
+      }
+      
+      await sharpInstance
+        .png({ quality: 100, compressionLevel: 0 })
         .toFile(enhancedPath);
 
       return enhancedPath;
@@ -375,34 +393,37 @@ class OCRService {
     const enhancements = [];
     
     try {
-      // Enhancement 1: High contrast binary (optimized resolution)
+      // Enhancement 1: High contrast with noise reduction
       const enhanced1 = path.join(this.tempDir, `enh1_${uuidv4()}.png`);
       await sharp(imagePath)
-        .resize({ width: 2000, height: 2000, fit: 'inside', withoutEnlargement: false })
+        .resize({ width: 3000, height: 3000, fit: 'inside', withoutEnlargement: false })
         .grayscale()
+        .median(3) // Remove noise first
         .normalize()
-        .linear(2.0, -50)
-        .threshold(120)
-        .png({ quality: 100 })
+        .sharpen({ sigma: 2.0 })
+        .linear(1.8, -40)
+        .threshold(115)
+        .png({ quality: 100, compressionLevel: 0 })
         .toFile(enhanced1);
       enhancements.push(enhanced1);
 
-      // Enhancement 2: Moderate enhancement (optimized resolution)
+      // Enhancement 2: Adaptive threshold with edge enhancement
       const enhanced2 = path.join(this.tempDir, `enh2_${uuidv4()}.png`);
       await sharp(imagePath)
-        .resize({ width: 1800, height: 1800, fit: 'inside', withoutEnlargement: false })
+        .resize({ width: 2800, height: 2800, fit: 'inside', withoutEnlargement: false })
         .grayscale()
         .normalize()
-        .sharpen({ sigma: 1.0 })
-        .linear(1.3, -15)
-        .png({ quality: 100 })
+        .sharpen({ sigma: 1.5 })
+        .linear(1.5, -25)
+        .median(2)
+        .png({ quality: 100, compressionLevel: 0 })
         .toFile(enhanced2);
       enhancements.push(enhanced2);
 
       return enhancements;
     } catch (error) {
       console.error('Error creating multiple enhancements:', error);
-      return [imagePath]; // Return original if all enhancements fail
+      return []; // Return empty array if all enhancements fail
     }
   }
 
@@ -438,17 +459,21 @@ class OCRService {
         errorHandler: (err) => console.error('Tesseract error:', err)
       });
       
-      // Configure Tesseract for ID card recognition
+      // Configure Tesseract for better recognition
       await worker.setParameters({
-        tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK, // Treat as single text block
+        tessedit_pageseg_mode: Tesseract.PSM.AUTO, // Auto detect layout
         preserve_interword_spaces: '1',
         tessedit_char_whitelist: '', // Allow all characters
         tessedit_char_blacklist: '',
         // Additional parameters for better recognition
         classify_bln_numeric_mode: '0',
-        textord_really_old_xheight: '1',
+        textord_really_old_xheight: '0',
         textord_min_xheight: '10',
-        tessedit_reject_mode: '0' // Don't reject characters
+        tessedit_reject_mode: '0', // Don't reject characters
+        // Improve accuracy
+        tessedit_enable_dict_correction: '1',
+        tessedit_enable_bigram_correction: '1',
+        textord_heavy_nr: '1'
       });
       
       const { data } = await worker.recognize(imagePath);
@@ -535,6 +560,16 @@ class OCRService {
     
     console.log('🧹 Applying local text cleaning...');
     let cleaned = text;
+    
+    // First, decode any HTML entities that might be present
+    cleaned = cleaned
+      .replace(/&#39;/g, "'")
+      .replace(/&quot;/g, '"')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec));
     
     // Common OCR error corrections
     const ocrCorrections = [

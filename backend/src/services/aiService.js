@@ -511,7 +511,7 @@ ${context}`;
       const prompt = `You are an expert at cleaning up OCR-extracted text from various types of documents including government documents, business documents, academic papers, invoices, contracts, and general text documents.
 
 Please clean and enhance the following OCR-extracted text by:
-1. Fixing obvious OCR errors and misread characters (like "rn" → "m", "cl" → "d", "0" → "O")
+1. Fixing obvious OCR errors and misread characters (like "rn" → "m", "cl" → "d", "0" → "O", "l" → "I")
 2. Correcting spacing and formatting issues
 3. Removing unwanted symbols, artifacts, and garbled text
 4. Standardizing common document terms and formatting
@@ -521,15 +521,19 @@ Please clean and enhance the following OCR-extracted text by:
 8. Fixing common OCR mistakes in names, addresses, and technical terms
 9. Preserving line breaks and paragraph structure where appropriate
 10. Removing duplicate characters or words that are OCR artifacts
+11. Decoding any HTML entities (like &#39; to ', &quot; to ", etc.)
+12. Fixing broken words and joining split characters
 
 Document type detected: ${documentType}
 
 ${this.getDocumentSpecificInstructions(documentType)}
 
+IMPORTANT: Return ONLY the cleaned text. Do not add any explanations, comments, or markdown formatting.
+
 Original OCR text:
 ${rawText}
 
-Please provide only the cleaned and enhanced text without any explanations or comments:`;
+Cleaned text:`;
 
       // Use free models for OCR enhancement, sorted by best fit for document processing
       // Falls back to configured model if all free models fail (no Google models - rate limited)
@@ -558,7 +562,7 @@ Please provide only the cleaned and enhanced text without any explanations or co
             messages: [
               {
                 role: 'system',
-                content: 'You are a professional OCR text enhancement expert. Clean up OCR-extracted text while preserving all original information exactly. Focus on fixing OCR errors, improving readability, and maintaining document structure. Return only the enhanced text without any explanations.'
+                content: 'You are a professional OCR text enhancement expert. Clean up OCR-extracted text while preserving all original information exactly. Fix OCR errors, improve readability, maintain document structure, and decode HTML entities. Return ONLY the enhanced text without any explanations, comments, or markdown formatting.'
               },
               {
                 role: 'user',
@@ -566,7 +570,7 @@ Please provide only the cleaned and enhanced text without any explanations or co
               }
             ],
             max_tokens: Math.min(4000, Math.ceil(rawText.length * 1.5)),
-            temperature: 0.1, // Very low temperature for consistent corrections
+            temperature: 0.05, // Very low temperature for consistent corrections
           });
 
           enhancedText = response.choices[0].message.content.trim();
