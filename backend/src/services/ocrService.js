@@ -553,6 +553,21 @@ class OCRService {
     };
   }
 
+  // Decode HTML entities - standalone function
+  decodeHtmlEntities(text) {
+    if (!text) return text;
+    
+    return text
+      .replace(/&#39;/g, "'")
+      .replace(/&quot;/g, '"')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))
+      .replace(/&#x([0-9a-fA-F]+);/g, (match, hex) => String.fromCharCode(parseInt(hex, 16)));
+  }
+
   // Local text cleaner - works without external AI
   // Cleans OCR errors, removes garbage symbols, and improves readability
   cleanTextLocally(text) {
@@ -562,14 +577,7 @@ class OCRService {
     let cleaned = text;
     
     // First, decode any HTML entities that might be present
-    cleaned = cleaned
-      .replace(/&#39;/g, "'")
-      .replace(/&quot;/g, '"')
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&nbsp;/g, ' ')
-      .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec));
+    cleaned = this.decodeHtmlEntities(cleaned);
     
     // Common OCR error corrections
     const ocrCorrections = [
@@ -705,17 +713,19 @@ class OCRService {
             const enhancedText = await aiService.enhanceTextWithAI(ocrResult.text);
             
             if (enhancedText && enhancedText.length > 0) {
-              result.enhancedText = enhancedText;
+              // CRITICAL: Decode HTML entities after AI enhancement
+              const decodedText = this.decodeHtmlEntities(enhancedText);
+              result.enhancedText = decodedText;
               
               // Use enhanced text as primary UNLESS extractOriginal is true
               if (!extractOriginal) {
-                result.text = enhancedText;
+                result.text = decodedText;
               }
               
               result.aiEnhanced = true;
               result.confidence = Math.min(result.confidence + 0.15, 0.99); // Boost to 99%
               aiEnhancementSucceeded = true;
-              console.log('✓ AI enhancement completed. Enhanced text length:', enhancedText.length);
+              console.log('✓ AI enhancement completed. Enhanced text length:', decodedText.length);
               console.log('✓ Confidence boosted to:', result.confidence);
             } else {
               console.warn('⚠ AI enhancement returned empty text');
@@ -743,6 +753,14 @@ class OCRService {
       } else if (enhanceWithAI) {
         console.log('⚠ Skipping AI enhancement - text too short or empty');
         result.aiEnhanced = false;
+      }
+      
+      // ALWAYS decode HTML entities in the final text, regardless of enhancement
+      if (result.text) {
+        result.text = this.decodeHtmlEntities(result.text);
+      }
+      if (result.originalText) {
+        result.originalText = this.decodeHtmlEntities(result.originalText);
       }
 
       console.log(`✓ Final OCR result: language=${result.detectedLanguage}, confidence=${result.confidence}, textLength=${result.text.length}`);

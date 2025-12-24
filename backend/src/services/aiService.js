@@ -588,6 +588,17 @@ Cleaned text:`;
         console.error('All AI models failed for OCR enhancement');
         throw lastError || new Error('AI enhancement failed with all models');
       }
+      
+      // Decode HTML entities that might be in the AI response
+      enhancedText = enhancedText
+        .replace(/&#39;/g, "'")
+        .replace(/&quot;/g, '"')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))
+        .replace(/&#x([0-9a-fA-F]+);/g, (match, hex) => String.fromCharCode(parseInt(hex, 16)));
           
       // Validate that the enhanced text is reasonable
       if (enhancedText.length > rawText.length * 3) {
