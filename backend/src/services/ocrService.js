@@ -14,7 +14,7 @@ class OCRService {
     this.tempDir = path.join(__dirname, '../../temp');
     this.tessdataDir = path.join(__dirname, '../../tessdata');
     this.pythonScriptPath = path.join(__dirname, '../../python_services/advanced_ocr.py');
-    this.pythonPath = process.env.PYTHON_PATH || 'python';
+    this.pythonPath = process.env.PYTHON_PATH || (process.platform === 'win32' ? 'python' : 'python3');
     this._pythonOcrAvailable = null;
     this.ensureTempDir();
     
@@ -25,7 +25,7 @@ class OCRService {
     this.checkPythonOCR();
   }
 
-  // Check if Python OCR (EasyOCR) is available
+  // Check if Python OCR (Tesseract) is available
   async checkPythonOCR() {
     if (this._pythonOcrAvailable !== null) {
       return this._pythonOcrAvailable;
@@ -33,8 +33,8 @@ class OCRService {
     
     try {
       const result = await this.runPythonOCR(['engines']);
-      this._pythonOcrAvailable = result.success && result.engines?.easyocr;
-      console.log('🐍 Python OCR (EasyOCR) available:', this._pythonOcrAvailable);
+      this._pythonOcrAvailable = result.success && result.engines?.tesseract;
+      console.log('🐍 Python OCR (Tesseract) available:', this._pythonOcrAvailable);
       return this._pythonOcrAvailable;
     } catch (error) {
       console.warn('⚠️ Python OCR not available, using Tesseract.js fallback:', error.message);
