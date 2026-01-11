@@ -1,14 +1,14 @@
 /**
  * Python OCR Service - High Accuracy Multi-Engine OCR
  * 
- * Uses Python-based OCR engines (EasyOCR, PaddleOCR) for 99%+ accuracy
+ * Uses EasyOCR for 80+ language support with on-demand model downloading
  * Falls back to Tesseract.js if Python OCR is unavailable
  * 
- * Supports 100+ languages including:
- * - All Indian languages (Hindi, Telugu, Tamil, etc.)
- * - East Asian (Chinese, Japanese, Korean)
- * - European languages
- * - Arabic, Hebrew, Persian
+ * Supports 80+ languages including:
+ * - All Indian languages (Hindi, Telugu, Tamil, Kannada, Malayalam, etc.)
+ * - East Asian (Chinese, Japanese, Korean, Vietnamese, Thai)
+ * - European languages (German, French, Spanish, Russian, etc.)
+ * - Arabic, Hebrew, Persian, Urdu
  */
 
 const { spawn } = require('child_process');
@@ -18,14 +18,17 @@ const { v4: uuidv4 } = require('uuid');
 
 class PythonOCRService {
   constructor() {
-    this.pythonPath = process.env.PYTHON_PATH || 'python';
-    this.scriptPath = path.join(__dirname, '../../python_services/advanced_ocr.py');
+    // Support custom Python path for virtual environments
+    // On Ubuntu: PYTHON_PATH=/home/ubuntu/pdf-venv/bin/python3
+    this.pythonPath = process.env.PYTHON_PATH || 'python3' || 'python';
+    this.scriptPath = path.join(__dirname, '../../python_services/ocr_service.py');
     this.tempDir = path.join(__dirname, '../../temp');
     this.fallbackService = null;
     this._pythonAvailable = null;
-    this._availableEngines = null;
     
     this.ensureTempDir();
+    
+    console.log('PythonOCRService initialized with Python path:', this.pythonPath);
   }
 
   async ensureTempDir() {
@@ -37,6 +40,13 @@ class PythonOCRService {
   }
 
   /**
+   * Check if OCR is enabled (for compatibility with ocrService interface)
+   */
+  isEnabled() {
+    return process.env.ENABLE_OCR === 'true';
+  }
+
+  /**
    * Check if Python OCR is available
    */
   async isPythonOCRAvailable() {
@@ -45,14 +55,9 @@ class PythonOCRService {
     }
 
     try {
-      const result = await this.runPythonScript(['engines']);
-      this._pythonAvailable = result.success && 
-        (result.engines?.easyocr || result.engines?.paddleocr);
-      this._availableEngines = result.engines;
-      
-      console.log('Python OCR availability:', this._pythonAvailable);
-      console.log('Available engines:', this._availableEngines);
-      
+      const result = await this.runPythonCommand('health');
+      this._pythonAvailable = result.easyocr === true;
+      console.log('Python OCR (EasyOCR) availability:', this._pythonAvailable);
       return this._pythonAvailable;
     } catch (error) {
       console.warn('Python OCR not available:', error.message);
@@ -62,23 +67,11 @@ class PythonOCRService {
   }
 
   /**
-   * Get available OCR engines
+   * Run Python OCR command
    */
-  async getAvailableEngines() {
-    if (this._availableEngines) {
-      return this._availableEngines;
-    }
-    
-    await this.isPythonOCRAvailable();
-    return this._availableEngines || { easyocr: false, paddleocr: false, tesseract: false };
-  }
-
-  /**
-   * Run Python OCR script
-   */
-  runPythonScript(args) {
+  runPythonCommand(command, inputData = null) {
     return new Promise((resolve, reject) => {
-      const process = spawn(this.pythonPath, [this.scriptPath, ...args], {
+      const proc = spawn(this.pythonPath, [this.scriptPath, command], {
         cwd: path.dirname(this.scriptPath),
         env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
       });
@@ -86,34 +79,48 @@ class PythonOCRService {
       let stdout = '';
       let stderr = '';
 
-      process.stdout.on('data', (data) => {
+      proc.stdout.on('data', (data) => {
         stdout += data.toString();
       });
 
-      process.stderr.on('data', (data) => {
-        stderr += data.toString();
+      proc.stderr.on('data', (data) => {
+        const msg = data.toString();
+        stderr += msg;
+        console.log('Python stderr:', msg.trim());
       });
 
-      process.on('close', (code) => {
+      // Send input data if provided
+      if (inputData) {
+        const jsonData = JSON.stringify(inputData);
+        console.log('Sending to Python stdin:', jsonData.length, 'bytes');
+        proc.stdin.write(jsonData);
+        proc.stdin.end();
+      }
+
+      proc.on('close', (code) => {
+        console.log('Python process exited with code:', code);
         if (code === 0) {
           try {
             const result = JSON.parse(stdout);
             resolve(result);
           } catch (parseError) {
-            reject(new Error(`Failed to parse Python output: ${stdout}`));
+            console.error('Failed to parse Python output:', stdout.substring(0, 500));
+            reject(new Error(`Failed to parse Python output: ${stdout.substring(0, 200)}`));
           }
         } else {
+          console.error('Python script failed:', stderr || stdout);
           reject(new Error(`Python script failed (code ${code}): ${stderr || stdout}`));
         }
       });
 
-      process.on('error', (error) => {
+      proc.on('error', (error) => {
+        console.error('Failed to spawn Python:', error);
         reject(new Error(`Failed to spawn Python process: ${error.message}`));
       });
 
       // Timeout after 5 minutes
       setTimeout(() => {
-        process.kill();
+        proc.kill();
         reject(new Error('Python OCR timeout'));
       }, 300000);
     });
@@ -130,42 +137,65 @@ class PythonOCRService {
   }
 
   /**
-   * Extract text from image with high accuracy
-   * 
-   * @param {Buffer} imageBuffer - Image buffer
-   * @param {Object} options - OCR options
-   * @returns {Promise<Object>} OCR result
+   * Convert language codes to EasyOCR format
+   */
+  convertLanguages(languages) {
+    const langMap = {
+      'eng': 'en', 'hin': 'hi', 'tel': 'te', 'tam': 'ta', 'kan': 'kn', 'mal': 'ml',
+      'mar': 'mr', 'ben': 'bn', 'guj': 'gu', 'pan': 'pa', 'ori': 'or', 'asm': 'as',
+      'nep': 'ne', 'san': 'sa', 'urd': 'ur',
+      'ara': 'ar', 'fas': 'fa', 'heb': 'he',
+      'chi_sim': 'ch_sim', 'chi_tra': 'ch_tra', 'jpn': 'ja', 'kor': 'ko',
+      'vie': 'vi', 'tha': 'th', 'mya': 'my', 'khm': 'km', 'lao': 'lo',
+      'rus': 'ru', 'ukr': 'uk', 'bel': 'be', 'bul': 'bg', 'srp': 'sr', 'mkd': 'mk',
+      'deu': 'de', 'fra': 'fr', 'spa': 'es', 'por': 'pt', 'ita': 'it', 'nld': 'nl',
+      'pol': 'pl', 'ces': 'cs', 'slk': 'sk', 'ron': 'ro', 'hun': 'hu',
+      'dan': 'da', 'nor': 'no', 'swe': 'sv', 'fin': 'fi',
+      'ell': 'el', 'tur': 'tr', 'ind': 'id', 'msa': 'ms', 'fil': 'tl',
+      'kat': 'ka', 'hye': 'hy', 'mon': 'mn',
+    };
+    
+    if (!Array.isArray(languages)) {
+      languages = languages.includes('+') ? languages.split('+') : [languages];
+    }
+    
+    return languages.map(lang => langMap[lang] || lang);
+  }
+
+  /**
+   * Extract text from image with EasyOCR (80+ languages)
    */
   async extractTextFromImage(imageBuffer, options = {}) {
     const {
       languages = ['eng'],
-      engine = 'auto',
       enhanceWithAI = true,
       useFallback = true
     } = options;
 
-    // Save buffer to temp file
-    const tempPath = path.join(this.tempDir, `ocr_${uuidv4()}.png`);
-    
     try {
-      await fs.writeFile(tempPath, imageBuffer);
-      
-      // Try Python OCR first
+      // Check if Python OCR is available
       if (await this.isPythonOCRAvailable()) {
-        console.log('Using Python OCR for image extraction');
+        console.log('Using EasyOCR for image extraction');
         
-        const langStr = Array.isArray(languages) ? languages.join(',') : languages;
-        const result = await this.runPythonScript([
-          'extract',
-          tempPath,
-          langStr,
-          engine
-        ]);
+        const easyLangs = this.convertLanguages(languages);
+        console.log('EasyOCR languages:', easyLangs);
+        
+        const base64Data = imageBuffer.toString('base64');
+        console.log('Image data size:', base64Data.length, 'bytes');
+        
+        try {
+          const result = await this.runPythonCommand('image', {
+            data: base64Data,
+            languages: easyLangs,
+            enhance: true
+          });
 
-        if (result.success && result.text) {
-          console.log(`Python OCR successful: ${result.text.length} chars, ${result.confidence} confidence`);
-          
-          // Optionally enhance with AI
+          console.log('EasyOCR result:', result.error ? `Error: ${result.error}` : `${result.text?.length || 0} chars`);
+
+          if (result.text && !result.error) {
+            console.log(`EasyOCR successful: ${result.text.length} chars, confidence: ${result.confidence}`);
+            
+            // AI enhancement
           let finalText = result.text;
           let aiEnhanced = false;
           
@@ -175,7 +205,6 @@ class PythonOCRService {
               if (aiService.isEnabled()) {
                 finalText = await aiService.enhanceTextWithAI(result.text);
                 aiEnhanced = true;
-                console.log('AI enhancement applied to Python OCR result');
               }
             } catch (aiError) {
               console.warn('AI enhancement failed:', aiError.message);
@@ -185,18 +214,20 @@ class PythonOCRService {
           return {
             text: finalText,
             originalText: result.text,
-            confidence: Math.min(result.confidence + (aiEnhanced ? 0.1 : 0), 0.99),
+            confidence: Math.min((result.confidence || 0.8) + (aiEnhanced ? 0.1 : 0), 0.99),
             pageCount: 1,
-            pages: [{
-              page: 1,
-              text: finalText,
-              confidence: result.confidence
-            }],
-            language: langStr,
-            engine: result.engine || 'python',
+            pages: [{ page: 1, text: finalText, confidence: result.confidence }],
+            language: easyLangs.join('+'),
+            engine: 'easyocr',
             aiEnhanced,
-            method: 'python_ocr'
+            method: 'python_easyocr'
           };
+        } else {
+          // EasyOCR returned error or empty result
+          console.error('EasyOCR failed:', result.error || 'Empty result');
+        }
+        } catch (pythonError) {
+          console.error('Python EasyOCR error:', pythonError.message);
         }
       }
 
@@ -210,57 +241,48 @@ class PythonOCRService {
         });
       }
 
-      throw new Error('Python OCR failed and fallback disabled');
+      throw new Error('EasyOCR failed and fallback disabled');
 
-    } finally {
-      // Cleanup temp file
-      try {
-        await fs.unlink(tempPath);
-      } catch (e) {
-        // Ignore cleanup errors
+    } catch (error) {
+      console.error('Image OCR error:', error.message);
+      
+      if (useFallback) {
+        const fallback = this.getFallbackService();
+        return await fallback.extractTextFromImage(imageBuffer, options);
       }
+      throw error;
     }
   }
 
   /**
-   * Extract text from PDF with high accuracy
-   * 
-   * @param {Buffer} pdfBuffer - PDF buffer
-   * @param {Object} options - OCR options
-   * @returns {Promise<Object>} OCR result
+   * Extract text from PDF with EasyOCR (80+ languages)
    */
   async extractTextFromPDF(pdfBuffer, options = {}) {
     const {
       languages = ['eng'],
-      engine = 'auto',
-      maxPages = 100,
+      maxPages = 50,
       enhanceWithAI = true,
       useFallback = true
     } = options;
 
-    // Save buffer to temp file
-    const tempPath = path.join(this.tempDir, `ocr_${uuidv4()}.pdf`);
-    
     try {
-      await fs.writeFile(tempPath, pdfBuffer);
-      
-      // Try Python OCR first
       if (await this.isPythonOCRAvailable()) {
-        console.log('Using Python OCR for PDF extraction');
+        console.log('Using EasyOCR for PDF extraction');
         
-        const langStr = Array.isArray(languages) ? languages.join(',') : languages;
-        const result = await this.runPythonScript([
-          'extract_pdf',
-          tempPath,
-          langStr,
-          engine,
-          maxPages.toString()
-        ]);
+        const easyLangs = this.convertLanguages(languages);
+        const base64Data = pdfBuffer.toString('base64');
+        
+        const result = await this.runPythonCommand('pdf', {
+          data: base64Data,
+          languages: easyLangs,
+          enhance: true,
+          max_pages: maxPages
+        });
 
-        if (result.success && result.text) {
-          console.log(`Python PDF OCR successful: ${result.text.length} chars, ${result.page_count} pages`);
+        if (result.text && !result.error) {
+          console.log(`EasyOCR PDF successful: ${result.text.length} chars, ${result.page_count} pages`);
           
-          // Optionally enhance with AI
+          // AI enhancement
           let finalText = result.text;
           let aiEnhanced = false;
           
@@ -270,7 +292,6 @@ class PythonOCRService {
               if (aiService.isEnabled()) {
                 finalText = await aiService.enhanceTextWithAI(result.text);
                 aiEnhanced = true;
-                console.log('AI enhancement applied to Python PDF OCR result');
               }
             } catch (aiError) {
               console.warn('AI enhancement failed:', aiError.message);
@@ -280,18 +301,18 @@ class PythonOCRService {
           return {
             text: finalText,
             originalText: result.text,
-            confidence: Math.min(result.confidence + (aiEnhanced ? 0.1 : 0), 0.99),
-            pageCount: result.page_count,
+            confidence: Math.min((result.confidence || 0.8) + (aiEnhanced ? 0.1 : 0), 0.99),
+            pageCount: result.page_count || 1,
             pages: result.pages || [],
-            language: langStr,
-            engine: 'python',
+            language: easyLangs.join('+'),
+            engine: 'easyocr',
             aiEnhanced,
-            method: 'python_ocr'
+            method: 'python_easyocr'
           };
         }
       }
 
-      // Fallback to Tesseract.js
+      // Fallback
       if (useFallback) {
         console.log('Falling back to Tesseract.js OCR for PDF');
         const fallback = this.getFallbackService();
@@ -302,63 +323,55 @@ class PythonOCRService {
         });
       }
 
-      throw new Error('Python PDF OCR failed and fallback disabled');
+      throw new Error('EasyOCR PDF failed and fallback disabled');
 
-    } finally {
-      // Cleanup temp file
-      try {
-        await fs.unlink(tempPath);
-      } catch (e) {
-        // Ignore cleanup errors
+    } catch (error) {
+      console.error('PDF OCR error:', error.message);
+      
+      if (useFallback) {
+        const fallback = this.getFallbackService();
+        return await fallback.extractTextFromPDF(pdfBuffer, options);
       }
+      throw error;
     }
   }
 
   /**
    * Extract text with AI enhancement - Main entry point
-   * Provides 99% accuracy with multi-engine OCR + AI enhancement
-   * 
-   * @param {Buffer} buffer - File buffer (image or PDF)
-   * @param {Object} options - OCR options
-   * @returns {Promise<Object>} OCR result with enhanced text
    */
   async extractTextWithAI(buffer, options = {}) {
     const {
       enhanceWithAI = true,
       extractOriginal = false,
       language = 'auto',
-      fileType = 'pdf',
-      confidenceThreshold = 0.6
+      fileType = 'pdf'
     } = options;
 
-    console.log('🚀 Starting Advanced Python OCR with AI enhancement');
+    console.log('🚀 Starting EasyOCR with AI enhancement');
     console.log('Options:', { enhanceWithAI, extractOriginal, language, fileType });
 
     try {
-      // Determine languages
-      let languages = ['eng'];
-      if (language !== 'auto') {
-        languages = language.includes('+') ? language.split('+') : [language];
+      // Determine languages - EasyOCR has compatibility restrictions
+      // Indian languages (hi, te, ta, etc.) can only be paired with English
+      let languages = ['en', 'hi'];  // Default: English + Hindi
+      
+      if (language === 'auto') {
+        languages = ['en', 'hi'];  // Auto defaults to English + Hindi
+      } else if (language.includes('+')) {
+        languages = language.split('+');
+      } else {
+        languages = [language];
       }
 
-      // Extract text based on file type
+      // Extract text
       let ocrResult;
       if (fileType === 'pdf') {
-        ocrResult = await this.extractTextFromPDF(buffer, {
-          languages,
-          enhanceWithAI,
-          useFallback: true
-        });
+        ocrResult = await this.extractTextFromPDF(buffer, { languages, enhanceWithAI, useFallback: true });
       } else {
-        ocrResult = await this.extractTextFromImage(buffer, {
-          languages,
-          enhanceWithAI,
-          useFallback: true
-        });
+        ocrResult = await this.extractTextFromImage(buffer, { languages, enhanceWithAI, useFallback: true });
       }
 
-      // Build result
-      const result = {
+      return {
         text: extractOriginal ? ocrResult.originalText : ocrResult.text,
         originalText: ocrResult.originalText || ocrResult.text,
         enhancedText: ocrResult.aiEnhanced ? ocrResult.text : null,
@@ -368,58 +381,44 @@ class PythonOCRService {
         detectedLanguage: ocrResult.language || language,
         aiEnhanced: ocrResult.aiEnhanced || false,
         localCleaned: false,
-        engine: ocrResult.engine || 'unknown',
-        method: ocrResult.method || 'unknown',
-        processingOptions: {
-          enhanceWithAI,
-          extractOriginal,
-          language,
-          fileType
-        }
+        engine: ocrResult.engine || 'easyocr',
+        method: ocrResult.method || 'python_easyocr',
+        processingOptions: { enhanceWithAI, extractOriginal, language, fileType }
       };
 
-      console.log(`✓ OCR completed: ${result.text.length} chars, confidence: ${result.confidence}`);
-      console.log(`✓ Engine: ${result.engine}, AI Enhanced: ${result.aiEnhanced}`);
-
-      return result;
-
     } catch (error) {
-      console.error('❌ Python OCR failed:', error.message);
-      
-      // Final fallback to original Tesseract.js service
-      console.log('📋 Using final fallback to Tesseract.js service');
+      console.error('❌ EasyOCR failed:', error.message);
+      console.log('📋 Using Tesseract.js fallback');
       const fallback = this.getFallbackService();
       return await fallback.extractTextWithAI(buffer, options);
     }
   }
 
   /**
-   * Get supported languages
+   * Get supported languages (80+ via EasyOCR)
    */
   async getSupportedLanguages() {
     try {
-      const result = await this.runPythonScript(['languages']);
-      if (result.success) {
-        return result.languages;
+      const result = await this.runPythonCommand('languages');
+      if (result && !result.error) {
+        return result;
       }
     } catch (error) {
-      console.warn('Failed to get Python OCR languages:', error.message);
+      console.warn('Failed to get EasyOCR languages:', error.message);
     }
 
     // Return default languages
     return {
-      'eng': 'English',
-      'hin': 'Hindi',
-      'tel': 'Telugu',
-      'tam': 'Tamil',
-      'chi_sim': 'Chinese (Simplified)',
-      'jpn': 'Japanese',
-      'kor': 'Korean',
-      'ara': 'Arabic',
-      'spa': 'Spanish',
-      'fra': 'French',
-      'deu': 'German',
-      'rus': 'Russian'
+      'en': 'English', 'hi': 'Hindi (हिंदी)', 'te': 'Telugu (తెలుగు)',
+      'ta': 'Tamil (தமிழ்)', 'kn': 'Kannada (ಕನ್ನಡ)', 'ml': 'Malayalam (മലയാളം)',
+      'mr': 'Marathi (मराठी)', 'bn': 'Bengali (বাংলা)', 'gu': 'Gujarati (ગુજરાતી)',
+      'ar': 'Arabic (العربية)', 'fa': 'Persian (فارسی)', 'ur': 'Urdu (اردو)',
+      'ch_sim': 'Chinese Simplified (简体中文)', 'ch_tra': 'Chinese Traditional (繁體中文)',
+      'ja': 'Japanese (日本語)', 'ko': 'Korean (한국어)',
+      'ru': 'Russian (Русский)', 'de': 'German (Deutsch)', 'fr': 'French (Français)',
+      'es': 'Spanish (Español)', 'pt': 'Portuguese (Português)', 'it': 'Italian (Italiano)',
+      'th': 'Thai (ไทย)', 'vi': 'Vietnamese (Tiếng Việt)',
+      'auto': 'Auto-detect (All Languages)'
     };
   }
 
@@ -428,16 +427,15 @@ class PythonOCRService {
    */
   async checkHealth() {
     const health = {
-      pythonOCR: false,
-      engines: {},
-      tesseractFallback: false
+      easyocr: false,
+      tesseractFallback: false,
+      languageCount: 80
     };
 
     try {
-      health.pythonOCR = await this.isPythonOCRAvailable();
-      health.engines = await this.getAvailableEngines();
+      health.easyocr = await this.isPythonOCRAvailable();
     } catch (error) {
-      console.warn('Python OCR health check failed:', error.message);
+      console.warn('EasyOCR health check failed:', error.message);
     }
 
     try {
@@ -451,5 +449,4 @@ class PythonOCRService {
   }
 }
 
-// Export singleton instance
 module.exports = new PythonOCRService();

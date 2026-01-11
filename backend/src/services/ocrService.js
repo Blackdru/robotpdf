@@ -223,7 +223,7 @@ class OCRService {
   }
 
 
-  // Perform OCR with optimized settings for Hindi + English
+  // Perform OCR with multi-language support
   async performOCR(imagePath, language) {
     if (!imagePath) {
       throw new Error('Image path is required for OCR processing');
@@ -234,14 +234,9 @@ class OCRService {
       
       await fs.access(imagePath);
       
-      // Auto-add Hindi for Indian document support
-      let ocrLanguages = language;
-      if (language === 'eng' || language.startsWith('eng')) {
-        ocrLanguages = 'eng+hin';
-        console.log('Auto-adding Hindi support:', ocrLanguages);
-      }
-      
-      const primaryLanguage = ocrLanguages.split('+')[0];
+      // Build multi-language string for better extraction
+      let ocrLanguages = this.buildLanguageString(language);
+      console.log('OCR languages:', ocrLanguages);
       
       const worker = await Tesseract.createWorker(ocrLanguages, 1, {
         langPath: this.tessdataDir,
@@ -249,7 +244,7 @@ class OCRService {
         errorHandler: (err) => console.error('Tesseract error:', err)
       });
       
-      // Optimized parameters for ID cards and documents
+      // Optimized parameters for multi-language documents
       await worker.setParameters({
         tessedit_pageseg_mode: Tesseract.PSM.AUTO,
         preserve_interword_spaces: '1',
@@ -276,16 +271,20 @@ class OCRService {
           text: word.text,
           confidence: word.confidence / 100,
           bbox: word.bbox
-        }))
+        })),
+        detectedLanguages: ocrLanguages.split('+')
       };
     } catch (error) {
       console.error('OCR error:', error);
       
-      // Fallback to English only
-      if (language.includes('+')) {
-        console.log('Multi-language failed, trying English only...');
+      // Fallback: try with fewer languages
+      const fallbackLanguages = ['eng+hin', 'eng'];
+      for (const fallbackLang of fallbackLanguages) {
+        if (fallbackLang === language) continue;
+        
+        console.log(`Trying fallback language: ${fallbackLang}`);
         try {
-          const worker = await Tesseract.createWorker('eng', 1, {
+          const worker = await Tesseract.createWorker(fallbackLang, 1, {
             langPath: this.tessdataDir,
             logger: () => {}
           });
@@ -298,17 +297,68 @@ class OCRService {
           const { data } = await worker.recognize(imagePath);
           await worker.terminate();
           
-          return {
-            text: data.text || '',
-            confidence: (data.confidence || 0) / 100,
-            words: []
-          };
+          if (data.text && data.text.length > 10) {
+            return {
+              text: data.text || '',
+              confidence: (data.confidence || 0) / 100,
+              words: [],
+              detectedLanguages: fallbackLang.split('+')
+            };
+          }
         } catch (fallbackError) {
-          console.error('Fallback OCR failed:', fallbackError);
+          console.error(`Fallback ${fallbackLang} failed:`, fallbackError.message);
         }
       }
       
       throw new Error(`OCR failed: ${error.message}`);
+    }
+  }
+
+  // Build language string for multi-language OCR
+  buildLanguageString(requestedLanguage) {
+    // Available languages in tessdata
+    const availableLanguages = this.getAvailableLanguages();
+    console.log('Available tessdata languages:', availableLanguages.length);
+    
+    // If 'auto' or not specified, use all available languages (up to 5 for performance)
+    if (!requestedLanguage || requestedLanguage === 'auto') {
+      // Priority order for auto-detection
+      const priorityOrder = ['eng', 'hin', 'tel', 'tam', 'kan', 'mal', 'mar', 'ben', 'ara', 'chi_sim', 'jpn', 'kor', 'rus', 'deu', 'fra', 'spa'];
+      const autoLangs = priorityOrder.filter(l => availableLanguages.includes(l)).slice(0, 5);
+      return autoLangs.length > 0 ? autoLangs.join('+') : 'eng';
+    }
+    
+    // If already a multi-language string, validate and return
+    if (requestedLanguage.includes('+')) {
+      const langs = requestedLanguage.split('+').filter(l => availableLanguages.includes(l));
+      return langs.length > 0 ? langs.join('+') : 'eng';
+    }
+    
+    // Single language - check if available
+    if (availableLanguages.includes(requestedLanguage)) {
+      // Add English as secondary for better results (if not already English)
+      if (requestedLanguage !== 'eng' && availableLanguages.includes('eng')) {
+        return `${requestedLanguage}+eng`;
+      }
+      return requestedLanguage;
+    }
+    
+    // Language not available, fallback to English
+    console.warn(`Language ${requestedLanguage} not available, falling back to English`);
+    return 'eng';
+  }
+
+  // Get list of available language files
+  getAvailableLanguages() {
+    try {
+      const fsSync = require('fs');
+      const files = fsSync.readdirSync(this.tessdataDir);
+      return files
+        .filter(f => f.endsWith('.traineddata'))
+        .map(f => f.replace('.traineddata', ''));
+    } catch (error) {
+      console.warn('Could not read tessdata directory:', error.message);
+      return ['eng']; // Default fallback
     }
   }
 
@@ -514,22 +564,141 @@ class OCRService {
     }
   }
 
-  // Get supported languages
+  // Get supported languages (dynamically from tessdata)
   getSupportedLanguages() {
-    return {
+    const available = this.getAvailableLanguages();
+    
+    // Comprehensive language names map (100+ languages)
+    const languageNames = {
+      // Indian Languages
       'eng': 'English',
-      'hin': 'Hindi',
-      'tel': 'Telugu',
-      'eng+hin': 'English + Hindi',
-      'eng+tel': 'English + Telugu',
-      'spa': 'Spanish',
-      'fra': 'French',
-      'deu': 'German',
-      'chi_sim': 'Chinese (Simplified)',
-      'jpn': 'Japanese',
-      'kor': 'Korean',
-      'ara': 'Arabic'
+      'hin': 'Hindi (हिंदी)',
+      'tel': 'Telugu (తెలుగు)',
+      'tam': 'Tamil (தமிழ்)',
+      'kan': 'Kannada (ಕನ್ನಡ)',
+      'mal': 'Malayalam (മലയാളം)',
+      'mar': 'Marathi (मराठी)',
+      'ben': 'Bengali (বাংলা)',
+      'guj': 'Gujarati (ગુજરાતી)',
+      'pan': 'Punjabi (ਪੰਜਾਬੀ)',
+      'ori': 'Odia (ଓଡ଼ିଆ)',
+      'asm': 'Assamese (অসমীয়া)',
+      'nep': 'Nepali (नेपाली)',
+      'san': 'Sanskrit (संस्कृतम्)',
+      'urd': 'Urdu (اردو)',
+      
+      // Middle Eastern & Arabic
+      'ara': 'Arabic (العربية)',
+      'fas': 'Persian/Farsi (فارسی)',
+      'heb': 'Hebrew (עברית)',
+      'yid': 'Yiddish (ייִדיש)',
+      
+      // East Asian
+      'chi_sim': 'Chinese Simplified (简体中文)',
+      'chi_tra': 'Chinese Traditional (繁體中文)',
+      'jpn': 'Japanese (日本語)',
+      'kor': 'Korean (한국어)',
+      'vie': 'Vietnamese (Tiếng Việt)',
+      'tha': 'Thai (ไทย)',
+      'mya': 'Myanmar/Burmese (မြန်မာ)',
+      'khm': 'Khmer (ខ្មែរ)',
+      'lao': 'Lao (ລາວ)',
+      
+      // Slavic Languages
+      'rus': 'Russian (Русский)',
+      'ukr': 'Ukrainian (Українська)',
+      'bel': 'Belarusian (Беларуская)',
+      'bul': 'Bulgarian (Български)',
+      'srp': 'Serbian (Српски)',
+      'hrv': 'Croatian (Hrvatski)',
+      'slv': 'Slovenian (Slovenščina)',
+      'mkd': 'Macedonian (Македонски)',
+      'ces': 'Czech (Čeština)',
+      'slk': 'Slovak (Slovenčina)',
+      'pol': 'Polish (Polski)',
+      
+      // Western European
+      'deu': 'German (Deutsch)',
+      'fra': 'French (Français)',
+      'spa': 'Spanish (Español)',
+      'por': 'Portuguese (Português)',
+      'ita': 'Italian (Italiano)',
+      'nld': 'Dutch (Nederlands)',
+      'cat': 'Catalan (Català)',
+      'glg': 'Galician (Galego)',
+      'eus': 'Basque (Euskara)',
+      
+      // Nordic Languages
+      'dan': 'Danish (Dansk)',
+      'nor': 'Norwegian (Norsk)',
+      'swe': 'Swedish (Svenska)',
+      'fin': 'Finnish (Suomi)',
+      'isl': 'Icelandic (Íslenska)',
+      
+      // Baltic Languages
+      'est': 'Estonian (Eesti)',
+      'lav': 'Latvian (Latviešu)',
+      'lit': 'Lithuanian (Lietuvių)',
+      
+      // Other European
+      'ell': 'Greek (Ελληνικά)',
+      'tur': 'Turkish (Türkçe)',
+      'ron': 'Romanian (Română)',
+      'hun': 'Hungarian (Magyar)',
+      'sqi': 'Albanian (Shqip)',
+      'mlt': 'Maltese (Malti)',
+      'cym': 'Welsh (Cymraeg)',
+      'gle': 'Irish (Gaeilge)',
+      'lat': 'Latin',
+      
+      // Southeast Asian
+      'ind': 'Indonesian (Bahasa Indonesia)',
+      'msa': 'Malay (Bahasa Melayu)',
+      'fil': 'Filipino (Tagalog)',
+      'ceb': 'Cebuano',
+      'jav': 'Javanese (Basa Jawa)',
+      'sun': 'Sundanese (Basa Sunda)',
+      
+      // African Languages
+      'afr': 'Afrikaans',
+      'swa': 'Swahili (Kiswahili)',
+      'amh': 'Amharic (አማርኛ)',
+      'tir': 'Tigrinya (ትግርኛ)',
+      
+      // Central Asian
+      'uzb': 'Uzbek (Oʻzbek)',
+      'kaz': 'Kazakh (Қазақ)',
+      'kir': 'Kyrgyz (Кыргыз)',
+      'tgk': 'Tajik (Тоҷикӣ)',
+      'mon': 'Mongolian (Монгол)',
+      'aze': 'Azerbaijani (Azərbaycan)',
+      'aze_cyrl': 'Azerbaijani Cyrillic',
+      
+      // South Asian (additional)
+      'bod': 'Tibetan (བོད་སྐད)',
+      'dzo': 'Dzongkha (རྫོང་ཁ)',
+      'sin': 'Sinhala (සිංහල)',
+      'div': 'Dhivehi (ދިވެހި)',
+      
+      // Caucasian
+      'kat': 'Georgian (ქართული)',
+      'hye': 'Armenian (Հայերdelays)',
+      
+      // Special
+      'equ': 'Math/Equations',
+      'osd': 'Script Detection',
     };
+    
+    const result = {
+      'auto': 'Auto-detect (All Available)'
+    };
+    
+    // Add all available languages
+    for (const lang of available) {
+      result[lang] = languageNames[lang] || lang;
+    }
+    
+    return result;
   }
 
   // Decode HTML entities
@@ -547,7 +716,7 @@ class OCRService {
       .replace(/&#x([0-9a-fA-F]+);/g, (match, hex) => String.fromCharCode(parseInt(hex, 16)));
   }
 
-  // Local text cleaner
+  // Local text cleaner - aggressive garbage removal
   cleanTextLocally(text) {
     if (!text || text.length === 0) return text;
     
@@ -556,11 +725,15 @@ class OCRService {
     
     cleaned = this.decodeHtmlEntities(cleaned);
     
-    // Remove common OCR garbage patterns
-    cleaned = cleaned.replace(/[=@<>]+/g, ' ');  // Remove =, @, <, > sequences
-    cleaned = cleaned.replace(/\([^)]*[=@<>][^)]*\)/g, ' ');  // Remove parentheses with garbage
-    cleaned = cleaned.replace(/[A-Z]{10,}/g, ' ');  // Remove very long uppercase sequences (likely garbage)
-    cleaned = cleaned.replace(/[a-z]{15,}/g, ' ');  // Remove very long lowercase sequences
+    // Remove common OCR garbage patterns (more aggressive)
+    cleaned = cleaned.replace(/[=@<>]{2,}/g, ' ');  // Remove sequences of =, @, <, >
+    cleaned = cleaned.replace(/\([^)]*[=@<>]+[^)]*\)/g, ' ');  // Remove parentheses with garbage
+    cleaned = cleaned.replace(/[A-Z]{12,}/g, ' ');  // Remove very long uppercase sequences (likely garbage)
+    cleaned = cleaned.replace(/[a-z]{18,}/g, ' ');  // Remove very long lowercase sequences
+    cleaned = cleaned.replace(/[^\w\s\.,;:!?'"()\-\/₹€£¥\n\r\u0900-\u097F]/g, ' ');  // Remove invalid chars
+    
+    // Remove repeated character patterns (like "aaaa" or "====")
+    cleaned = cleaned.replace(/(.)\1{4,}/g, '$1$1');
     
     // Common OCR corrections
     const ocrCorrections = [
@@ -586,23 +759,21 @@ class OCRService {
       cleaned = cleaned.replace(pattern, replacement);
     }
     
-    // Remove garbage characters (keep Hindi/Devanagari: \u0900-\u097F)
-    cleaned = cleaned.replace(/[^\w\s\.,;:!?'"()\-\/₹€£¥\n\r\u0900-\u097F]/g, ' ');
-    
     // Fix spacing
-    cleaned = cleaned.replace(/\s{2,}/g, ' ');
-    cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+    cleaned = cleaned.replace(/\s{3,}/g, '  ');
+    cleaned = cleaned.replace(/\n{4,}/g, '\n\n');
     cleaned = cleaned.replace(/\s+([.,;:!?])/g, '$1');
     cleaned = cleaned.replace(/([.,;:!?])([A-Za-z])/g, '$1 $2');
     
-    // Remove garbage lines (less than 40% alphanumeric)
+    // Remove garbage lines (less than 35% alphanumeric - stricter threshold)
     const lines = cleaned.split('\n');
     const cleanedLines = lines.filter(line => {
-      if (line.trim().length === 0) return true;
-      if (line.trim().length < 3) return false;  // Remove very short lines
-      const alphanumeric = (line.match(/[a-zA-Z0-9\u0900-\u097F]/g) || []).length;
-      const total = line.trim().length;
-      return total === 0 || (alphanumeric / total) > 0.4;
+      const trimmed = line.trim();
+      if (trimmed.length === 0) return true;
+      if (trimmed.length < 2) return false;  // Remove very short lines
+      const alphanumeric = (trimmed.match(/[a-zA-Z0-9\u0900-\u097F]/g) || []).length;
+      const total = trimmed.length;
+      return total === 0 || (alphanumeric / total) > 0.35;
     });
     cleaned = cleanedLines.join('\n');
     

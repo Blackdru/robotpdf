@@ -31,16 +31,13 @@ class AIService {
       // Use free models through OpenRouter
       this.model = process.env.AI_MODEL || 'meta-llama/llama-3.3-70b-instruct:free';
       
-      // FREE models sorted by best fit for PDF/document processing (no Google models)
+      // FREE models sorted by best fit for PDF/document processing
       this.fallbackModels = [
         'meta-llama/llama-3.3-70b-instruct:free', // Best: Large 70B model for complex text
-        'nex-agi/deepseek-v3.1-nex-n1:free',      // Excellent: DeepSeek for document processing
-        'tngtech/deepseek-r1t2-chimera:free',     // Great: DeepSeek reasoning model
-        'mistralai/devstral-2512:free',           // Good: Mistral's capable dev model
-        'z-ai/glm-4.5-air:free',                  // Good: Multilingual support
-        'nvidia/nemotron-3-nano-30b-a3b:free',    // Decent: General purpose
-        'xiaomi/mimo-v2-flash:free',              // Fast: Lightweight option
-        'nvidia/nemotron-nano-12b-v2-vl:free'     // Backup: Vision-language model
+        'mistralai/mistral-small-3.1-24b-instruct:free', // Good instruction following
+        'qwen/qwen3-14b:free',                    // Good: Qwen for document processing
+        'deepseek/deepseek-chat-v3-0324:free',    // DeepSeek chat model
+        'microsoft/phi-4:free',                   // Microsoft Phi-4
       ];
       this.embeddingModel = 'text-embedding-3-small';
       this.isUsingOpenRouter = true;
@@ -503,54 +500,57 @@ ${context}`;
     try {
       console.log('Enhancing text with AI, original length:', rawText.length);
       
+      // Check if OCR output is garbage (too low quality to enhance)
+      const qualityScore = this.assessOcrQuality(rawText);
+      console.log('OCR quality score:', qualityScore);
+      
+      if (qualityScore < 0.3) {
+        console.warn('OCR output quality too low for AI enhancement, returning as-is');
+        return rawText;
+      }
+      
+      // Pre-clean the raw text to remove obvious garbage before AI processing
+      const preCleanedText = this.preCleanOcrText(rawText);
+      console.log('Pre-cleaned text length:', preCleanedText.length);
+      
+      if (preCleanedText.length < 10) {
+        console.warn('Pre-cleaned text too short, returning original');
+        return rawText;
+      }
+      
       // Detect document type for better enhancement
-      const documentType = this.detectDocumentType(rawText);
+      const documentType = this.detectDocumentType(preCleanedText);
       console.log('Detected document type:', documentType);
       
-      // Create a comprehensive prompt for all document types
-      const prompt = `You are an expert at cleaning up OCR-extracted text. Your ONLY job is to fix OCR errors in the provided text.
+      // Create a strict prompt that prevents AI from adding content
+      const prompt = `TASK: Clean OCR errors ONLY. Do NOT add ANY new information.
 
-STRICT RULES - FOLLOW EXACTLY:
-1. ONLY fix OCR errors in the text provided - DO NOT add any new information
-2. DO NOT invent, generate, or hallucinate any data that is not in the original text
-3. DO NOT add fields like "Name:", "PAN:", "Date of Birth:" unless they already exist in the original
-4. If the text is incomplete or partial, return it as incomplete - DO NOT complete it
-5. NEVER make up names, numbers, dates, or any other information
+ABSOLUTE RULES (VIOLATION = FAILURE):
+1. OUTPUT MUST ONLY CONTAIN TEXT FROM THE INPUT - nothing new
+2. DO NOT add labels like "Name:", "PAN:", "Address:", "Date:" unless they exist in input
+3. DO NOT generate or guess any names, numbers, dates, or values
+4. DO NOT add explanations, headers, or formatting not in the original
+5. If text is garbled/unreadable, DELETE it - do NOT replace with guessed content
+6. PRESERVE all non-English text (Hindi/Devanagari) exactly as-is
 
-OCR Error Fixes Only:
-- Fix misread characters (like "rn" → "m", "cl" → "d", "0" → "O", "l" → "I")
-- Fix spacing issues
-- Remove OCR artifacts and garbled characters
-- Fix broken words
-- Decode HTML entities
+ALLOWED FIXES ONLY:
+- Fix character misreads: rn→m, cl→d, 0→O (in words), l→I (at word start)
+- Fix spacing: merge broken words, fix extra spaces
+- Remove garbage: ===, @@@, <<<, random symbols
+- Fix common OCR typos: tbe→the, witb→with, frorn→from
 
-CRITICAL MULTILINGUAL RULES:
-- PRESERVE ALL NON-ENGLISH TEXT EXACTLY AS-IS (Hindi, Arabic, Chinese, etc.)
-- DO NOT translate non-English text to English
-- Keep Devanagari script (आयकर, पैन, नाम) exactly as-is
+INPUT TEXT:
+${preCleanedText}
 
-CRITICAL: If you cannot read or understand part of the text, leave it as-is or remove it. NEVER invent replacement text.
-
-Document type detected: ${documentType}
-
-Return ONLY the cleaned OCR text. No explanations. No additions. No invented data.
-
-Original OCR text:
-${rawText}
-
-Cleaned text:`;
+OUTPUT (cleaned text only, no explanations):`;
 
       // Use free models for OCR enhancement, sorted by best fit for document processing
       // Falls back to configured model if all free models fail (no Google models - rate limited)
       const modelsToTry = this.isUsingOpenRouter 
         ? [
             'meta-llama/llama-3.3-70b-instruct:free', // Best: Large 70B model for complex text
-            'nex-agi/deepseek-v3.1-nex-n1:free',      // Excellent: DeepSeek for document processing
-            'tngtech/deepseek-r1t2-chimera:free',     // Great: DeepSeek reasoning model
-            'mistralai/devstral-2512:free',           // Good: Mistral's capable dev model
-            'z-ai/glm-4.5-air:free',                  // Good: Multilingual support
-            'nvidia/nemotron-3-nano-30b-a3b:free',    // Decent: General purpose
-            'xiaomi/mimo-v2-flash:free',              // Fast: Lightweight option
+            'mistralai/mistral-small-3.1-24b-instruct:free', // Good instruction following
+            'qwen/qwen3-14b:free',                    // Good: Qwen for document processing
             this.model                                 // Fallback: Configured paid model
           ]
         : [this.model];
@@ -567,15 +567,15 @@ Cleaned text:`;
             messages: [
               {
                 role: 'system',
-                content: 'You are an OCR text cleaner. Your ONLY job is to fix OCR errors in the provided text. NEVER add, invent, or hallucinate any information. NEVER generate fake names, numbers, dates, or any data not in the original. If text is incomplete, return it incomplete. Preserve all non-English text (Hindi, Arabic, etc.) exactly as-is. Return ONLY the cleaned text.'
+                content: 'You are an OCR text cleaner. ONLY fix OCR errors. NEVER add new information. NEVER generate names, numbers, or dates. If text is unreadable, remove it. Preserve non-English text exactly. Output ONLY the cleaned text.'
               },
               {
                 role: 'user',
                 content: prompt
               }
             ],
-            max_tokens: Math.min(4000, Math.ceil(rawText.length * 1.5)),
-            temperature: 0.05, // Very low temperature for consistent corrections
+            max_tokens: Math.min(4000, Math.ceil(preCleanedText.length * 1.3)),
+            temperature: 0.0, // Zero temperature for deterministic output
           });
 
           enhancedText = response.choices[0].message.content.trim();
@@ -594,6 +594,9 @@ Cleaned text:`;
         throw lastError || new Error('AI enhancement failed with all models');
       }
       
+      // Post-process: Remove AI-added content that wasn't in original
+      enhancedText = this.filterAiAddedContent(enhancedText, preCleanedText);
+      
       // Decode HTML entities that might be in the AI response
       enhancedText = enhancedText
         .replace(/&#39;/g, "'")
@@ -606,20 +609,20 @@ Cleaned text:`;
         .replace(/&#x([0-9a-fA-F]+);/g, (match, hex) => String.fromCharCode(parseInt(hex, 16)));
           
       // Validate that the enhanced text is reasonable
-      if (enhancedText.length > rawText.length * 3) {
-        console.warn('AI enhancement produced text that is too long, using original');
-        return rawText;
+      if (enhancedText.length > preCleanedText.length * 2.5) {
+        console.warn('AI enhancement produced text that is too long, using pre-cleaned original');
+        return preCleanedText;
       }
 
-      if (enhancedText.length < rawText.length * 0.3) {
-        console.warn('AI enhancement produced text that is too short, using original');
-        return rawText;
+      if (enhancedText.length < preCleanedText.length * 0.2) {
+        console.warn('AI enhancement produced text that is too short, using pre-cleaned original');
+        return preCleanedText;
       }
 
       // Additional validation for important document information
-      if (this.containsImportantDocumentInfo(rawText) && !this.containsImportantDocumentInfo(enhancedText)) {
-        console.warn('AI enhancement removed important document information, using original');
-        return rawText;
+      if (this.containsImportantDocumentInfo(preCleanedText) && !this.containsImportantDocumentInfo(enhancedText)) {
+        console.warn('AI enhancement removed important document information, using pre-cleaned original');
+        return preCleanedText;
       }
 
       return enhancedText;
@@ -628,6 +631,122 @@ Cleaned text:`;
       console.error('Error enhancing text with AI:', error);
       throw error;
     }
+  }
+
+  // Pre-clean OCR text before AI processing
+  preCleanOcrText(text) {
+    if (!text) return '';
+    
+    let cleaned = text;
+    
+    // Remove obvious garbage patterns
+    cleaned = cleaned.replace(/[=@<>]{3,}/g, ' ');  // Remove long sequences of =, @, <, >
+    cleaned = cleaned.replace(/\([^)]*[=@<>]{2,}[^)]*\)/g, ' ');  // Remove parentheses with garbage
+    cleaned = cleaned.replace(/[^\w\s\.,;:!?'"()\-\/₹€£¥\n\r\u0900-\u097F@#%&*+]/g, ' ');  // Keep only valid chars
+    
+    // Remove lines that are mostly garbage (less than 30% alphanumeric)
+    const lines = cleaned.split('\n');
+    const cleanedLines = lines.filter(line => {
+      const trimmed = line.trim();
+      if (trimmed.length === 0) return true;
+      if (trimmed.length < 2) return false;
+      const alphanumeric = (trimmed.match(/[a-zA-Z0-9\u0900-\u097F]/g) || []).length;
+      return (alphanumeric / trimmed.length) > 0.3;
+    });
+    cleaned = cleanedLines.join('\n');
+    
+    // Fix excessive whitespace
+    cleaned = cleaned.replace(/\s{3,}/g, '  ');
+    cleaned = cleaned.replace(/\n{4,}/g, '\n\n\n');
+    
+    return cleaned.trim();
+  }
+
+  // Filter out content that AI might have added but wasn't in original
+  filterAiAddedContent(aiText, originalText) {
+    if (!aiText || !originalText) return aiText;
+    
+    const originalLower = originalText.toLowerCase();
+    const lines = aiText.split('\n');
+    
+    // Common labels that AI might add but weren't in original
+    const suspiciousLabels = [
+      /^(name|full name|applicant name)\s*:/i,
+      /^(pan|pan number|pan no)\s*:/i,
+      /^(date of birth|dob|birth date)\s*:/i,
+      /^(father'?s? name|father)\s*:/i,
+      /^(mother'?s? name|mother)\s*:/i,
+      /^(address|permanent address|residential address)\s*:/i,
+      /^(phone|mobile|contact|email)\s*:/i,
+      /^(signature|sign)\s*:/i,
+      /^(aadhaar|aadhar|uid)\s*:/i,
+    ];
+    
+    const filteredLines = lines.filter(line => {
+      const trimmed = line.trim();
+      if (!trimmed) return true;
+      
+      // Check if this looks like an AI-added label
+      for (const pattern of suspiciousLabels) {
+        if (pattern.test(trimmed)) {
+          // Check if similar content exists in original
+          const labelMatch = trimmed.match(/^([^:]+):/);
+          if (labelMatch) {
+            const label = labelMatch[1].toLowerCase().trim();
+            // If the label wasn't in original text, filter it out
+            if (!originalLower.includes(label)) {
+              console.log('Filtering AI-added label:', trimmed.substring(0, 50));
+              return false;
+            }
+          }
+        }
+      }
+      
+      return true;
+    });
+    
+    return filteredLines.join('\n').trim();
+  }
+
+  // Assess OCR output quality (0-1 score)
+  assessOcrQuality(text) {
+    if (!text || text.length === 0) return 0;
+    
+    const words = text.split(/\s+/).filter(w => w.length > 0);
+    if (words.length === 0) return 0;
+    
+    let score = 0;
+    let validWords = 0;
+    
+    // Check for real words vs garbage
+    for (const word of words) {
+      // Valid word patterns
+      const isValidWord = 
+        /^[a-zA-Z]{2,}$/.test(word) ||           // English word
+        /^[\u0900-\u097F]+$/.test(word) ||       // Hindi/Devanagari
+        /^[\u0C00-\u0C7F]+$/.test(word) ||       // Telugu
+        /^[\u0B80-\u0BFF]+$/.test(word) ||       // Tamil
+        /^\d+$/.test(word) ||                     // Numbers
+        /^[A-Z]{2,5}\d{4,}[A-Z]?$/.test(word) || // ID patterns like PAN
+        /^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}$/.test(word); // Dates
+      
+      if (isValidWord) validWords++;
+    }
+    
+    // Calculate word validity ratio
+    const wordRatio = validWords / words.length;
+    
+    // Check for excessive special characters
+    const specialChars = (text.match(/[^a-zA-Z0-9\s\u0900-\u097F\u0C00-\u0C7F.,;:'"()-]/g) || []).length;
+    const specialRatio = specialChars / text.length;
+    
+    // Check for repeated garbage patterns
+    const garbagePatterns = (text.match(/[&@#$%^*=<>]{2,}|[0-9]{10,}|[a-z]{15,}/gi) || []).length;
+    
+    // Calculate final score
+    score = wordRatio * 0.6 + (1 - specialRatio) * 0.3 + (garbagePatterns === 0 ? 0.1 : 0);
+    
+    return Math.max(0, Math.min(1, score));
   }
 
   // Detect document type for better enhancement
