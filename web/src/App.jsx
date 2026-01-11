@@ -61,6 +61,8 @@ const CompressPrivacyPolicy = lazy(() => import('./apps/compress'))
 const MergePrivacyPolicy = lazy(() => import('./apps/merge'))
 const SplitPrivacyPolicy = lazy(() => import('./apps/split'))
 const CalPrivacyPolicy = lazy(() => import('./apps/calc'))
+const ImageToPDFPrivacyPolicy = lazy(() => import('./apps/imagetopdf'))
+const PDFToExcelPrivacyPolicy = lazy(() => import('./apps/pdftoexcel'))
 
 
 // Components
@@ -361,6 +363,8 @@ const AppContent = () => {
                 <Route path="/apps/merge" element={<MergePrivacyPolicy />} />
                 <Route path="/apps/split" element={<SplitPrivacyPolicy />} />
                 <Route path="/apps/calc" element={<CalPrivacyPolicy />} />
+                <Route path="/apps/imagetopdf" element={<ImageToPDFPrivacyPolicy />} />
+                <Route path="/apps/pdftoexcel" element={<PDFToExcelPrivacyPolicy />} />
               </Routes>
         </Suspense>
       </main>

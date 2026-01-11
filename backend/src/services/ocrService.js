@@ -5,109 +5,17 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const pdf2pic = require('pdf2pic');
 const pdfParse = require('pdf-parse');
-const { spawn } = require('child_process');
 
 class OCRService {
   constructor() {
     this.languages = process.env.OCR_LANGUAGES || 'eng';
-    this.confidenceThreshold = parseFloat(process.env.OCR_CONFIDENCE_THRESHOLD) || 0.5; // Lower threshold for mixed languages
+    this.confidenceThreshold = parseFloat(process.env.OCR_CONFIDENCE_THRESHOLD) || 0.5;
     this.tempDir = path.join(__dirname, '../../temp');
     this.tessdataDir = path.join(__dirname, '../../tessdata');
-    this.pythonScriptPath = path.join(__dirname, '../../python_services/advanced_ocr.py');
-    this.pythonPath = process.env.PYTHON_PATH || (process.platform === 'win32' ? 'python' : 'python3');
-    this._pythonOcrAvailable = null;
     this.ensureTempDir();
     
     // Configure Tesseract.js to use local tessdata directory
     process.env.TESSDATA_PREFIX = this.tessdataDir;
-    
-    // Check Python OCR availability on startup
-    this.checkPythonOCR();
-  }
-
-  // Check if Python OCR (Tesseract) is available
-  async checkPythonOCR() {
-    if (this._pythonOcrAvailable !== null) {
-      return this._pythonOcrAvailable;
-    }
-    
-    try {
-      const result = await this.runPythonOCR(['engines']);
-      this._pythonOcrAvailable = result.success && result.engines?.tesseract;
-      console.log('🐍 Python OCR (Tesseract) available:', this._pythonOcrAvailable);
-      return this._pythonOcrAvailable;
-    } catch (error) {
-      console.warn('⚠️ Python OCR not available, using Tesseract.js fallback:', error.message);
-      this._pythonOcrAvailable = false;
-      return false;
-    }
-  }
-
-  // Run Python OCR script
-  runPythonOCR(args) {
-    return new Promise((resolve, reject) => {
-      const proc = spawn(this.pythonPath, [this.pythonScriptPath, ...args], {
-        cwd: path.dirname(this.pythonScriptPath),
-        env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
-      });
-
-      let stdout = '';
-      let stderr = '';
-
-      proc.stdout.on('data', (data) => {
-        stdout += data.toString();
-      });
-
-      proc.stderr.on('data', (data) => {
-        stderr += data.toString();
-      });
-
-      proc.on('close', (code) => {
-        if (code === 0) {
-          try {
-            const result = JSON.parse(stdout);
-            resolve(result);
-          } catch (parseError) {
-            reject(new Error(`Failed to parse Python output: ${stdout}`));
-          }
-        } else {
-          reject(new Error(`Python script failed (code ${code}): ${stderr || stdout}`));
-        }
-      });
-
-      proc.on('error', (error) => {
-        reject(new Error(`Failed to spawn Python process: ${error.message}`));
-      });
-
-      // Timeout after 5 minutes
-      setTimeout(() => {
-        proc.kill();
-        reject(new Error('Python OCR timeout'));
-      }, 300000);
-    });
-  }
-
-  // Extract text using Python EasyOCR
-  async extractWithPythonOCR(filePath, languages, fileType = 'image') {
-    const langStr = Array.isArray(languages) ? languages.join(',') : languages;
-    const command = fileType === 'pdf' ? 'extract_pdf' : 'extract';
-    
-    console.log(`🐍 Running Python OCR: ${command} on ${filePath} with languages: ${langStr}`);
-    
-    const result = await this.runPythonOCR([command, filePath, langStr, 'auto']);
-    
-    if (result.success && result.text) {
-      console.log(`✓ Python OCR successful: ${result.text.length} chars, confidence: ${result.confidence}`);
-      return {
-        text: result.text,
-        confidence: result.confidence || 0.9,
-        engine: result.engine || 'easyocr',
-        pages: result.pages || [],
-        pageCount: result.page_count || 1
-      };
-    }
-    
-    throw new Error(result.error || 'Python OCR returned no text');
   }
 
   async ensureTempDir() {
@@ -118,18 +26,14 @@ class OCRService {
     }
   }
 
-  // Check if OCR is enabled
   isEnabled() {
     return process.env.ENABLE_OCR === 'true';
   }
 
-  // Check if Tesseract is properly initialized
   async checkTesseractHealth() {
     try {
-      // Create a simple test image using Sharp instead of raw buffer
       const tempPath = path.join(this.tempDir, 'health_check.png');
       
-      // Create a simple 100x50 white image with black text
       await sharp({
         create: {
           width: 100,
@@ -141,24 +45,22 @@ class OCRService {
       .png()
       .toFile(tempPath);
       
-      // Test OCR with a timeout
       const worker = await Tesseract.createWorker('eng', 1, {
-        logger: () => {} // Disable logging for health check
+        logger: () => {}
       });
       
       const { data } = await worker.recognize(tempPath);
       await worker.terminate();
-      
       await this.cleanupFile(tempPath);
       
       return true;
     } catch (error) {
-      console.warn('Tesseract health check failed (this is normal on first run):', error.message);
-      return false; // Return false but don't throw - OCR might still work
+      console.warn('Tesseract health check failed:', error.message);
+      return false;
     }
   }
 
-  // Extract text from image file with multiple enhancement strategies
+  // Extract text from image with enhanced processing for dull/low-quality images
   async extractTextFromImage(imageBuffer, options = {}) {
     if (!this.isEnabled()) {
       throw new Error('OCR is not enabled');
@@ -173,89 +75,60 @@ class OCRService {
     const enhancedPaths = [];
 
     try {
-      // Save image buffer to temp file
       await fs.writeFile(tempImagePath, imageBuffer);
-
-      // 🐍 TRY PYTHON OCR (EasyOCR) FIRST - Higher accuracy
-      const pythonAvailable = await this.checkPythonOCR();
-      if (pythonAvailable) {
-        try {
-          console.log('🐍 Attempting Python OCR (EasyOCR) for image...');
-          // Always include Hindi for Indian document support (PAN, Aadhaar, etc.)
-          let languages = language.split('+').filter(l => l.trim());
-          if (!languages.includes('hin')) {
-            languages.push('hin');
-            console.log('🇮🇳 Auto-adding Hindi for Indian document support');
-          }
-          const pythonResult = await this.extractWithPythonOCR(tempImagePath, languages, 'image');
-          
-          if (pythonResult.text && pythonResult.confidence > 0.5) {
-            console.log(`✓ Python OCR successful: ${pythonResult.text.length} chars, confidence: ${pythonResult.confidence}`);
-            await this.cleanupFile(tempImagePath);
-            return {
-              text: pythonResult.text,
-              confidence: pythonResult.confidence,
-              pageCount: 1,
-              pages: [{
-                page: 1,
-                text: pythonResult.text,
-                confidence: pythonResult.confidence,
-                words: []
-              }],
-              language: language,
-              engine: pythonResult.engine || 'easyocr'
-            };
-          }
-        } catch (pythonError) {
-          console.warn('⚠️ Python OCR failed, falling back to Tesseract.js:', pythonError.message);
-        }
-      }
-
-      // FALLBACK: Use Tesseract.js
-      console.log('📋 Using Tesseract.js OCR fallback...');
+      console.log('📋 Starting Tesseract.js OCR...');
       
-      let bestResult = null;
-      let bestConfidence = 0;
-      let imagesToTry = [tempImagePath]; // Start with original
+      let allResults = [];
+      let imagesToTry = [tempImagePath];
 
-      // Create multiple enhanced versions if requested
+      // Create multiple enhanced versions for dull/low-quality images
       if (enhanceImage) {
-        const enhancements = await this.createMultipleEnhancements(tempImagePath);
+        const enhancements = await this.createEnhancedVersions(tempImagePath);
         imagesToTry = [...imagesToTry, ...enhancements];
         enhancedPaths.push(...enhancements);
       }
 
-      // Try OCR on each image version
+      // Try OCR on each image version and collect all results
       for (let i = 0; i < imagesToTry.length; i++) {
         const imagePath = imagesToTry[i];
         console.log(`Trying OCR on image version ${i + 1}/${imagesToTry.length}`);
         
         try {
           const ocrResult = await this.performOCR(imagePath, language);
-          console.log(`Version ${i + 1} confidence: ${ocrResult.confidence}`);
-          
-          if (ocrResult.confidence > bestConfidence) {
-            bestResult = ocrResult;
-            bestConfidence = ocrResult.confidence;
-            bestResult.imageVersion = i + 1;
-          }
-          
-          // If we get very good confidence, use this result
-          if (ocrResult.confidence > 0.8) {
-            console.log(`High confidence achieved with version ${i + 1}, stopping`);
-            break;
-          }
+          ocrResult.imageVersion = i + 1;
+          allResults.push(ocrResult);
+          console.log(`Version ${i + 1}: confidence=${ocrResult.confidence.toFixed(2)}, chars=${ocrResult.text.length}`);
         } catch (versionError) {
           console.warn(`OCR failed for image version ${i + 1}:`, versionError.message);
           continue;
         }
       }
 
-      if (!bestResult) {
-        throw new Error('OCR failed for all image enhancement versions');
+      if (allResults.length === 0) {
+        throw new Error('OCR failed for all image versions');
       }
 
-      console.log(`Best result from image version ${bestResult.imageVersion} with confidence ${bestResult.confidence}`);
+      // Smart selection: Balance confidence AND text length
+      // Score = confidence * 0.4 + normalized_text_length * 0.6
+      const maxTextLength = Math.max(...allResults.map(r => r.text.length));
+      
+      let bestResult = allResults[0];
+      let bestScore = 0;
+      
+      for (const result of allResults) {
+        const normalizedLength = maxTextLength > 0 ? result.text.length / maxTextLength : 0;
+        // Penalize very short results even if high confidence
+        const lengthPenalty = result.text.length < 100 ? 0.5 : 1.0;
+        const score = (result.confidence * 0.4 + normalizedLength * 0.6) * lengthPenalty;
+        
+        console.log(`Version ${result.imageVersion} score: ${score.toFixed(3)} (conf=${result.confidence.toFixed(2)}, len=${result.text.length})`);
+        
+        if (score > bestScore) {
+          bestScore = score;
+          bestResult = result;
+        }
+      }
+      console.log(`✓ Best result from version ${bestResult.imageVersion} with confidence ${bestResult.confidence}`);
 
       return {
         text: bestResult.text,
@@ -268,11 +141,10 @@ class OCRService {
           words: bestResult.words
         }],
         language: language,
-        imageVersion: bestResult.imageVersion
+        engine: 'tesseract.js'
       };
 
     } finally {
-      // Clean up temp files
       await this.cleanupFile(tempImagePath);
       for (const enhancedPath of enhancedPaths) {
         await this.cleanupFile(enhancedPath);
@@ -280,392 +152,121 @@ class OCRService {
     }
   }
 
-  // Extract text from PDF using OCR
-  async extractTextFromPDF(pdfBuffer, options = {}) {
-    if (!this.isEnabled()) {
-      throw new Error('OCR is not enabled');
-    }
-
-    const {
-      language = this.languages,
-      enhanceImage = true,
-      maxPages = 100 // INCREASED: Process up to 100 pages
-    } = options;
-
-    const tempPdfPath = path.join(this.tempDir, `${uuidv4()}.pdf`);
-    const tempImagesDir = path.join(this.tempDir, `images_${uuidv4()}`);
-
-    try {
-      // Save PDF buffer to temp file
-      await fs.writeFile(tempPdfPath, pdfBuffer);
-      await fs.mkdir(tempImagesDir, { recursive: true });
-
-      console.log('PDF saved to:', tempPdfPath);
-
-      // First, try to extract text directly from PDF (for text-based PDFs)
-      console.log('Attempting direct text extraction from PDF...');
-      try {
-        const pdfData = await pdfParse(pdfBuffer);
-        if (pdfData.text && pdfData.text.trim().length > 50) {
-          console.log('PDF contains extractable text, using direct extraction');
-          console.log('Extracted text length:', pdfData.text.length);
-          // Cleanup temp files
-          await this.cleanupFile(tempPdfPath);
-          try { await fs.rmdir(tempImagesDir); } catch (e) {}
-          
-          return {
-            text: pdfData.text,
-            confidence: 0.95, // High confidence for direct extraction
-            pageCount: pdfData.numpages || 1,
-            pages: [{
-              page: 1,
-              text: pdfData.text,
-              confidence: 0.95,
-              words: []
-            }],
-            language: language,
-            method: 'direct_extraction'
-          };
-        }
-        console.log('PDF text extraction yielded insufficient text, proceeding with OCR');
-      } catch (parseError) {
-        console.log('Direct PDF text extraction failed, proceeding with OCR:', parseError.message);
-      }
-
-      // 🐍 TRY PYTHON OCR (EasyOCR) FIRST - Higher accuracy for scanned PDFs
-      const pythonAvailable = await this.checkPythonOCR();
-      if (pythonAvailable) {
-        try {
-          console.log('🐍 Attempting Python OCR (EasyOCR) for PDF...');
-          const languages = language.split('+').filter(l => l.trim());
-          const pythonResult = await this.extractWithPythonOCR(tempPdfPath, languages, 'pdf');
-          
-          if (pythonResult.text && pythonResult.confidence > 0.5) {
-            console.log(`✓ Python PDF OCR successful: ${pythonResult.text.length} chars, confidence: ${pythonResult.confidence}`);
-            // Cleanup temp files
-            await this.cleanupFile(tempPdfPath);
-            try { await fs.rmdir(tempImagesDir); } catch (e) {}
-            
-            return {
-              text: pythonResult.text,
-              confidence: pythonResult.confidence,
-              pageCount: pythonResult.pageCount || 1,
-              pages: pythonResult.pages || [{
-                page: 1,
-                text: pythonResult.text,
-                confidence: pythonResult.confidence,
-                words: []
-              }],
-              language: language,
-              engine: pythonResult.engine || 'easyocr',
-              method: 'python_ocr'
-            };
-          }
-        } catch (pythonError) {
-          console.warn('⚠️ Python PDF OCR failed, falling back to Tesseract.js:', pythonError.message);
-        }
-      }
-
-      // FALLBACK: Use Tesseract.js with pdf2pic
-      console.log('📋 Using Tesseract.js OCR fallback for PDF...');
-      console.log('Images directory:', tempImagesDir);
-
-      // Convert PDF to images (optimized DPI)
-      let convert;
-      try {
-        convert = pdf2pic.fromPath(tempPdfPath, {
-          density: 150, // Optimized: Reduced DPI for faster processing
-          saveFilename: 'page',
-          savePath: tempImagesDir,
-          format: 'png',
-          width: 1800,
-          height: 1800
-        });
-      } catch (pdf2picError) {
-        console.error('pdf2pic initialization error:', pdf2picError);
-        throw new Error('PDF conversion tool initialization failed. Please ensure GraphicsMagick or ImageMagick is installed on the server.');
-      }
-
-      // Process pages (limit for performance)
-      const pages = [];
-      let totalText = '';
-      let totalConfidence = 0;
-      let processedPages = 0;
-
-      for (let pageNum = 1; pageNum <= Math.min(maxPages, 100); pageNum++) {
-        try {
-          console.log(`Processing page ${pageNum}...`);
-          
-          let pageImage;
-          try {
-            pageImage = await convert(pageNum, { responseType: 'image' });
-          } catch (convertError) {
-            console.error(`PDF conversion error for page ${pageNum}:`, convertError.message);
-            // If first page fails, it's likely a PDF issue
-            if (pageNum === 1) {
-              throw new Error('Failed to convert PDF to images. The PDF may be corrupted or password-protected.');
-            }
-            break; // No more pages or conversion failed
-          }
-          
-          // Check if conversion was successful
-          if (!pageImage || !pageImage.path) {
-            console.log(`No more pages or conversion failed at page ${pageNum}`);
-            if (pageNum === 1) {
-              throw new Error('Failed to convert first page of PDF. The PDF may be empty or corrupted.');
-            }
-            break; // No more pages
-          }
-
-          // Verify the image file exists
-          try {
-            await fs.access(pageImage.path);
-          } catch (accessError) {
-            console.error(`Image file not found: ${pageImage.path}`);
-            if (pageNum === 1) {
-              throw new Error('PDF conversion produced no output. Please check if the PDF is valid.');
-            }
-            continue;
-          }
-
-          let imagePath = pageImage.path;
-          console.log(`Image path for page ${pageNum}: ${imagePath}`);
-
-          // Enhance image if requested
-          if (enhanceImage) {
-            try {
-              const enhancedPath = await this.enhanceImageForOCR(imagePath);
-              if (enhancedPath && enhancedPath !== imagePath) {
-                // Verify enhanced image exists
-                try {
-                  await fs.access(enhancedPath);
-                  imagePath = enhancedPath;
-                  console.log(`Using enhanced image: ${enhancedPath}`);
-                } catch (enhancedAccessError) {
-                  console.warn(`Enhanced image not accessible, using original: ${enhancedAccessError.message}`);
-                }
-              }
-            } catch (enhanceError) {
-              console.warn(`Image enhancement failed for page ${pageNum}, using original:`, enhanceError.message);
-              // Continue with original image
-            }
-          }
-
-          // Perform OCR on this page
-          const ocrResult = await this.performOCR(imagePath, language);
-
-          pages.push({
-            page: pageNum,
-            text: ocrResult.text,
-            confidence: ocrResult.confidence,
-            words: ocrResult.words
-          });
-
-          totalText += ocrResult.text + '\n\n';
-          totalConfidence += ocrResult.confidence;
-          processedPages++;
-
-          // Clean up enhanced image if different from original
-          if (imagePath !== pageImage.path) {
-            await this.cleanupFile(imagePath);
-          }
-
-        } catch (pageError) {
-          console.error(`Error processing page ${pageNum}:`, pageError);
-          // Continue with next page
-        }
-      }
-
-      if (processedPages === 0) {
-        throw new Error('No pages could be processed successfully');
-      }
-
-      const avgConfidence = processedPages > 0 ? totalConfidence / processedPages : 0;
-
-      return {
-        text: totalText.trim(),
-        confidence: avgConfidence,
-        pageCount: processedPages,
-        pages: pages,
-        language: language
-      };
-
-    } catch (error) {
-      console.error('Error in PDF OCR:', error);
-      throw new Error('PDF OCR processing failed: ' + error.message);
-    } finally {
-      // Clean up temp files
-      await this.cleanupFile(tempPdfPath);
-      try {
-        // Clean up images directory
-        const files = await fs.readdir(tempImagesDir);
-        for (const file of files) {
-          await this.cleanupFile(path.join(tempImagesDir, file));
-        }
-        await fs.rmdir(tempImagesDir);
-      } catch (cleanupError) {
-        console.warn('Error cleaning up temp images:', cleanupError);
-      }
-    }
-  }
-
-  // Enhance image for better OCR results with multiple strategies
-  async enhanceImageForOCR(imagePath) {
-    // Validate input
-    if (!imagePath) {
-      console.error('enhanceImageForOCR called with undefined imagePath');
-      throw new Error('Image path is required for enhancement');
-    }
-
-    const enhancedPath = path.join(this.tempDir, `enhanced_${uuidv4()}.png`);
-
-    try {
-      // Verify the input file exists before processing
-      await fs.access(imagePath);
-      
-      // Get image metadata to determine best enhancement strategy
-      const metadata = await sharp(imagePath).metadata();
-      
-      // Strategy: Adaptive enhancement based on image characteristics
-      let sharpInstance = sharp(imagePath)
-        .resize({ width: 3000, height: 3000, fit: 'inside', withoutEnlargement: false }) // Higher resolution for better OCR
-        .grayscale(); // Convert to grayscale
-      
-      // Apply adaptive enhancement
-      if (metadata.density && metadata.density < 150) {
-        // Low DPI image - apply stronger enhancement
-        sharpInstance = sharpInstance
-          .normalize() // Normalize contrast
-          .sharpen({ sigma: 2.5 }) // Strong sharpening
-          .linear(1.8, -40) // High contrast
-          .threshold(120); // Binary threshold
-      } else {
-        // Good quality image - apply moderate enhancement
-        sharpInstance = sharpInstance
-          .normalize()
-          .sharpen({ sigma: 1.5 })
-          .linear(1.4, -20)
-          .median(3); // Remove noise
-      }
-      
-      await sharpInstance
-        .png({ quality: 100, compressionLevel: 0 })
-        .toFile(enhancedPath);
-
-      return enhancedPath;
-    } catch (error) {
-      console.error('Error enhancing image:', error);
-      return imagePath; // Return original if enhancement fails
-    }
-  }
-
-  // Create multiple enhanced versions for better OCR
-  async createMultipleEnhancements(imagePath) {
+  // Create multiple enhanced versions optimized for dull/low-quality images
+  async createEnhancedVersions(imagePath) {
     const enhancements = [];
     
     try {
-      // Enhancement 1: High contrast with noise reduction
+      const metadata = await sharp(imagePath).metadata();
+      const width = metadata.width || 2000;
+      const height = metadata.height || 2000;
+      
+      // Calculate optimal size (upscale small images, but not too much)
+      const minDim = Math.min(width, height);
+      const scale = minDim < 1000 ? 1800 / minDim : (minDim < 1500 ? 1.5 : 1);
+      const newWidth = Math.round(width * scale);
+      const newHeight = Math.round(height * scale);
+
+      // Enhancement 1: Gentle - just normalize and light sharpen (best for good images)
       const enhanced1 = path.join(this.tempDir, `enh1_${uuidv4()}.png`);
       await sharp(imagePath)
-        .resize({ width: 3000, height: 3000, fit: 'inside', withoutEnlargement: false })
+        .resize(newWidth, newHeight, { fit: 'inside' })
         .grayscale()
-        .median(3) // Remove noise first
         .normalize()
-        .sharpen({ sigma: 2.0 })
-        .linear(1.8, -40)
-        .threshold(115)
-        .png({ quality: 100, compressionLevel: 0 })
+        .sharpen({ sigma: 1.0 })
+        .png({ quality: 100 })
         .toFile(enhanced1);
       enhancements.push(enhanced1);
 
-      // Enhancement 2: Adaptive threshold with edge enhancement
+      // Enhancement 2: Medium contrast for slightly dull images
       const enhanced2 = path.join(this.tempDir, `enh2_${uuidv4()}.png`);
       await sharp(imagePath)
-        .resize({ width: 2800, height: 2800, fit: 'inside', withoutEnlargement: false })
+        .resize(newWidth, newHeight, { fit: 'inside' })
         .grayscale()
         .normalize()
+        .linear(1.3, -15)  // Moderate contrast
         .sharpen({ sigma: 1.5 })
-        .linear(1.5, -25)
-        .median(2)
-        .png({ quality: 100, compressionLevel: 0 })
+        .png({ quality: 100 })
         .toFile(enhanced2);
       enhancements.push(enhanced2);
 
+      // Enhancement 3: For colored backgrounds (blue PAN cards) - brighten first
+      const enhanced3 = path.join(this.tempDir, `enh3_${uuidv4()}.png`);
+      await sharp(imagePath)
+        .resize(newWidth, newHeight, { fit: 'inside' })
+        .grayscale()
+        .modulate({ brightness: 1.15 })
+        .normalize()
+        .linear(1.5, -25)
+        .sharpen({ sigma: 1.5 })
+        .png({ quality: 100 })
+        .toFile(enhanced3);
+      enhancements.push(enhanced3);
+
+      // Enhancement 4: Higher contrast for very dull/faded images
+      const enhanced4 = path.join(this.tempDir, `enh4_${uuidv4()}.png`);
+      await sharp(imagePath)
+        .resize(newWidth, newHeight, { fit: 'inside' })
+        .grayscale()
+        .normalize()
+        .linear(1.8, -40)
+        .sharpen({ sigma: 2.0 })
+        .png({ quality: 100 })
+        .toFile(enhanced4);
+      enhancements.push(enhanced4);
+
       return enhancements;
     } catch (error) {
-      console.error('Error creating multiple enhancements:', error);
-      return []; // Return empty array if all enhancements fail
+      console.error('Error creating enhancements:', error);
+      return [];
     }
   }
 
-  // Perform OCR on a single image with optimized settings
+
+  // Perform OCR with optimized settings for Hindi + English
   async performOCR(imagePath, language) {
-    // Validate inputs
     if (!imagePath) {
       throw new Error('Image path is required for OCR processing');
     }
-    
-    if (!language) {
-      throw new Error('Language is required for OCR processing');
-    }
 
     try {
-      console.log('Starting OCR process for:', imagePath);
-      console.log('Using language:', language);
+      console.log('Starting OCR for:', imagePath);
       
-      // Verify the image file exists
-      try {
-        await fs.access(imagePath);
-      } catch (accessError) {
-        throw new Error(`Image file not accessible: ${imagePath}`);
-      }
+      await fs.access(imagePath);
       
-      // Parse language string - support multiple languages
+      // Auto-add Hindi for Indian document support
       let ocrLanguages = language;
-      
-      // Auto-detect if we should add Hindi for Indian documents
-      // This helps with PAN cards, Aadhaar, and other Indian government docs
       if (language === 'eng' || language.startsWith('eng')) {
-        // Try with eng+hin for better Indian document support
         ocrLanguages = 'eng+hin';
-        console.log('Auto-adding Hindi support for better Indian document recognition:', ocrLanguages);
+        console.log('Auto-adding Hindi support:', ocrLanguages);
       }
       
-      const primaryLanguage = ocrLanguages.split(',')[0].split('+')[0];
-      console.log('Using primary language:', primaryLanguage);
+      const primaryLanguage = ocrLanguages.split('+')[0];
       
       const worker = await Tesseract.createWorker(ocrLanguages, 1, {
         langPath: this.tessdataDir,
-        logger: () => {}, // Disable verbose logging
+        logger: () => {},
         errorHandler: (err) => console.error('Tesseract error:', err)
       });
       
-      // Configure Tesseract for better recognition
+      // Optimized parameters for ID cards and documents
       await worker.setParameters({
-        tessedit_pageseg_mode: Tesseract.PSM.AUTO, // Auto detect layout
+        tessedit_pageseg_mode: Tesseract.PSM.AUTO,
         preserve_interword_spaces: '1',
-        tessedit_char_whitelist: '', // Allow all characters
+        tessedit_char_whitelist: '',
         tessedit_char_blacklist: '',
-        // Additional parameters for better recognition
-        classify_bln_numeric_mode: '0',
-        textord_really_old_xheight: '0',
-        textord_min_xheight: '10',
-        tessedit_reject_mode: '0', // Don't reject characters
-        // Improve accuracy
+        tessedit_reject_mode: '0',
         tessedit_enable_dict_correction: '1',
-        tessedit_enable_bigram_correction: '1',
-        textord_heavy_nr: '1'
+        tessedit_enable_bigram_correction: '1'
       });
       
       const { data } = await worker.recognize(imagePath);
-      
       await worker.terminate();
-      console.log('OCR confidence:', data.confidence);
-      console.log('Text length:', data.text.length);
+      
+      console.log('OCR confidence:', data.confidence, 'Text length:', data.text.length);
 
-      // Accept more words for ID cards
       const acceptableWords = data.words ? data.words.filter(
-        word => word.confidence > 30 // Very low threshold for ID cards
+        word => word.confidence > 30
       ) : [];
 
       return {
@@ -678,11 +279,11 @@ class OCRService {
         }))
       };
     } catch (error) {
-      console.error('Error in Tesseract OCR:', error);
+      console.error('OCR error:', error);
       
-      // Fallback: Try with just English if multi-language fails
-      if (language.includes('+') || language.includes(',')) {
-        console.log('Multi-language OCR failed, retrying with English only...');
+      // Fallback to English only
+      if (language.includes('+')) {
+        console.log('Multi-language failed, trying English only...');
         try {
           const worker = await Tesseract.createWorker('eng', 1, {
             langPath: this.tessdataDir,
@@ -703,26 +304,199 @@ class OCRService {
             words: []
           };
         } catch (fallbackError) {
-          console.error('Fallback OCR also failed:', fallbackError);
+          console.error('Fallback OCR failed:', fallbackError);
         }
       }
       
-      throw new Error(`OCR processing failed for language ${language}: ${error.message}`);
+      throw new Error(`OCR failed: ${error.message}`);
     }
   }
 
-  // Clean up temporary files
+  // Extract text from PDF
+  async extractTextFromPDF(pdfBuffer, options = {}) {
+    if (!this.isEnabled()) {
+      throw new Error('OCR is not enabled');
+    }
+
+    const {
+      language = this.languages,
+      enhanceImage = true,
+      maxPages = 100
+    } = options;
+
+    const tempPdfPath = path.join(this.tempDir, `${uuidv4()}.pdf`);
+    const tempImagesDir = path.join(this.tempDir, `images_${uuidv4()}`);
+
+    try {
+      await fs.writeFile(tempPdfPath, pdfBuffer);
+      await fs.mkdir(tempImagesDir, { recursive: true });
+
+      // Try direct text extraction first
+      console.log('Attempting direct text extraction from PDF...');
+      try {
+        const pdfData = await pdfParse(pdfBuffer);
+        if (pdfData.text && pdfData.text.trim().length > 50) {
+          console.log('PDF has extractable text, using direct extraction');
+          await this.cleanupFile(tempPdfPath);
+          try { await fs.rmdir(tempImagesDir); } catch (e) {}
+          
+          return {
+            text: pdfData.text,
+            confidence: 0.95,
+            pageCount: pdfData.numpages || 1,
+            pages: [{
+              page: 1,
+              text: pdfData.text,
+              confidence: 0.95,
+              words: []
+            }],
+            language: language,
+            method: 'direct_extraction'
+          };
+        }
+      } catch (parseError) {
+        console.log('Direct extraction failed, using OCR');
+      }
+
+      // Convert PDF to images and OCR
+      console.log('📋 Using Tesseract.js OCR for PDF...');
+      
+      let convert;
+      try {
+        convert = pdf2pic.fromPath(tempPdfPath, {
+          density: 200,
+          saveFilename: 'page',
+          savePath: tempImagesDir,
+          format: 'png',
+          width: 2000,
+          height: 2000
+        });
+      } catch (pdf2picError) {
+        throw new Error('PDF conversion failed. Ensure GraphicsMagick/ImageMagick is installed.');
+      }
+
+      const pages = [];
+      let totalText = '';
+      let totalConfidence = 0;
+      let processedPages = 0;
+
+      for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
+        try {
+          console.log(`Processing page ${pageNum}...`);
+          
+          let pageImage;
+          try {
+            pageImage = await convert(pageNum, { responseType: 'image' });
+          } catch (convertError) {
+            if (pageNum === 1) {
+              throw new Error('Failed to convert PDF. It may be corrupted or password-protected.');
+            }
+            break;
+          }
+          
+          if (!pageImage || !pageImage.path) {
+            if (pageNum === 1) {
+              throw new Error('PDF conversion produced no output.');
+            }
+            break;
+          }
+
+          let imagePath = pageImage.path;
+
+          if (enhanceImage) {
+            try {
+              const enhancedPath = await this.enhanceImageForOCR(imagePath);
+              if (enhancedPath && enhancedPath !== imagePath) {
+                imagePath = enhancedPath;
+              }
+            } catch (enhanceError) {
+              console.warn('Enhancement failed, using original');
+            }
+          }
+
+          const ocrResult = await this.performOCR(imagePath, language);
+
+          pages.push({
+            page: pageNum,
+            text: ocrResult.text,
+            confidence: ocrResult.confidence,
+            words: ocrResult.words
+          });
+
+          totalText += ocrResult.text + '\n\n';
+          totalConfidence += ocrResult.confidence;
+          processedPages++;
+
+          if (imagePath !== pageImage.path) {
+            await this.cleanupFile(imagePath);
+          }
+
+        } catch (pageError) {
+          console.error(`Error on page ${pageNum}:`, pageError);
+        }
+      }
+
+      if (processedPages === 0) {
+        throw new Error('No pages could be processed');
+      }
+
+      return {
+        text: totalText.trim(),
+        confidence: totalConfidence / processedPages,
+        pageCount: processedPages,
+        pages: pages,
+        language: language
+      };
+
+    } finally {
+      await this.cleanupFile(tempPdfPath);
+      try {
+        const files = await fs.readdir(tempImagesDir);
+        for (const file of files) {
+          await this.cleanupFile(path.join(tempImagesDir, file));
+        }
+        await fs.rmdir(tempImagesDir);
+      } catch (cleanupError) {
+        console.warn('Cleanup error:', cleanupError);
+      }
+    }
+  }
+
+  // Enhance single image for OCR
+  async enhanceImageForOCR(imagePath) {
+    const enhancedPath = path.join(this.tempDir, `enhanced_${uuidv4()}.png`);
+
+    try {
+      await fs.access(imagePath);
+      
+      await sharp(imagePath)
+        .resize({ width: 2500, height: 2500, fit: 'inside', withoutEnlargement: false })
+        .grayscale()
+        .normalize()
+        .linear(1.8, -40)
+        .sharpen({ sigma: 2.0 })
+        .png({ quality: 100 })
+        .toFile(enhancedPath);
+
+      return enhancedPath;
+    } catch (error) {
+      console.error('Enhancement error:', error);
+      return imagePath;
+    }
+  }
+
+
+  // Clean up file
   async cleanupFile(filePath) {
     try {
       await fs.unlink(filePath);
     } catch (error) {
-      // Ignore cleanup errors
       console.warn('Could not clean up file:', filePath);
     }
   }
 
-  // Clean up old temp files (call periodically)
-  async cleanupTempFiles(maxAge = 3600000) { // 1 hour default
+  // Clean up old temp files
+  async cleanupTempFiles(maxAge = 3600000) {
     try {
       const files = await fs.readdir(this.tempDir);
       const now = Date.now();
@@ -744,25 +518,21 @@ class OCRService {
   getSupportedLanguages() {
     return {
       'eng': 'English',
-      'tel': 'Telugu',
       'hin': 'Hindi',
-      'eng+tel': 'English + Telugu',
+      'tel': 'Telugu',
       'eng+hin': 'English + Hindi',
+      'eng+tel': 'English + Telugu',
       'spa': 'Spanish',
       'fra': 'French',
       'deu': 'German',
-      'ita': 'Italian',
-      'por': 'Portuguese',
-      'rus': 'Russian',
       'chi_sim': 'Chinese (Simplified)',
-      'chi_tra': 'Chinese (Traditional)',
       'jpn': 'Japanese',
       'kor': 'Korean',
       'ara': 'Arabic'
     };
   }
 
-  // Decode HTML entities - standalone function
+  // Decode HTML entities
   decodeHtmlEntities(text) {
     if (!text) return text;
     
@@ -777,30 +547,29 @@ class OCRService {
       .replace(/&#x([0-9a-fA-F]+);/g, (match, hex) => String.fromCharCode(parseInt(hex, 16)));
   }
 
-  // Local text cleaner - works without external AI
-  // Cleans OCR errors, removes garbage symbols, and improves readability
+  // Local text cleaner
   cleanTextLocally(text) {
     if (!text || text.length === 0) return text;
     
     console.log('🧹 Applying local text cleaning...');
     let cleaned = text;
     
-    // First, decode any HTML entities that might be present
     cleaned = this.decodeHtmlEntities(cleaned);
     
-    // Common OCR error corrections
+    // Remove common OCR garbage patterns
+    cleaned = cleaned.replace(/[=@<>]+/g, ' ');  // Remove =, @, <, > sequences
+    cleaned = cleaned.replace(/\([^)]*[=@<>][^)]*\)/g, ' ');  // Remove parentheses with garbage
+    cleaned = cleaned.replace(/[A-Z]{10,}/g, ' ');  // Remove very long uppercase sequences (likely garbage)
+    cleaned = cleaned.replace(/[a-z]{15,}/g, ' ');  // Remove very long lowercase sequences
+    
+    // Common OCR corrections
     const ocrCorrections = [
-      // Letter substitutions
-      [/rn/g, 'm'],           // rn → m
-      [/vv/g, 'w'],           // vv → w
-      [/\bI([a-z])/g, 'l$1'], // I at start of lowercase word → l
-      [/\b0([a-z])/g, 'O$1'], // 0 at start of word → O
-      [/([a-z])0([a-z])/g, '$1o$2'], // 0 between letters → o
-      [/\bl\b/g, 'I'],        // standalone l → I (common mistake)
-      [/\|/g, 'I'],           // | → I
-      [/\bII\b/g, 'II'],      // Keep Roman numeral II
-      
-      // Common word fixes
+      [/rn/g, 'm'],
+      [/vv/g, 'w'],
+      [/\bI([a-z])/g, 'l$1'],
+      [/\b0([a-z])/g, 'O$1'],
+      [/([a-z])0([a-z])/g, '$1o$2'],
+      [/\|/g, 'I'],
       [/\btbe\b/gi, 'the'],
       [/\btlie\b/gi, 'the'],
       [/\bwbich\b/gi, 'which'],
@@ -809,13 +578,6 @@ class OCRService {
       [/\bbave\b/gi, 'have'],
       [/\btbat\b/gi, 'that'],
       [/\btbis\b/gi, 'this'],
-      [/\bwbat\b/gi, 'what'],
-      [/\bwben\b/gi, 'when'],
-      [/\bwbere\b/gi, 'where'],
-      [/\bbeen\b/gi, 'been'],
-      [/\brnore\b/gi, 'more'],
-      [/\bsorne\b/gi, 'some'],
-      [/\btirne\b/gi, 'time'],
       [/\bnarne\b/gi, 'name'],
       [/\bnurnber\b/gi, 'number'],
     ];
@@ -824,46 +586,38 @@ class OCRService {
       cleaned = cleaned.replace(pattern, replacement);
     }
     
-    // Remove garbage characters and symbols
-    // Keep: letters, numbers, common punctuation, currency symbols
-    cleaned = cleaned.replace(/[^\w\s\.,;:!?'"()\-–—@#$%&*+=\/\\<>₹€£¥\[\]{}|`~\n\r]/g, ' ');
+    // Remove garbage characters (keep Hindi/Devanagari: \u0900-\u097F)
+    cleaned = cleaned.replace(/[^\w\s\.,;:!?'"()\-\/₹€£¥\n\r\u0900-\u097F]/g, ' ');
     
-    // Remove repeated special characters (artifacts)
-    cleaned = cleaned.replace(/([!@#$%^&*()_+=\-\[\]{}|\\:";'<>?,./])\1{2,}/g, '$1');
+    // Fix spacing
+    cleaned = cleaned.replace(/\s{2,}/g, ' ');
+    cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+    cleaned = cleaned.replace(/\s+([.,;:!?])/g, '$1');
+    cleaned = cleaned.replace(/([.,;:!?])([A-Za-z])/g, '$1 $2');
     
-    // Remove isolated single characters that are likely OCR errors (except I, a, A)
-    cleaned = cleaned.replace(/\s[^IaA\d\s]\s/g, ' ');
-    
-    // Fix spacing issues
-    cleaned = cleaned.replace(/\s{3,}/g, '  ');     // Multiple spaces → double space
-    cleaned = cleaned.replace(/\n{4,}/g, '\n\n\n'); // Excessive newlines → triple
-    cleaned = cleaned.replace(/\s+([.,;:!?])/g, '$1'); // Remove space before punctuation
-    cleaned = cleaned.replace(/([.,;:!?])([A-Za-z])/g, '$1 $2'); // Add space after punctuation
-    
-    // Remove lines that are mostly symbols/garbage (less than 30% alphanumeric)
+    // Remove garbage lines (less than 40% alphanumeric)
     const lines = cleaned.split('\n');
     const cleanedLines = lines.filter(line => {
-      if (line.trim().length === 0) return true; // Keep empty lines for structure
-      const alphanumeric = (line.match(/[a-zA-Z0-9]/g) || []).length;
+      if (line.trim().length === 0) return true;
+      if (line.trim().length < 3) return false;  // Remove very short lines
+      const alphanumeric = (line.match(/[a-zA-Z0-9\u0900-\u097F]/g) || []).length;
       const total = line.trim().length;
-      return total === 0 || (alphanumeric / total) > 0.3;
+      return total === 0 || (alphanumeric / total) > 0.4;
     });
     cleaned = cleanedLines.join('\n');
     
-    // Clean up repeated words (OCR artifact)
+    // Remove repeated words
     cleaned = cleaned.replace(/\b(\w+)\s+\1\b/gi, '$1');
     
-    // Final trim and cleanup
     cleaned = cleaned.trim();
-    
-    console.log('✓ Local cleaning completed. Original length:', text.length, 'Cleaned length:', cleaned.length);
+    console.log('✓ Local cleaning done. Original:', text.length, 'Cleaned:', cleaned.length);
     return cleaned;
   }
 
-  // Extract text with AI enhancement option - 99% ACCURATE OCR
+  // Extract text with AI enhancement - 99% ACCURATE OCR
   async extractTextWithAI(buffer, options = {}) {
     const {
-      enhanceWithAI = true, // Default to TRUE for 99% accuracy
+      enhanceWithAI = true,
       extractOriginal = false,
       language = 'auto',
       fileType = 'pdf',
@@ -873,7 +627,6 @@ class OCRService {
     try {
       console.log('🚀 Starting ADVANCED OCR with AI enhancement:', { enhanceWithAI, extractOriginal, fileType });
 
-      // First, extract the original text using OCR
       let ocrResult;
       if (fileType === 'pdf') {
         ocrResult = await this.extractTextFromPDF(buffer, {
@@ -909,7 +662,7 @@ class OCRService {
         }
       };
 
-      // If AI enhancement is requested and we have text
+      // AI enhancement
       if (enhanceWithAI && ocrResult.text && ocrResult.text.length > 10) {
         console.log('🤖 Applying AI enhancement for 99% accuracy...');
         
@@ -922,31 +675,25 @@ class OCRService {
             const enhancedText = await aiService.enhanceTextWithAI(ocrResult.text);
             
             if (enhancedText && enhancedText.length > 0) {
-              // CRITICAL: Decode HTML entities after AI enhancement
               const decodedText = this.decodeHtmlEntities(enhancedText);
               result.enhancedText = decodedText;
               
-              // Use enhanced text as primary UNLESS extractOriginal is true
               if (!extractOriginal) {
                 result.text = decodedText;
               }
               
               result.aiEnhanced = true;
-              result.confidence = Math.min(result.confidence + 0.15, 0.99); // Boost to 99%
+              result.confidence = Math.min(result.confidence + 0.15, 0.99);
               aiEnhancementSucceeded = true;
               console.log('✓ AI enhancement completed. Enhanced text length:', decodedText.length);
               console.log('✓ Confidence boosted to:', result.confidence);
-            } else {
-              console.warn('⚠ AI enhancement returned empty text');
             }
-          } else {
-            console.warn('⚠ AI service not enabled');
           }
         } catch (aiError) {
           console.error('❌ AI enhancement failed:', aiError.message);
         }
         
-        // If AI enhancement failed or is not available, use local cleaning as fallback
+        // Fallback to local cleaning
         if (!aiEnhancementSucceeded && !extractOriginal) {
           console.log('📋 Falling back to local text cleaning...');
           const localCleanedText = this.cleanTextLocally(ocrResult.text);
@@ -955,16 +702,13 @@ class OCRService {
             result.enhancedText = localCleanedText;
             result.text = localCleanedText;
             result.localCleaned = true;
-            result.confidence = Math.min(result.confidence + 0.05, 0.90); // Smaller boost for local cleaning
-            console.log('✓ Local cleaning applied. Cleaned text length:', localCleanedText.length);
+            result.confidence = Math.min(result.confidence + 0.05, 0.90);
+            console.log('✓ Local cleaning applied.');
           }
         }
-      } else if (enhanceWithAI) {
-        console.log('⚠ Skipping AI enhancement - text too short or empty');
-        result.aiEnhanced = false;
       }
       
-      // ALWAYS decode HTML entities in the final text, regardless of enhancement
+      // Always decode HTML entities
       if (result.text) {
         result.text = this.decodeHtmlEntities(result.text);
       }

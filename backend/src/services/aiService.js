@@ -508,27 +508,32 @@ ${context}`;
       console.log('Detected document type:', documentType);
       
       // Create a comprehensive prompt for all document types
-      const prompt = `You are an expert at cleaning up OCR-extracted text from various types of documents including government documents, business documents, academic papers, invoices, contracts, and general text documents.
+      const prompt = `You are an expert at cleaning up OCR-extracted text. Your ONLY job is to fix OCR errors in the provided text.
 
-Please clean and enhance the following OCR-extracted text by:
-1. Fixing obvious OCR errors and misread characters (like "rn" → "m", "cl" → "d", "0" → "O", "l" → "I")
-2. Correcting spacing and formatting issues
-3. Removing unwanted symbols, artifacts, and garbled text
-4. Standardizing common document terms and formatting
-5. Preserving all original information, numbers, dates, and names exactly
-6. Maintaining proper document structure and formatting
-7. Converting garbled or corrupted text to readable format
-8. Fixing common OCR mistakes in names, addresses, and technical terms
-9. Preserving line breaks and paragraph structure where appropriate
-10. Removing duplicate characters or words that are OCR artifacts
-11. Decoding any HTML entities (like &#39; to ', &quot; to ", etc.)
-12. Fixing broken words and joining split characters
+STRICT RULES - FOLLOW EXACTLY:
+1. ONLY fix OCR errors in the text provided - DO NOT add any new information
+2. DO NOT invent, generate, or hallucinate any data that is not in the original text
+3. DO NOT add fields like "Name:", "PAN:", "Date of Birth:" unless they already exist in the original
+4. If the text is incomplete or partial, return it as incomplete - DO NOT complete it
+5. NEVER make up names, numbers, dates, or any other information
+
+OCR Error Fixes Only:
+- Fix misread characters (like "rn" → "m", "cl" → "d", "0" → "O", "l" → "I")
+- Fix spacing issues
+- Remove OCR artifacts and garbled characters
+- Fix broken words
+- Decode HTML entities
+
+CRITICAL MULTILINGUAL RULES:
+- PRESERVE ALL NON-ENGLISH TEXT EXACTLY AS-IS (Hindi, Arabic, Chinese, etc.)
+- DO NOT translate non-English text to English
+- Keep Devanagari script (आयकर, पैन, नाम) exactly as-is
+
+CRITICAL: If you cannot read or understand part of the text, leave it as-is or remove it. NEVER invent replacement text.
 
 Document type detected: ${documentType}
 
-${this.getDocumentSpecificInstructions(documentType)}
-
-IMPORTANT: Return ONLY the cleaned text. Do not add any explanations, comments, or markdown formatting.
+Return ONLY the cleaned OCR text. No explanations. No additions. No invented data.
 
 Original OCR text:
 ${rawText}
@@ -562,7 +567,7 @@ Cleaned text:`;
             messages: [
               {
                 role: 'system',
-                content: 'You are a professional OCR text enhancement expert. Clean up OCR-extracted text while preserving all original information exactly. Fix OCR errors, improve readability, maintain document structure, and decode HTML entities. Return ONLY the enhanced text without any explanations, comments, or markdown formatting.'
+                content: 'You are an OCR text cleaner. Your ONLY job is to fix OCR errors in the provided text. NEVER add, invent, or hallucinate any information. NEVER generate fake names, numbers, dates, or any data not in the original. If text is incomplete, return it incomplete. Preserve all non-English text (Hindi, Arabic, etc.) exactly as-is. Return ONLY the cleaned text.'
               },
               {
                 role: 'user',
@@ -670,7 +675,10 @@ Special focus for government/ID documents:
 - Fix common ID document terms (e.g., "Date of Birth", "Father's Name", "Address")
 - Preserve ID numbers, dates, and official codes exactly
 - Clean up government agency names and official terminology
-- Fix address formatting and postal codes`,
+- Fix address formatting and postal codes
+- PRESERVE ALL HINDI TEXT (Devanagari script) - Indian PAN cards, Aadhaar, etc. contain both English and Hindi
+- Keep text like "आयकर विभाग", "पैन", "नाम", "पिता का नाम" exactly as-is
+- Do NOT translate Hindi government terms to English`,
       
       business: `
 Special focus for business documents:
