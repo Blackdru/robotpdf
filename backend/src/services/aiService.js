@@ -522,36 +522,33 @@ ${context}`;
       const documentType = this.detectDocumentType(preCleanedText);
       console.log('Detected document type:', documentType);
       
-      // Create a strict prompt that prevents AI from adding content
-      const prompt = `TASK: Clean OCR errors ONLY. Do NOT add ANY new information.
+      // Create a strict prompt for cleaning OCR output
+      const prompt = `TASK: Clean this OCR text from a scanned document. Remove noise and fix errors.
 
-ABSOLUTE RULES (VIOLATION = FAILURE):
-1. OUTPUT MUST ONLY CONTAIN TEXT FROM THE INPUT - nothing new
-2. DO NOT add labels like "Name:", "PAN:", "Address:", "Date:" unless they exist in input
-3. DO NOT generate or guess any names, numbers, dates, or values
-4. DO NOT add explanations, headers, or formatting not in the original
-5. If text is garbled/unreadable, DELETE it - do NOT replace with guessed content
-6. PRESERVE all non-English text (Hindi/Devanagari) exactly as-is
+CLEANING RULES:
+1. REMOVE random isolated characters/words that don't make sense in context (like "Era", "Pa", "IMR", "Li ut", "a ry" - these are hologram/watermark noise)
+2. REMOVE any 1-3 character fragments that appear randomly between sentences
+3. PRESERVE all meaningful Hindi (Devanagari) text exactly as-is
+4. PRESERVE all meaningful English text
+5. FIX common OCR errors: rn→m, cl→d, tbe→the, witb→with
+6. FIX broken words and spacing issues
+7. REMOVE duplicate spaces and fix line breaks
+8. DO NOT add any new information or labels
+9. DO NOT guess or generate any names, numbers, or dates
+10. Keep the document structure (addresses, phone numbers, emails intact)
 
-ALLOWED FIXES ONLY:
-- Fix character misreads: rn→m, cl→d, 0→O (in words), l→I (at word start)
-- Fix spacing: merge broken words, fix extra spaces
-- Remove garbage: ===, @@@, <<<, random symbols
-- Fix common OCR typos: tbe→the, witb→with, frorn→from
-
-INPUT TEXT:
+INPUT OCR TEXT:
 ${preCleanedText}
 
-OUTPUT (cleaned text only, no explanations):`;
+OUTPUT (cleaned text only, preserve both Hindi and English):`;
 
-      // Use free models for OCR enhancement, sorted by best fit for document processing
-      // Falls back to configured model if all free models fail (no Google models - rate limited)
+      // Use free models for OCR enhancement
       const modelsToTry = this.isUsingOpenRouter 
         ? [
-            'meta-llama/llama-3.3-70b-instruct:free', // Best: Large 70B model for complex text
-            'mistralai/mistral-small-3.1-24b-instruct:free', // Good instruction following
-            'qwen/qwen3-14b:free',                    // Good: Qwen for document processing
-            this.model                                 // Fallback: Configured paid model
+            'meta-llama/llama-3.3-70b-instruct:free',
+            'mistralai/mistral-small-3.1-24b-instruct:free',
+            'qwen/qwen3-14b:free',
+            this.model
           ]
         : [this.model];
       
@@ -567,7 +564,7 @@ OUTPUT (cleaned text only, no explanations):`;
             messages: [
               {
                 role: 'system',
-                content: 'You are an OCR text cleaner. ONLY fix OCR errors. NEVER add new information. NEVER generate names, numbers, or dates. If text is unreadable, remove it. Preserve non-English text exactly. Output ONLY the cleaned text.'
+                content: 'You are an expert OCR text cleaner. Your job is to clean scanned document text by removing noise from holograms, watermarks, and OCR artifacts while preserving all meaningful content in both Hindi and English. Remove random isolated characters that are clearly noise. Output ONLY the cleaned text without any explanations.'
               },
               {
                 role: 'user',
@@ -575,17 +572,16 @@ OUTPUT (cleaned text only, no explanations):`;
               }
             ],
             max_tokens: Math.min(4000, Math.ceil(preCleanedText.length * 1.3)),
-            temperature: 0.0, // Zero temperature for deterministic output
+            temperature: 0.1,
           });
 
           enhancedText = response.choices[0].message.content.trim();
           console.log('AI enhancement completed with model:', modelToUse, 'new length:', enhancedText.length);
-          break; // Success, exit the loop
+          break;
           
         } catch (modelError) {
           console.warn(`Model ${modelToUse} failed:`, modelError.message);
           lastError = modelError;
-          // Continue to next model
         }
       }
       
@@ -596,6 +592,9 @@ OUTPUT (cleaned text only, no explanations):`;
       
       // Post-process: Remove AI-added content that wasn't in original
       enhancedText = this.filterAiAddedContent(enhancedText, preCleanedText);
+      
+      // Additional cleanup for remaining noise
+      enhancedText = this.removeNoisePatterns(enhancedText);
       
       // Decode HTML entities that might be in the AI response
       enhancedText = enhancedText
@@ -706,6 +705,63 @@ OUTPUT (cleaned text only, no explanations):`;
     });
     
     return filteredLines.join('\n').trim();
+  }
+
+  // Remove noise patterns from OCR text (hologram artifacts, random characters)
+  removeNoisePatterns(text) {
+    if (!text) return text;
+    
+    let cleaned = text;
+    
+    // Remove isolated 1-3 character noise words (but preserve Hindi characters and numbers)
+    // Common hologram/watermark noise patterns
+    const noisePatterns = [
+      /\b[A-Z]{1,2}\b(?!\s*[.:,])/g,  // Isolated 1-2 uppercase letters (not before punctuation)
+      /\b[a-z]{1,2}\b(?=\s+[A-Z])/g,  // Isolated 1-2 lowercase before uppercase
+      /\s+[A-Za-z]\s+[A-Za-z]\s+/g,   // Single letters with spaces
+      /\bEra\b/gi,                     // Common hologram noise
+      /\bIMR\b/gi,
+      /\bLi\s+ut\b/gi,
+      /\ba\s+ry\b/gi,
+      /\bPa\b(?!\s*[a-z])/gi,         // "Pa" not followed by lowercase (not part of word)
+      /\b[A-Z][a-z]?\s+(?=[A-Z])/g,   // Single char + optional lowercase before uppercase
+    ];
+    
+    for (const pattern of noisePatterns) {
+      cleaned = cleaned.replace(pattern, ' ');
+    }
+    
+    // Remove lines that are just noise (very short with no meaningful content)
+    const lines = cleaned.split('\n');
+    const cleanedLines = lines.filter(line => {
+      const trimmed = line.trim();
+      if (!trimmed) return true;
+      
+      // Keep lines with Hindi text
+      if (/[\u0900-\u097F]/.test(trimmed)) return true;
+      
+      // Keep lines with meaningful English (at least one word > 3 chars)
+      if (/\b[a-zA-Z]{4,}\b/.test(trimmed)) return true;
+      
+      // Keep lines with numbers (phone, address, etc.)
+      if (/\d{3,}/.test(trimmed)) return true;
+      
+      // Keep lines with email or URL patterns
+      if (/@|www\.|\.com|\.in|\.org/.test(trimmed)) return true;
+      
+      // Filter out very short lines with no meaningful content
+      if (trimmed.length < 5) return false;
+      
+      return true;
+    });
+    
+    cleaned = cleanedLines.join('\n');
+    
+    // Fix multiple spaces
+    cleaned = cleaned.replace(/\s{2,}/g, ' ');
+    cleaned = cleaned.replace(/\n\s*\n\s*\n/g, '\n\n');
+    
+    return cleaned.trim();
   }
 
   // Assess OCR output quality (0-1 score)
