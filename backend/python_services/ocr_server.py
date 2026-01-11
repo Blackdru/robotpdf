@@ -285,30 +285,44 @@ class OCRHandler(BaseHTTPRequestHandler):
         print(f"[OCR] {args[0]}", file=sys.stderr)
     
     def send_json(self, data, status=200):
+        response = json.dumps(data).encode('utf-8')
         self.send_response(status)
         self.send_header('Content-Type', 'application/json')
+        self.send_header('Content-Length', len(response))
         self.end_headers()
-        self.wfile.write(json.dumps(data).encode())
+        self.wfile.write(response)
     
     def do_GET(self):
-        if self.path == '/health':
-            self.send_json({
-                'status': 'ok',
-                'readers': list(READERS.keys()),
-                'languages': len(SUPPORTED_LANGUAGES)
-            })
-        elif self.path == '/languages':
-            self.send_json(SUPPORTED_LANGUAGES)
-        else:
-            self.send_json({'error': 'Not found'}, 404)
+        try:
+            if self.path == '/health':
+                self.send_json({
+                    'status': 'ok',
+                    'readers': list(READERS.keys()),
+                    'languages': len(SUPPORTED_LANGUAGES)
+                })
+            elif self.path == '/languages':
+                self.send_json(SUPPORTED_LANGUAGES)
+            else:
+                self.send_json({'error': 'Not found'}, 404)
+        except Exception as e:
+            print(f"GET error: {e}", file=sys.stderr)
+            self.send_json({'error': str(e)}, 500)
     
     def do_POST(self):
         try:
-            content_length = int(self.headers['Content-Length'])
+            # Get content length safely
+            content_length_str = self.headers.get('Content-Length', '0')
+            content_length = int(content_length_str) if content_length_str else 0
+            
+            if content_length == 0:
+                self.send_json({'error': 'No data received'}, 400)
+                return
+            
             body = self.rfile.read(content_length)
-            data = json.loads(body)
+            data = json.loads(body.decode('utf-8'))
             
             if self.path == '/ocr/image':
+                print(f"Processing image OCR request...", file=sys.stderr)
                 result = process_image(
                     data.get('data', ''),
                     data.get('languages', ['en', 'hi']),
@@ -317,6 +331,7 @@ class OCRHandler(BaseHTTPRequestHandler):
                 self.send_json(result)
             
             elif self.path == '/ocr/pdf':
+                print(f"Processing PDF OCR request...", file=sys.stderr)
                 result = process_pdf(
                     data.get('data', ''),
                     data.get('languages', ['en', 'hi']),
@@ -328,8 +343,13 @@ class OCRHandler(BaseHTTPRequestHandler):
             else:
                 self.send_json({'error': 'Unknown endpoint'}, 404)
         
+        except json.JSONDecodeError as e:
+            print(f"JSON decode error: {e}", file=sys.stderr)
+            self.send_json({'error': f'Invalid JSON: {str(e)}'}, 400)
         except Exception as e:
-            print(f"Request error: {e}", file=sys.stderr)
+            import traceback
+            print(f"POST error: {e}", file=sys.stderr)
+            print(traceback.format_exc(), file=sys.stderr)
             self.send_json({'error': str(e)}, 500)
 
 

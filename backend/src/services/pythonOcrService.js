@@ -57,6 +57,9 @@ class PythonOCRService {
     return new Promise((resolve, reject) => {
       const url = new URL(endpoint, this.ocrServerUrl);
       
+      // Prepare body first to get Content-Length
+      const body = data ? JSON.stringify(data) : null;
+      
       const options = {
         hostname: url.hostname,
         port: url.port,
@@ -67,15 +70,20 @@ class PythonOCRService {
         },
         timeout: timeout
       };
+      
+      // Set Content-Length header for POST requests
+      if (body) {
+        options.headers['Content-Length'] = Buffer.byteLength(body, 'utf8');
+      }
 
       const req = http.request(options, (res) => {
-        let body = '';
-        res.on('data', chunk => body += chunk);
+        let responseBody = '';
+        res.on('data', chunk => responseBody += chunk);
         res.on('end', () => {
           try {
-            resolve(JSON.parse(body));
+            resolve(JSON.parse(responseBody));
           } catch (e) {
-            reject(new Error(`Invalid JSON response: ${body.substring(0, 100)}`));
+            reject(new Error(`Invalid JSON response: ${responseBody.substring(0, 100)}`));
           }
         });
       });
@@ -86,8 +94,8 @@ class PythonOCRService {
         reject(new Error('Request timeout'));
       });
 
-      if (data) {
-        req.write(JSON.stringify(data));
+      if (body) {
+        req.write(body);
       }
       req.end();
     });
