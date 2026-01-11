@@ -5,10 +5,10 @@ After=network.target
 [Service]
 Type=simple
 User=ubuntu
-WorkingDirectory=/home/ubuntu/pdf/backend/python_services
+WorkingDirectory=/home/ubuntu/robotpdf/backend/python_services
 Environment=PYTHONUNBUFFERED=1
 Environment=OCR_SERVER_PORT=5050
-ExecStart=/home/ubuntu/pdf-venv/bin/python3 /home/ubuntu/pdf/backend/python_services/ocr_server.py
+ExecStart=/home/ubuntu/robotpdf-env/bin/python3 /home/ubuntu/robotpdf/backend/python_services/ocr_server.py
 Restart=always
 RestartSec=10
 
