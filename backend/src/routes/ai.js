@@ -8,8 +8,8 @@ const {
   trackUsage 
 } = require('../middleware/subscriptionMiddleware');
 const aiService = require('../services/aiService');
-// Use Python EasyOCR service for 80+ language support
-const ocrService = require('../services/pythonOcrService');
+// High-accuracy Tesseract.js OCR with AI enhancement
+const ocrService = require('../services/ocrService');
 const directAIService = require('../services/directAIService');
 const { planLimits } = require('../../../shared/planLimits');
 

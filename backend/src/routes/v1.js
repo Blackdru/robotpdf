@@ -4,8 +4,8 @@ const multer = require('multer');
 const { authenticateApiKey } = require('../middleware/apiAuth');
 const { checkRateLimit } = require('../middleware/apiRateLimit');
 const { trackApiUsage } = require('../middleware/apiUsageTracker');
-// Use Python EasyOCR service for 80+ language support
-const ocrService = require('../services/pythonOcrService');
+// High-accuracy Tesseract.js OCR with AI enhancement
+const ocrService = require('../services/ocrService');
 const aiService = require('../services/aiService');
 const advancedPdfService = require('../services/advancedPdfService');
 const officeConversionService = require('../services/officeConversionService');

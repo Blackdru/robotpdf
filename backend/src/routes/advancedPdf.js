@@ -3,8 +3,8 @@ const { supabase, supabaseAdmin } = require('../config/supabase');
 const { authenticateUser, optionalAuth } = require('../middleware/auth');
 const { requireProPlan, trackUsage } = require('../middleware/subscriptionMiddleware');
 const advancedPdfService = require('../services/advancedPdfService');
-// Use Python EasyOCR service for 80+ language support
-const ocrService = require('../services/pythonOcrService');
+// High-accuracy Tesseract.js OCR with AI enhancement
+const ocrService = require('../services/ocrService');
 const { validateRequest } = require('../middleware/validation');
 const Joi = require('joi');
 
