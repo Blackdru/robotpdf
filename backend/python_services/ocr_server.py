@@ -112,17 +112,19 @@ def enhance_image(image):
     """Enhance image for better OCR."""
     try:
         width, height = image.size
-        if width < 1000 or height < 1000:
-            scale = max(1000 / width, 1000 / height)
-            new_size = (int(width * scale), int(height * scale))
-            image = image.resize(new_size, Image.LANCZOS)
+        if width and height:
+            if width < 1000 or height < 1000:
+                scale = max(1000 / width, 1000 / height)
+                new_size = (int(width * scale), int(height * scale))
+                image = image.resize(new_size, Image.LANCZOS)
         
         enhancer = ImageEnhance.Contrast(image)
         image = enhancer.enhance(1.3)
         enhancer = ImageEnhance.Sharpness(image)
         image = enhancer.enhance(1.5)
         return image
-    except:
+    except Exception as e:
+        print(f"Enhancement error: {e}", file=sys.stderr)
         return image
 
 def process_image(image_data, languages=['en', 'hi'], enhance=True):
@@ -136,8 +138,12 @@ def process_image(image_data, languages=['en', 'hi'], enhance=True):
         else:
             image_bytes = image_data
         
+        print(f"Processing image: {len(image_bytes)} bytes", file=sys.stderr)
+        
         # Load and prepare image
         image = Image.open(io.BytesIO(image_bytes))
+        print(f"Image size: {image.size}, mode: {image.mode}", file=sys.stderr)
+        
         if image.mode != 'RGB':
             image = image.convert('RGB')
         
@@ -145,10 +151,13 @@ def process_image(image_data, languages=['en', 'hi'], enhance=True):
             image = enhance_image(image)
         
         img_array = np.array(image)
+        print(f"Array shape: {img_array.shape}", file=sys.stderr)
         
         # Get reader and process
         reader = get_reader(languages)
-        results = reader.readtext(img_array, detail=1, paragraph=True)
+        print(f"Running OCR...", file=sys.stderr)
+        results = reader.readtext(img_array, detail=1, paragraph=False)
+        print(f"OCR returned {len(results)} detections", file=sys.stderr)
         
         # Extract text
         texts = []
@@ -156,18 +165,23 @@ def process_image(image_data, languages=['en', 'hi'], enhance=True):
         count = 0
         
         for det in results:
-            if len(det) >= 2:
-                text = det[1] if len(det) > 1 else det[0]
-                conf = det[2] if len(det) > 2 else 0.8
-                if isinstance(text, str) and text.strip():
-                    texts.append(text.strip())
-                    total_conf += conf
-                    count += 1
+            try:
+                if len(det) >= 2:
+                    # det format: (bbox, text, confidence)
+                    text = str(det[1]) if det[1] else ''
+                    conf = float(det[2]) if len(det) > 2 and det[2] is not None else 0.8
+                    if text.strip():
+                        texts.append(text.strip())
+                        total_conf += conf
+                        count += 1
+            except Exception as e:
+                print(f"Detection parse error: {e}", file=sys.stderr)
+                continue
         
         full_text = '\n'.join(texts)
         avg_conf = total_conf / count if count > 0 else 0
         
-        print(f"OCR completed in {time.time()-start:.2f}s: {len(full_text)} chars", file=sys.stderr)
+        print(f"OCR completed in {time.time()-start:.2f}s: {len(full_text)} chars, {count} words", file=sys.stderr)
         
         return {
             'text': full_text,
@@ -177,7 +191,9 @@ def process_image(image_data, languages=['en', 'hi'], enhance=True):
             'processing_time': round(time.time() - start, 2)
         }
     except Exception as e:
+        import traceback
         print(f"OCR error: {e}", file=sys.stderr)
+        print(traceback.format_exc(), file=sys.stderr)
         return {'error': str(e), 'text': ''}
 
 def process_pdf(pdf_data, languages=['en', 'hi'], enhance=True, max_pages=20):
