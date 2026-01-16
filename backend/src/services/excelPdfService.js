@@ -15,6 +15,12 @@ class ExcelPdfService {
     this.pythonCommand = null;
     this.available = null; // Will be checked on first use
     this.lastCheck = null;
+    
+    // Virtual environment path for Linux production server
+    this.linuxVenvPath = '/home/ubuntu/robotpdf-env';
+    this.linuxPythonPath = path.join(this.linuxVenvPath, 'bin', 'python3');
+    this.isWindows = process.platform === 'win32';
+    
     this.ensureTempDir();
   }
 
@@ -38,10 +44,9 @@ class ExcelPdfService {
     this.lastCheck = now;
 
     // On Windows, 'py' is the most reliable command
-    const isWindows = process.platform === 'win32';
-    const pythonCommands = isWindows 
+    const pythonCommands = this.isWindows 
       ? ['py', 'python', 'python3'] 
-      : ['python3', 'python', 'py'];
+      : [this.linuxPythonPath, 'python3', 'python', 'py'];
     
     for (const cmd of pythonCommands) {
       try {
