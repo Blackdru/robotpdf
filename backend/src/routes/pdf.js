@@ -944,7 +944,7 @@ router.post('/html-file-to-pdf', optionalAuth, async (req, res) => {
 // Simple Convert - PDF to Word, Word to PDF, PDF to Excel, Excel to PDF
 router.post('/simple-convert', optionalAuth, async (req, res) => {
   try {
-    const { fileId, outputFormat, sourceFormat } = req.body;
+    const { fileId, outputFormat, sourceFormat, language, use_ocr } = req.body;
     const isAnonymous = !req.user;
 
     console.log('=== SIMPLE CONVERT REQUEST ===');
@@ -952,6 +952,8 @@ router.post('/simple-convert', optionalAuth, async (req, res) => {
     console.log('File ID:', fileId);
     console.log('Output Format:', outputFormat);
     console.log('Source Format:', sourceFormat);
+    console.log('Language:', language);
+    console.log('Use OCR:', use_ocr);
 
     if (!fileId) {
       return res.status(400).json({ error: 'File ID is required' });
@@ -1017,6 +1019,12 @@ router.post('/simple-convert', optionalAuth, async (req, res) => {
     // Use the new office conversion service
     const officeConversionService = require('../services/officeConversionService');
     
+    // Prepare conversion options for multi-language support
+    const conversionOptions = {
+      language: language || 'eng',
+      use_ocr: use_ocr !== undefined ? use_ocr : false
+    };
+    
     try {
       if (conversionType === 'pdf-to-word' || conversionType === 'pdf-to-excel' || conversionType === 'pdf-to-pptx') {
         // PDF to Office conversion
@@ -1028,7 +1036,8 @@ router.post('/simple-convert', optionalAuth, async (req, res) => {
         convertedBuffer = await officeConversionService.convertPdfToOffice(
           fileBuffer,
           format,
-          file.filename
+          file.filename,
+          conversionOptions  // Pass language options
         );
       } else if (conversionType === 'word-to-pdf' || conversionType === 'excel-to-pdf') {
         // Office to PDF conversion
@@ -1118,7 +1127,7 @@ router.get('/conversion-status', async (req, res) => {
   }
 });
 
-// Convert direct text input to PDF with advanced options
+// Convert direct text input to PDF with advanced options and multi-language support
 router.post('/convert/direct-text-to-pdf', optionalAuth, async (req, res) => {
   try {
     const { 
@@ -1156,6 +1165,24 @@ router.post('/convert/direct-text-to-pdf', optionalAuth, async (req, res) => {
         // Continue with original text if AI fails
       }
     }
+
+    // Detect if text contains non-Latin characters
+    const hasArabic = /[\u0600-\u06FF]/.test(processedText);
+    const hasChinese = /[\u4E00-\u9FFF]/.test(processedText);
+    const hasJapanese = /[\u3040-\u309F\u30A0-\u30FF]/.test(processedText);
+    const hasKorean = /[\uAC00-\uD7AF]/.test(processedText);
+    const hasHindi = /[\u0900-\u097F]/.test(processedText);
+    const hasCyrillic = /[\u0400-\u04FF]/.test(processedText);
+    const hasThai = /[\u0E00-\u0E7F]/.test(processedText);
+    const hasHebrew = /[\u0590-\u05FF]/.test(processedText);
+    
+    const needsUnicodeFont = hasArabic || hasChinese || hasJapanese || hasKorean || 
+                             hasHindi || hasCyrillic || hasThai || hasHebrew;
+    
+    console.log('Text language analysis:', {
+      hasArabic, hasChinese, hasJapanese, hasKorean, hasHindi, 
+      hasCyrillic, hasThai, hasHebrew, needsUnicodeFont
+    });
 
     // Parse options with defaults
     const fontSize = parseInt(options.fontSize) || 12;
@@ -1207,10 +1234,54 @@ router.post('/convert/direct-text-to-pdf', optionalAuth, async (req, res) => {
 
     // Add main text content with formatting
     const lineGap = (lineSpacing - 1) * fontSize;
-    doc.fontSize(fontSize).font(fontFamily).text(processedText, {
-      align: 'left',
-      lineGap: lineGap
-    });
+    
+    if (needsUnicodeFont) {
+      console.log('Rendering text with Unicode character support');
+      // For Unicode text, render line by line with error handling
+      doc.fontSize(fontSize).font(fontFamily);
+      
+      const lines = processedText.split('\n');
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (line.trim()) {
+          try {
+            // Try to render the line normally
+            doc.text(line, {
+              align: 'left',
+              lineGap: lineGap,
+              continued: false
+            });
+          } catch (err) {
+            // If rendering fails, render character by character with fallback
+            console.warn(`Line ${i} rendering failed, using character fallback`);
+            let renderedLine = '';
+            for (const char of line) {
+              try {
+                // Test if character can be rendered
+                doc.widthOfString(char);
+                renderedLine += char;
+              } catch (charErr) {
+                // Replace unsupported character with similar ASCII or placeholder
+                renderedLine += getAsciiReplacement(char);
+              }
+            }
+            doc.text(renderedLine, {
+              align: 'left',
+              lineGap: lineGap,
+              continued: false
+            });
+          }
+        } else {
+          doc.moveDown(0.5);
+        }
+      }
+    } else {
+      // Standard Latin text - use regular rendering
+      doc.fontSize(fontSize).font(fontFamily).text(processedText, {
+        align: 'left',
+        lineGap: lineGap
+      });
+    }
 
     // Add footer if enabled
     if (options.addFooter && options.footerText) {
@@ -1262,6 +1333,7 @@ router.post('/convert/direct-text-to-pdf', optionalAuth, async (req, res) => {
       message: 'Text converted to PDF successfully',
       file: savedFile,
       aiEnhanced: options.enableAIEnhancement || false,
+      unicodeSupport: needsUnicodeFont,
       isAnonymous: isAnonymous
     });
 
@@ -1270,6 +1342,41 @@ router.post('/convert/direct-text-to-pdf', optionalAuth, async (req, res) => {
     res.status(500).json({ error: error.message || 'Text to PDF conversion failed' });
   }
 });
+
+// Helper function to get ASCII replacement for unsupported Unicode characters
+function getAsciiReplacement(char) {
+  const code = char.charCodeAt(0);
+  
+  // Common replacements
+  const replacements = {
+    // Arabic
+    0x0627: 'a', 0x0628: 'b', 0x062A: 't', 0x062B: 'th', 0x062C: 'j',
+    // Chinese/Japanese/Korean - use romanization placeholder
+    // Hebrew
+    0x05D0: 'a', 0x05D1: 'b', 0x05D2: 'g',
+    // Cyrillic
+    0x0410: 'A', 0x0411: 'B', 0x0412: 'V', 0x0413: 'G',
+    // Hindi/Devanagari
+    0x0905: 'a', 0x0906: 'aa', 0x0915: 'ka',
+    // Thai
+    0x0E01: 'k', 0x0E02: 'kh', 0x0E04: 'kh'
+  };
+  
+  if (replacements[code]) {
+    return replacements[code];
+  }
+  
+  // For CJK characters, use a placeholder
+  if ((code >= 0x4E00 && code <= 0x9FFF) || // Chinese
+      (code >= 0x3040 && code <= 0x309F) || // Hiragana
+      (code >= 0x30A0 && code <= 0x30FF) || // Katakana
+      (code >= 0xAC00 && code <= 0xD7AF)) { // Korean
+    return '[?]';
+  }
+  
+  // Default fallback
+  return '?';
+}
 
 // Helper function to get AI enhancement prompt
 function getEnhancementPrompt(mode, tone) {

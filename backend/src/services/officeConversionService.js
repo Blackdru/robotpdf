@@ -6,13 +6,18 @@ const ExcelJS = require('exceljs');
 const PptxGenJS = require('pptxgenjs');
 const pdfParse = require('pdf-parse');
 const fs = require('fs').promises;
+const fsSync = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 
 class OfficeConversionService {
   constructor() {
     this.tempDir = path.join(__dirname, '../../temp');
+    this.fontsDir = path.join(__dirname, '../../fonts');
+    this.unicodeFont = null;
+    this.unicodeFontPath = null;
     this.ensureTempDir();
+    this.checkUnicodeFont();
   }
 
   async ensureTempDir() {
@@ -21,6 +26,37 @@ class OfficeConversionService {
     } catch (error) {
       console.error('Error creating temp directory:', error);
     }
+  }
+
+  checkUnicodeFont() {
+    // Check for Unicode font files
+    const fontPaths = [
+      path.join(this.fontsDir, 'NotoSans-Regular.ttf'),
+      path.join(this.fontsDir, 'ArialUnicode.ttf'),
+      path.join(this.fontsDir, 'arial-unicode-ms.ttf'),
+      // Windows system font
+      'C:\\Windows\\Fonts\\ARIALUNI.TTF',
+      // Linux system fonts
+      '/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf',
+      '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
+    ];
+
+    for (const fontPath of fontPaths) {
+      try {
+        if (fsSync.existsSync(fontPath)) {
+          this.unicodeFontPath = fontPath;
+          this.unicodeFont = path.basename(fontPath, '.ttf');
+          console.log(`✓ Unicode font found: ${this.unicodeFont} at ${fontPath}`);
+          return;
+        }
+      } catch (err) {
+        // Continue checking other paths
+      }
+    }
+
+    console.warn('⚠ No Unicode font found. Multi-language text may not render correctly.');
+    console.warn('  To fix: Place NotoSans-Regular.ttf in backend/fonts/ directory');
+    console.warn('  See backend/UNICODE_FONT_SETUP.md for instructions');
   }
 
   // Office to PDF - Convert Word, Excel, PowerPoint to PDF
@@ -492,12 +528,17 @@ class OfficeConversionService {
     }
   }
 
-  // Text to PDF conversion
-  async textToPdf(buffer, filename) {
-    console.log('Converting text file to PDF...');
+  // Text to PDF conversion with multi-language support using proper Unicode fonts
+  async textToPdf(buffer, filename, options = {}) {
+    console.log('Converting text file to PDF with multi-language support...');
 
     try {
       const text = buffer.toString('utf-8');
+      
+      // Detect if text contains non-Latin characters
+      const hasUnicode = /[^\x00-\x7F]/.test(text);
+      
+      console.log('Text analysis:', { hasUnicode, hasUnicodeFont: !!this.unicodeFontPath });
       
       const pdfDoc = new PDFDocument({
         size: 'A4',
@@ -512,15 +553,42 @@ class OfficeConversionService {
         pdfDoc.on('error', reject);
       });
 
-      // Add title
-      pdfDoc.fontSize(14).text(filename, { align: 'center' });
-      pdfDoc.moveDown(2);
-
-      // Add text content
-      pdfDoc.fontSize(11).text(text, {
-        align: 'left',
-        lineGap: 2
-      });
+      // If we have a Unicode font and the text needs it, use it
+      if (hasUnicode && this.unicodeFontPath) {
+        console.log(`Using Unicode font: ${this.unicodeFont}`);
+        try {
+          pdfDoc.registerFont('UnicodeFont', this.unicodeFontPath);
+          
+          // Add title
+          pdfDoc.font('UnicodeFont').fontSize(14).text(filename || 'Document', { align: 'center' });
+          pdfDoc.moveDown(2);
+          
+          // Add text content with Unicode support
+          pdfDoc.fontSize(11).text(text, {
+            align: 'left',
+            lineGap: 2
+          });
+        } catch (fontError) {
+          console.error('Error using Unicode font:', fontError);
+          // Fall back to standard font
+          pdfDoc.font('Helvetica').fontSize(14).text(filename || 'Document', { align: 'center' });
+          pdfDoc.moveDown(2);
+          pdfDoc.fontSize(11).text(text, { align: 'left', lineGap: 2 });
+        }
+      } else {
+        // Use standard font for Latin text or if no Unicode font available
+        pdfDoc.font('Helvetica').fontSize(14).text(filename || 'Document', { align: 'center' });
+        pdfDoc.moveDown(2);
+        pdfDoc.fontSize(11).text(text, {
+          align: 'left',
+          lineGap: 2
+        });
+        
+        if (hasUnicode && !this.unicodeFontPath) {
+          console.warn('⚠ Unicode characters detected but no Unicode font available');
+          console.warn('  Some characters may not render correctly');
+        }
+      }
 
       pdfDoc.end();
       return await pdfPromise;

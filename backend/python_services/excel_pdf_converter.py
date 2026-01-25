@@ -69,6 +69,61 @@ try:
 except ImportError:
     HAS_PYPDF2 = False
 
+# Try to import Tesseract OCR for multi-language support
+try:
+    from PIL import Image
+    import pytesseract
+    HAS_TESSERACT = True
+except ImportError:
+    HAS_TESSERACT = False
+
+
+def extract_text_with_ocr(page, language='eng'):
+    """
+    Extract text from a PDF page using OCR (Tesseract)
+    Supports multiple languages for international documents
+    """
+    if not HAS_TESSERACT:
+        return None
+    
+    try:
+        # Convert page to image
+        img = page.to_image(resolution=200)
+        pil_img = img.original
+        
+        # Map common language codes to Tesseract language codes
+        lang_map = {
+            'eng': 'eng',
+            'spa': 'spa',
+            'fra': 'fra',
+            'deu': 'deu',
+            'ita': 'ita',
+            'por': 'por',
+            'rus': 'rus',
+            'chi_sim': 'chi_sim',
+            'chi_tra': 'chi_tra',
+            'jpn': 'jpn',
+            'kor': 'kor',
+            'ara': 'ara',
+            'hin': 'hin',
+            'ben': 'ben',
+            'tel': 'tel',
+            'tam': 'tam',
+            'tha': 'tha',
+            'vie': 'vie',
+            'auto': 'eng'  # Default to English for auto
+        }
+        
+        tesseract_lang = lang_map.get(language, 'eng')
+        
+        # Perform OCR
+        text = pytesseract.image_to_string(pil_img, lang=tesseract_lang)
+        return clean_cid_characters(text)
+    
+    except Exception as e:
+        print(f"OCR extraction error: {e}", file=sys.stderr)
+        return None
+
 
 def clean_cid_characters(text):
     """
@@ -192,6 +247,9 @@ def is_point_in_bbox(x, y, bbox, margin=5):
 def extract_tables_with_pdfplumber(pdf_path, options=None):
     """Extract tables AND non-table text using pdfplumber with enhanced settings"""
     options = options or {}
+    language = options.get('language', 'eng')  # Get language option
+    use_ocr = options.get('use_ocr', False)  # Whether to use OCR for text extraction
+    
     all_tables = []
     page_data = []
     
@@ -322,6 +380,17 @@ def extract_tables_with_pdfplumber(pdf_path, options=None):
                     text = clean_cid_characters(text)
                     lines = text.split('\n')
                     page_info['text_blocks'] = [clean_cid_characters(line) for line in lines]
+                
+                # If OCR is enabled and text extraction failed or returned minimal text, use OCR
+                if use_ocr and (not text or len(text.strip()) < 50):
+                    print(f"Page {page_num}: Using OCR for text extraction (language: {language})", file=sys.stderr)
+                    try:
+                        ocr_text = extract_text_with_ocr(page, language)
+                        if ocr_text and len(ocr_text) > len(text or ''):
+                            page_info['text_blocks'] = ocr_text.split('\n')
+                            page_info['ocr_used'] = True
+                    except Exception as ocr_error:
+                        print(f"OCR extraction failed: {ocr_error}", file=sys.stderr)
                 
                 page_data.append(page_info)
                 
@@ -509,15 +578,23 @@ def pdf_to_excel(input_path, output_path, options=None):
     """
     Convert PDF to Excel with 99% accuracy
     Optimized for bank statements and complex tables
+    Supports multiple languages via OCR
     """
     options = options or {}
+    language = options.get('language', 'eng')  # Language for OCR
+    use_ocr = options.get('use_ocr', False)  # Enable OCR for scanned PDFs or non-English text
+    
+    # Auto-enable OCR for non-English languages
+    if language and language not in ['eng', 'auto']:
+        use_ocr = True
+        print(f"Auto-enabling OCR for language: {language}", file=sys.stderr)
     
     try:
         # Get PDF dimensions for orientation
         pdf_width, pdf_height, is_landscape = get_pdf_page_dimensions(input_path)
         
         # Extract tables using multiple methods
-        pdfplumber_tables, page_data = extract_tables_with_pdfplumber(input_path, options)
+        pdfplumber_tables, page_data = extract_tables_with_pdfplumber(input_path, {**options, 'use_ocr': use_ocr, 'language': language})
         camelot_tables = extract_tables_with_camelot(input_path, options)
         
         # Determine best table source

@@ -302,7 +302,7 @@ class OCRService {
       throw new Error('OCR is not enabled');
     }
 
-    const { language = 'auto', enhanceImage = true, maxPages = 50 } = options;
+    const { language = 'auto', enhanceImage = true, maxPages = 100 } = options;
     const tempPdfPath = path.join(this.tempDir, `${uuidv4()}.pdf`);
     const tempImagesDir = path.join(this.tempDir, `images_${uuidv4()}`);
 
@@ -314,12 +314,45 @@ class OCRService {
       try {
         const pdfData = await pdfParse(pdfBuffer);
         if (pdfData.text && pdfData.text.trim().length > 100) {
-          console.log('PDF has extractable text, using direct extraction');
+          console.log(`PDF has extractable text (${pdfData.numpages} pages), using direct extraction`);
+          
+          // Split text by pages if possible
+          const pageTexts = pdfData.text.split('\f'); // Form feed character separates pages
+          const pages = [];
+          
+          if (pageTexts.length >= pdfData.numpages) {
+            // We have page-separated text
+            for (let i = 0; i < Math.min(pageTexts.length, maxPages); i++) {
+              if (pageTexts[i].trim()) {
+                pages.push({
+                  page: i + 1,
+                  text: pageTexts[i].trim(),
+                  confidence: 0.95
+                });
+              }
+            }
+          } else {
+            // Estimate page splits based on text length
+            const textPerPage = Math.ceil(pdfData.text.length / pdfData.numpages);
+            for (let i = 0; i < Math.min(pdfData.numpages, maxPages); i++) {
+              const start = i * textPerPage;
+              const end = Math.min((i + 1) * textPerPage, pdfData.text.length);
+              const pageText = pdfData.text.substring(start, end).trim();
+              if (pageText) {
+                pages.push({
+                  page: i + 1,
+                  text: pageText,
+                  confidence: 0.95
+                });
+              }
+            }
+          }
+          
           return {
             text: pdfData.text,
             confidence: 0.95,
             pageCount: pdfData.numpages || 1,
-            pages: [{ page: 1, text: pdfData.text, confidence: 0.95 }],
+            pages: pages.length > 0 ? pages : [{ page: 1, text: pdfData.text, confidence: 0.95 }],
             language: language,
             engine: 'pdf-parse',
             method: 'direct_extraction'
@@ -333,12 +366,12 @@ class OCRService {
       console.log('📋 Converting PDF to images for OCR...');
       
       const convert = pdf2pic.fromPath(tempPdfPath, {
-        density: 250,
+        density: 200,
         saveFilename: 'page',
         savePath: tempImagesDir,
         format: 'png',
-        width: 2500,
-        height: 2500
+        width: 2000,
+        height: 2000
       });
 
       const pages = [];
@@ -353,15 +386,15 @@ class OCRService {
 
           console.log(`Processing page ${pageNum}...`);
           
-          // Enhance page image
+          // Enhance page image with reduced resolution
           const enhancedPath = path.join(this.tempDir, `page_enh_${uuidv4()}.png`);
           await sharp(pageImage.path)
-            .resize(2500, 2500, { fit: 'inside' })
+            .resize(2000, 2000, { fit: 'inside' })
             .grayscale()
             .normalize()
             .linear(1.5, -25)
             .sharpen({ sigma: 1.5 })
-            .png({ quality: 100 })
+            .png({ quality: 95 })
             .toFile(enhancedPath);
 
           const ocrResult = await this.performOCR(enhancedPath, language);
@@ -476,7 +509,8 @@ class OCRService {
       enhanceWithAI = true,
       extractOriginal = false,
       language = 'auto',
-      fileType = 'pdf'
+      fileType = 'pdf',
+      maxPages = 100
     } = options;
 
     console.log('🚀 Starting HIGH-ACCURACY OCR with AI enhancement');
@@ -486,7 +520,7 @@ class OCRService {
       // Step 1: Perform OCR
       let ocrResult;
       if (fileType === 'pdf') {
-        ocrResult = await this.extractTextFromPDF(buffer, { language, enhanceImage: true });
+        ocrResult = await this.extractTextFromPDF(buffer, { language, enhanceImage: true, maxPages });
       } else {
         ocrResult = await this.extractTextFromImage(buffer, { language, enhanceImage: true });
       }

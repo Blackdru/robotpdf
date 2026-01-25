@@ -624,13 +624,14 @@ class ApiClient {
     })
   }
 
-  async convertPDFToExcel(fileId, outputName = 'converted.xlsx') {
+  async convertPDFToExcel(fileId, outputName = 'converted.xlsx', options = {}) {
     return this.request('/pdf/simple-convert', {
       method: 'POST',
       body: JSON.stringify({ 
         fileId, 
         outputFormat: 'xlsx',
-        outputName 
+        outputName,
+        ...options  // Pass language and other options
       }),
     })
   }
@@ -790,7 +791,7 @@ class ApiClient {
     return this.request('/ai/ocr', {
       method: 'POST',
       body: JSON.stringify({ fileId, ...options }),
-      timeout: 120000, // 2 minutes for OCR
+      timeout: 300000, // 5 minutes for OCR
     })
   }
 

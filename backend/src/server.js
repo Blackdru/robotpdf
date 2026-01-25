@@ -87,8 +87,8 @@ app.use(cors({
 app.options('*', cors());
 
 // Body parsing middleware - Increased limits for advanced tools
-app.use(express.json({ limit: '150mb' }));
-app.use(express.urlencoded({ extended: true, limit: '150mb' }));
+app.use(express.json({ limit: '500mb' }));
+app.use(express.urlencoded({ extended: true, limit: '500mb' }));
 
 // Logging
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
@@ -154,7 +154,7 @@ app.use((err, req, res, next) => {
   // Handle multer errors
   if (err.name === 'MulterError') {
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ 
+      return res.status(413).json({ 
         error: 'File size exceeds the limit. Free tools support up to 10MB, Advanced tools support up to 100MB.' 
       });
     }
@@ -170,6 +170,13 @@ app.use((err, req, res, next) => {
     }
     return res.status(400).json({ 
       error: `File upload error: ${err.message}` 
+    });
+  }
+  
+  // Handle payload too large errors
+  if (err.status === 413 || err.type === 'entity.too.large') {
+    return res.status(413).json({ 
+      error: 'Request payload too large. For OCR, please limit PDFs to 10 pages or 50MB. Consider splitting large documents.' 
     });
   }
   

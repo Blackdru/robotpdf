@@ -164,7 +164,8 @@ router.post('/ocr',
         extractOriginal: extractOriginal,
         language: language,
         fileType: isPDF ? 'pdf' : (isImageFile ? 'image' : 'unknown'),
-        confidenceThreshold: confidenceThreshold
+        confidenceThreshold: confidenceThreshold,
+        maxPages: 100 // Support up to 100 pages
       });
       
       console.log(`Final OCR result: language=${ocrResult.detectedLanguage}, confidence=${ocrResult.confidence}, textLength=${ocrResult.text.length}`);

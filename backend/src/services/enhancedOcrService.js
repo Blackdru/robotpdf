@@ -44,7 +44,8 @@ class EnhancedOcrService {
       extractOriginal = false,           // Setting 2: Extract Original
       language = 'auto',                 // Setting 3: Language Detection
       translateTo = null,                // Setting 4: Translation
-      fileType = 'pdf'
+      fileType = 'pdf',
+      maxPages = 100                     // Support up to 100 pages
     } = options;
 
     try {
@@ -140,10 +141,12 @@ class EnhancedOcrService {
       
       // Split text by pages
       const pageTexts = result.text.split('\f');
+      const maxPages = options.maxPages || 100;
+      
       if (pageTexts.length < result.pageCount) {
         // Estimate page splits
         const textPerPage = Math.ceil(result.text.length / result.pageCount);
-        for (let i = 0; i < result.pageCount; i++) {
+        for (let i = 0; i < Math.min(result.pageCount, maxPages); i++) {
           const start = i * textPerPage;
           const end = Math.min((i + 1) * textPerPage, result.text.length);
           pageTexts[i] = result.text.substring(start, end);
@@ -151,12 +154,17 @@ class EnhancedOcrService {
       }
 
       // Create page objects
-      result.pages = pageTexts.map((text, index) => ({
-        pageNumber: index + 1,
-        text: text.trim(),
-        confidence: 0.95,
-        language: options.language || 'auto'
-      }));
+      result.pages = [];
+      for (let i = 0; i < Math.min(pageTexts.length, maxPages); i++) {
+        if (pageTexts[i] && pageTexts[i].trim()) {
+          result.pages.push({
+            pageNumber: i + 1,
+            text: pageTexts[i].trim(),
+            confidence: 0.95,
+            language: options.language || 'auto'
+          });
+        }
+      }
 
       // If PDF has no text (scanned), try OCR on images
       if (!result.text.trim()) {

@@ -969,7 +969,8 @@ router.post('/enhanced-ocr',
         enhanceWithAI: Joi.boolean().default(false),
         extractOriginal: Joi.boolean().default(false),
         language: Joi.string().default('auto'),
-        translateTo: Joi.string().optional()
+        translateTo: Joi.string().optional(),
+        maxPages: Joi.number().integer().min(1).max(20).default(10)
       }).default({})
     })
   }),
@@ -1008,12 +1009,26 @@ router.post('/enhanced-ocr',
       }
 
       const buffer = Buffer.from(await fileBuffer.arrayBuffer());
+      
+      // Check file size to prevent 413 errors
+      const fileSizeMB = buffer.length / (1024 * 1024);
+      console.log(`File size: ${fileSizeMB.toFixed(2)} MB`);
+      
+      if (fileSizeMB > 50) {
+        return res.status(413).json({ 
+          error: 'File too large for OCR processing. Maximum size is 50MB. Please compress your PDF or reduce the number of pages.',
+          fileSize: `${fileSizeMB.toFixed(2)} MB`,
+          maxSize: '50 MB'
+        });
+      }
+      
       const fileType = file.type.startsWith('image/') ? 'image' : 'pdf';
 
       // Perform enhanced OCR with AI
       const ocrResult = await ocrService.extractTextWithAI(buffer, {
         ...options,
-        fileType
+        fileType,
+        maxPages: options.maxPages || 10
       });
 
       // Translate if requested

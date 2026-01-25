@@ -180,7 +180,8 @@ router.post('/ocr', trackApiUsage('ocr_pro'), upload.single('file'), async (req,
       enhanceImage: enhance_image === 'true',
       enhanceWithAI: ai_enhanced === 'true',
       extractOriginal: extract_original === 'true',
-      fileType: fileType
+      fileType: fileType,
+      maxPages: 100 // Support up to 100 pages for API
     });
 
     console.log('OCR Result:', {

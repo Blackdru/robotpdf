@@ -137,7 +137,7 @@ class OCRService {
     try {
       const {
         language = 'eng',
-        maxPages = 10, // Limit pages for basic version
+        maxPages = 100, // Support up to 100 pages
         onProgress = null,
         isPro = false
       } = options
@@ -149,7 +149,7 @@ class OCRService {
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
       const totalPages = pdf.numPages
       
-      // Limit pages for basic version
+      // Limit pages - Pro users get all pages, free users get up to maxPages
       const pagesToProcess = isPro ? totalPages : Math.min(maxPages, totalPages)
       
       const results = []

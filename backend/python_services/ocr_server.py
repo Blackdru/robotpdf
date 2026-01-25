@@ -196,7 +196,7 @@ def process_image(image_data, languages=['en', 'hi'], enhance=True):
         print(traceback.format_exc(), file=sys.stderr)
         return {'error': str(e), 'text': ''}
 
-def process_pdf(pdf_data, languages=['en', 'hi'], enhance=True, max_pages=20):
+def process_pdf(pdf_data, languages=['en', 'hi'], enhance=True, max_pages=100):
     """Process PDF with EasyOCR."""
     if not fitz:
         return {'error': 'PyMuPDF not installed', 'text': ''}
@@ -217,6 +217,8 @@ def process_pdf(pdf_data, languages=['en', 'hi'], enhance=True, max_pages=20):
         total_conf = 0
         page_count = min(len(doc), max_pages)
         
+        print(f"Processing PDF with {page_count} pages (total: {len(doc)})...", file=sys.stderr)
+        
         for page_num in range(page_count):
             page = doc[page_num]
             
@@ -226,9 +228,11 @@ def process_pdf(pdf_data, languages=['en', 'hi'], enhance=True, max_pages=20):
                 all_text.append(embedded)
                 pages_data.append({'page': page_num+1, 'text': embedded, 'confidence': 0.95})
                 total_conf += 0.95
+                print(f"  Page {page_num+1}: Using embedded text ({len(embedded)} chars)", file=sys.stderr)
                 continue
             
             # OCR the page
+            print(f"  Page {page_num+1}: Performing OCR...", file=sys.stderr)
             mat = fitz.Matrix(2.0, 2.0)
             pix = page.get_pixmap(matrix=mat)
             img = Image.open(io.BytesIO(pix.tobytes("png")))
@@ -257,18 +261,20 @@ def process_pdf(pdf_data, languages=['en', 'hi'], enhance=True, max_pages=20):
             all_text.append(page_text)
             pages_data.append({'page': page_num+1, 'text': page_text, 'confidence': avg})
             total_conf += avg
+            print(f"  Page {page_num+1}: OCR complete ({len(page_text)} chars, conf={avg:.2f})", file=sys.stderr)
         
         doc.close()
         
         full_text = '\n\n'.join(all_text)
         avg_conf = total_conf / page_count if page_count > 0 else 0
         
-        print(f"PDF OCR completed in {time.time()-start:.2f}s: {page_count} pages", file=sys.stderr)
+        print(f"PDF OCR completed in {time.time()-start:.2f}s: {page_count} pages, {len(full_text)} chars", file=sys.stderr)
         
         return {
             'text': full_text,
             'confidence': avg_conf,
             'page_count': page_count,
+            'total_pages': len(doc),
             'pages': pages_data,
             'engine': 'easyocr',
             'processing_time': round(time.time() - start, 2)
@@ -336,7 +342,7 @@ class OCRHandler(BaseHTTPRequestHandler):
                     data.get('data', ''),
                     data.get('languages', ['en', 'hi']),
                     data.get('enhance', True),
-                    data.get('max_pages', 20)
+                    data.get('max_pages', 100)
                 )
                 self.send_json(result)
             

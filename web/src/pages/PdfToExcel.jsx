@@ -145,11 +145,17 @@ const PdfToExcel = () => {
       setProcessingProgress(65)
       setProcessingStage('Extracting account details...')
       
-      // Stage 4: Conversion (actual API call)
+      // Stage 4: Conversion (actual API call) with language support
       setProcessingProgress(75)
       setProcessingStage('Converting to Excel format...')
       
-      const result = await api.convertPDFToExcel(fileId, `${file.name.replace('.pdf', '')}.xlsx`)
+      // Pass language option for multi-language support
+      const conversionOptions = {
+        language: 'auto',  // Auto-detect language, or can be set to specific language
+        use_ocr: true      // Enable OCR for better multi-language support
+      }
+      
+      const result = await api.convertPDFToExcel(fileId, `${file.name.replace('.pdf', '')}.xlsx`, conversionOptions)
 
       // Stage 5: Download
       setProcessingProgress(90)
