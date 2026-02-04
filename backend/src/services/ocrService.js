@@ -111,7 +111,7 @@ class OCRService {
 
 
   /**
-   * Create multiple enhanced image versions for best OCR results
+   * Create optimized enhanced image versions (REDUCED from 5 to 3 for speed)
    */
   async createEnhancedVersions(imagePath) {
     const enhancements = [];
@@ -127,55 +127,29 @@ class OCRService {
       const newWidth = Math.round(width * scale);
       const newHeight = Math.round(height * scale);
 
-      // Version 1: Light enhancement (good quality images)
+      // Version 1: Balanced enhancement (works for most documents)
       const enh1 = path.join(this.tempDir, `enh1_${uuidv4()}.png`);
       await sharp(imagePath)
         .resize(newWidth, newHeight, { fit: 'inside' })
         .grayscale()
         .normalize()
-        .sharpen({ sigma: 1.2 })
-        .png({ quality: 100 })
+        .linear(1.5, -25)
+        .sharpen({ sigma: 1.5 })
+        .png({ quality: 95 })
         .toFile(enh1);
       enhancements.push(enh1);
 
-      // Version 2: Medium contrast (slightly faded images)
+      // Version 2: High contrast (for colored backgrounds like ID cards)
       const enh2 = path.join(this.tempDir, `enh2_${uuidv4()}.png`);
       await sharp(imagePath)
         .resize(newWidth, newHeight, { fit: 'inside' })
         .grayscale()
         .normalize()
-        .linear(1.4, -20)
-        .sharpen({ sigma: 1.5 })
-        .png({ quality: 100 })
+        .linear(2.0, -50)
+        .sharpen({ sigma: 1.8 })
+        .png({ quality: 95 })
         .toFile(enh2);
       enhancements.push(enh2);
-
-      // Version 3: For blue/cyan backgrounds (PAN cards, ID cards)
-      const enh3 = path.join(this.tempDir, `enh3_${uuidv4()}.png`);
-      await sharp(imagePath)
-        .resize(newWidth, newHeight, { fit: 'inside' })
-        .removeAlpha()
-        .modulate({ brightness: 1.15, saturation: 0 })
-        .normalize()
-        .linear(1.8, -40)
-        .sharpen({ sigma: 1.8 })
-        .threshold(140)
-        .png({ quality: 100 })
-        .toFile(enh3);
-      enhancements.push(enh3);
-
-      // Version 4: High contrast with threshold (best for colored backgrounds)
-      const enh4 = path.join(this.tempDir, `enh4_${uuidv4()}.png`);
-      await sharp(imagePath)
-        .resize(newWidth, newHeight, { fit: 'inside' })
-        .grayscale()
-        .modulate({ brightness: 1.25 })
-        .normalize()
-        .linear(2.2, -60)
-        .sharpen({ sigma: 2.0 })
-        .png({ quality: 100 })
-        .toFile(enh4);
-      enhancements.push(enh4);
 
       return enhancements;
     } catch (error) {
@@ -219,7 +193,7 @@ class OCRService {
   }
 
   /**
-   * Extract text from image with multi-version enhancement
+   * Extract text from image with OPTIMIZED multi-version enhancement
    */
   async extractTextFromImage(imageBuffer, options = {}) {
     if (!this.isEnabled()) {
@@ -232,7 +206,7 @@ class OCRService {
 
     try {
       await fs.writeFile(tempImagePath, imageBuffer);
-      console.log('📋 Starting Tesseract.js OCR...');
+      console.log('📋 Starting OPTIMIZED Tesseract.js OCR...');
       
       let imagesToTry = [tempImagePath];
       
@@ -243,7 +217,10 @@ class OCRService {
       }
 
       const allResults = [];
+      let bestResultSoFar = null;
+      let bestScoreSoFar = 0;
       
+      // OPTIMIZATION: Stop early if we get a high-confidence result
       for (let i = 0; i < imagesToTry.length; i++) {
         try {
           console.log(`Trying version ${i + 1}/${imagesToTry.length}`);
@@ -251,6 +228,19 @@ class OCRService {
           result.version = i + 1;
           allResults.push(result);
           console.log(`Version ${i + 1}: conf=${result.confidence.toFixed(2)}, chars=${result.text.length}`);
+          
+          // Calculate score for early stopping
+          const score = result.confidence * 0.6 + (result.text.length > 100 ? 0.4 : 0.2);
+          if (score > bestScoreSoFar) {
+            bestScoreSoFar = score;
+            bestResultSoFar = result;
+          }
+          
+          // EARLY STOP: If confidence > 0.75 and text > 200 chars, we're good
+          if (result.confidence > 0.75 && result.text.length > 200) {
+            console.log(`✓ Early stop: High confidence achieved (${result.confidence.toFixed(2)})`);
+            break;
+          }
         } catch (err) {
           console.warn(`Version ${i + 1} failed:`, err.message);
         }
@@ -503,6 +493,7 @@ class OCRService {
 
   /**
    * MAIN METHOD: Extract text with AI enhancement for 99% accuracy
+   * Uses Python EasyOCR as primary, Tesseract.js as fallback
    */
   async extractTextWithAI(buffer, options = {}) {
     const {
@@ -517,28 +508,60 @@ class OCRService {
     console.log('Options:', { enhanceWithAI, extractOriginal, language, fileType });
 
     try {
-      // Step 1: Perform OCR
+      // Step 1: Try Python EasyOCR first (primary method)
       let ocrResult;
-      if (fileType === 'pdf') {
-        ocrResult = await this.extractTextFromPDF(buffer, { language, enhanceImage: true, maxPages });
+      let usedEngine = 'tesseract.js'; // Default fallback
+      
+      const pythonOcrClient = require('./pythonOcrClient');
+      const pythonAvailable = await pythonOcrClient.checkHealth();
+      
+      if (pythonAvailable) {
+        console.log('✓ Python EasyOCR server available, using as primary OCR engine');
+        try {
+          if (fileType === 'pdf') {
+            ocrResult = await pythonOcrClient.processPDF(buffer, { language, enhance: true, maxPages });
+          } else {
+            ocrResult = await pythonOcrClient.processImage(buffer, { language, enhance: true });
+          }
+          
+          if (ocrResult && ocrResult.text && !ocrResult.error) {
+            usedEngine = 'easyocr';
+            console.log(`✓ EasyOCR completed: ${ocrResult.text.length} chars, confidence=${ocrResult.confidence?.toFixed(2) || 'N/A'}`);
+          } else {
+            throw new Error(ocrResult.error || 'EasyOCR returned no text');
+          }
+        } catch (pythonError) {
+          console.warn('⚠ Python EasyOCR failed, falling back to Tesseract.js:', pythonError.message);
+          ocrResult = null;
+        }
       } else {
-        ocrResult = await this.extractTextFromImage(buffer, { language, enhanceImage: true });
+        console.log('⚠ Python EasyOCR server not available, using Tesseract.js fallback');
       }
-
-      console.log(`✓ OCR completed: ${ocrResult.text.length} chars, confidence=${ocrResult.confidence.toFixed(2)}`);
+      
+      // Step 2: Fallback to Tesseract.js if Python OCR failed or unavailable
+      if (!ocrResult || !ocrResult.text) {
+        console.log('📋 Using Tesseract.js as fallback OCR engine');
+        if (fileType === 'pdf') {
+          ocrResult = await this.extractTextFromPDF(buffer, { language, enhanceImage: true, maxPages });
+        } else {
+          ocrResult = await this.extractTextFromImage(buffer, { language, enhanceImage: true });
+        }
+        usedEngine = 'tesseract.js';
+        console.log(`✓ Tesseract.js completed: ${ocrResult.text.length} chars, confidence=${ocrResult.confidence.toFixed(2)}`);
+      }
 
       const result = {
         text: ocrResult.text,
         originalText: ocrResult.text,
         enhancedText: null,
-        confidence: ocrResult.confidence,
-        pageCount: ocrResult.pageCount,
-        pages: ocrResult.pages,
+        confidence: ocrResult.confidence || 0.85,
+        pageCount: ocrResult.pageCount || ocrResult.page_count || 1,
+        pages: ocrResult.pages || [],
         detectedLanguage: language,
         aiEnhanced: false,
         localCleaned: false,
-        engine: 'tesseract.js',
-        method: ocrResult.method || 'tesseract_ocr'
+        engine: usedEngine,
+        method: ocrResult.method || `${usedEngine}_ocr`
       };
 
       // Step 2: AI Enhancement for 99% accuracy

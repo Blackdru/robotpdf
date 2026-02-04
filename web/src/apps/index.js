@@ -4,3 +4,4 @@ export { default as MergePrivacyPolicy } from './merge';
 export { default as SplitPrivacyPolicy } from './split';
 export { default as ImageToPDFPrivacyPolicy } from './imagetopdf';
 export { default as PDFToExcelPrivacyPolicy } from './pdftoexcel';
+export { default as UpiSubscriptionTrackerPrivacy } from './UpiSubscriptionTrackerPrivacy';

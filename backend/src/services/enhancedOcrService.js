@@ -67,14 +67,43 @@ class EnhancedOcrService {
         pages: [],
         aiEnhanced: enhanceWithAI,
         processingOptions: options,
-        method: 'enhanced'
+        method: 'enhanced',
+        engine: 'tesseract.js' // Default, will be updated
       };
 
-      // Process based on file type
-      if (fileType === 'pdf') {
-        result = await this.processPdfOcr(buffer, options, result);
+      // Try Python EasyOCR first (primary method)
+      const pythonOcrClient = require('./pythonOcrClient');
+      const pythonAvailable = await pythonOcrClient.checkHealth();
+      
+      if (pythonAvailable) {
+        console.log('✓ Using Python EasyOCR as primary OCR engine');
+        try {
+          let ocrResult;
+          if (fileType === 'pdf') {
+            ocrResult = await pythonOcrClient.processPDF(buffer, { language, enhance: true, maxPages });
+          } else {
+            ocrResult = await pythonOcrClient.processImage(buffer, { language, enhance: true });
+          }
+          
+          if (ocrResult && ocrResult.text && !ocrResult.error) {
+            result.text = ocrResult.text;
+            result.confidence = ocrResult.confidence || 0.90;
+            result.pageCount = ocrResult.page_count || ocrResult.pageCount || 1;
+            result.pages = ocrResult.pages || [];
+            result.engine = 'easyocr';
+            result.method = 'easyocr_enhanced';
+            console.log(`✓ EasyOCR completed: ${result.text.length} chars`);
+          } else {
+            throw new Error(ocrResult.error || 'EasyOCR returned no text');
+          }
+        } catch (pythonError) {
+          console.warn('⚠ Python EasyOCR failed, falling back to Tesseract.js:', pythonError.message);
+          // Fall through to Tesseract fallback
+          result = await this.processFallbackOcr(buffer, options, result);
+        }
       } else {
-        result = await this.processImageOcr(buffer, options, result);
+        console.log('⚠ Python EasyOCR not available, using Tesseract.js fallback');
+        result = await this.processFallbackOcr(buffer, options, result);
       }
 
       // Setting 2: Extract original text for comparison
@@ -126,6 +155,17 @@ class EnhancedOcrService {
     } catch (error) {
       console.error('Advanced OCR error:', error);
       throw new Error(`Advanced OCR failed: ${error.message}`);
+    }
+  }
+
+  // Process PDF OCR
+  async processFallbackOcr(buffer, options, result) {
+    const { fileType } = options;
+    
+    if (fileType === 'pdf') {
+      return await this.processPdfOcr(buffer, options, result);
+    } else {
+      return await this.processImageOcr(buffer, options, result);
     }
   }
 

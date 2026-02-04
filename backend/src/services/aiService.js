@@ -491,7 +491,7 @@ ${context}`;
     return dotProduct / (magnitudeA * magnitudeB);
   }
 
-  // Enhance extracted text using AI - works for all document types
+  // Enhance extracted text using AI - OPTIMIZED VERSION
   async enhanceTextWithAI(rawText) {
     if (!this.isEnabled()) {
       throw new Error('AI service is not available');
@@ -503,6 +503,12 @@ ${context}`;
       // Check if OCR output is garbage (too low quality to enhance)
       const qualityScore = this.assessOcrQuality(rawText);
       console.log('OCR quality score:', qualityScore);
+      
+      // OPTIMIZATION: Skip AI if quality is already good (>0.8) or too poor (<0.3)
+      if (qualityScore > 0.8) {
+        console.log('✓ OCR quality already excellent, skipping AI enhancement');
+        return this.preCleanOcrText(rawText);
+      }
       
       if (qualityScore < 0.3) {
         console.warn('OCR output quality too low for AI enhancement, returning as-is');
@@ -522,33 +528,16 @@ ${context}`;
       const documentType = this.detectDocumentType(preCleanedText);
       console.log('Detected document type:', documentType);
       
-      // Create a strict prompt for cleaning OCR output
-      const prompt = `TASK: Clean this OCR text from a scanned document. Remove noise and fix errors.
+      // OPTIMIZATION: Use shorter, more focused prompt
+      const prompt = `Clean this OCR text. Remove noise, fix errors, preserve Hindi/English. Output cleaned text only:
 
-CLEANING RULES:
-1. REMOVE random isolated characters/words that don't make sense in context (like "Era", "Pa", "IMR", "Li ut", "a ry" - these are hologram/watermark noise)
-2. REMOVE any 1-3 character fragments that appear randomly between sentences
-3. PRESERVE all meaningful Hindi (Devanagari) text exactly as-is
-4. PRESERVE all meaningful English text
-5. FIX common OCR errors: rn→m, cl→d, tbe→the, witb→with
-6. FIX broken words and spacing issues
-7. REMOVE duplicate spaces and fix line breaks
-8. DO NOT add any new information or labels
-9. DO NOT guess or generate any names, numbers, or dates
-10. Keep the document structure (addresses, phone numbers, emails intact)
-
-INPUT OCR TEXT:
-${preCleanedText}
-
-OUTPUT (cleaned text only, preserve both Hindi and English):`;
-
-      // Use free models for OCR enhancement
+${preCleanedText.substring(0, 3000)}`; // Limit to 3000 chars for speed
+      
+      // OPTIMIZATION: Try only 2 best models instead of 4
       const modelsToTry = this.isUsingOpenRouter 
         ? [
             'meta-llama/llama-3.3-70b-instruct:free',
-            'mistralai/mistral-small-3.1-24b-instruct:free',
-            'qwen/qwen3-14b:free',
-            this.model
+            'mistralai/mistral-small-3.1-24b-instruct:free'
           ]
         : [this.model];
       
@@ -564,14 +553,14 @@ OUTPUT (cleaned text only, preserve both Hindi and English):`;
             messages: [
               {
                 role: 'system',
-                content: 'You are an expert OCR text cleaner. Your job is to clean scanned document text by removing noise from holograms, watermarks, and OCR artifacts while preserving all meaningful content in both Hindi and English. Remove random isolated characters that are clearly noise. Output ONLY the cleaned text without any explanations.'
+                content: 'Clean OCR text: remove noise, fix errors, preserve Hindi/English. Output only cleaned text.'
               },
               {
                 role: 'user',
                 content: prompt
               }
             ],
-            max_tokens: Math.min(4000, Math.ceil(preCleanedText.length * 1.3)),
+            max_tokens: Math.min(2000, Math.ceil(preCleanedText.length * 1.2)), // Reduced from 4000
             temperature: 0.1,
           });
 

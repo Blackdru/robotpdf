@@ -1,5 +1,6 @@
 import { createWorker } from 'tesseract.js'
 import pdfjs from './pdfWorker.js'
+import api from './api.js'
 
 // Use the configured PDF.js instance
 const pdfjsLib = pdfjs
@@ -9,6 +10,98 @@ class OCRService {
     this.worker = null
     this.isInitialized = false
     this.currentLanguage = 'eng'
+    this.useBackendOCR = true // Prefer backend EasyOCR over client-side Tesseract
+  }
+
+  /**
+   * Try backend OCR first (EasyOCR via Python), fallback to client-side Tesseract
+   */
+  async recognizeFromFile(file, options = {}) {
+    const {
+      language = 'eng',
+      onProgress = null,
+      isPro = false,
+      maxPages = 100
+    } = options;
+
+    // Try backend OCR first if user is authenticated
+    if (this.useBackendOCR) {
+      try {
+        console.log('🚀 Attempting backend OCR (EasyOCR)...');
+        
+        // Upload file and get file ID
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const uploadResponse = await api.post('/files/upload', formData);
+        const fileId = uploadResponse.data.file.id;
+        
+        if (onProgress) onProgress(0.2);
+        
+        // Perform OCR via backend
+        const ocrResponse = await api.post('/ai/ocr', {
+          fileId: fileId,
+          language: language,
+          enhanceImage: true,
+          aiEnhanced: true,
+          extractOriginal: false
+        });
+        
+        if (onProgress) onProgress(0.9);
+        
+        const result = ocrResponse.data.result;
+        
+        // Format result to match client-side format
+        const formattedResult = {
+          fullText: result.text,
+          averageConfidence: result.confidence,
+          pageCount: result.pageCount || 1,
+          totalPages: result.pageCount || 1,
+          processedPages: result.pageCount || 1,
+          isLimited: false,
+          pages: result.pages?.map((page, index) => ({
+            pageNumber: page.page || index + 1,
+            text: page.text,
+            confidence: page.confidence || result.confidence,
+            words: [],
+            lines: [],
+            paragraphs: [],
+            blocks: []
+          })) || [{
+            pageNumber: 1,
+            text: result.text,
+            confidence: result.confidence,
+            words: [],
+            lines: [],
+            paragraphs: [],
+            blocks: []
+          }],
+          engine: result.engine || 'easyocr',
+          method: 'backend_easyocr'
+        };
+        
+        if (onProgress) onProgress(1.0);
+        
+        console.log(`✓ Backend OCR (${result.engine}) completed: ${result.text.length} chars`);
+        return formattedResult;
+        
+      } catch (backendError) {
+        console.warn('⚠ Backend OCR failed, falling back to client-side Tesseract:', backendError.message);
+        // Fall through to client-side OCR
+      }
+    }
+    
+    // Fallback to client-side Tesseract.js
+    console.log('📋 Using client-side Tesseract.js OCR');
+    const fileType = file.type || this.getFileTypeFromName(file.name);
+    
+    if (fileType === 'application/pdf') {
+      return await this.recognizeFromPDF(file, options);
+    } else if (fileType.startsWith('image/')) {
+      return await this.recognizeFromImage(file, options);
+    } else {
+      throw new Error('Unsupported file type. Please upload a PDF or image file.');
+    }
   }
 
   async initialize(language = 'eng') {
@@ -142,6 +235,8 @@ class OCRService {
         isPro = false
       } = options
 
+      console.log('📄 Processing PDF with client-side Tesseract.js (fallback)');
+
       // Convert PDF file to ArrayBuffer
       const arrayBuffer = await this.fileToArrayBuffer(pdfFile)
       
@@ -238,6 +333,8 @@ class OCRService {
         language = 'eng',
         onProgress = null
       } = options
+
+      console.log('🖼️ Processing image with client-side Tesseract.js (fallback)');
 
       // Convert image file to blob if needed
       const imageBlob = imageFile instanceof Blob ? imageFile : await this.fileToBlob(imageFile)
@@ -356,6 +453,14 @@ class OCRService {
       this.worker = null
       this.isInitialized = false
     }
+  }
+
+  /**
+   * Enable or disable backend OCR (EasyOCR)
+   */
+  setUseBackendOCR(enabled) {
+    this.useBackendOCR = enabled;
+    console.log(`Backend OCR (EasyOCR) ${enabled ? 'enabled' : 'disabled'}`);
   }
 
   getSupportedLanguages() {

@@ -60,52 +60,99 @@ def preload_readers():
     print("Pre-loading OCR readers (this takes 30-60 seconds)...", file=sys.stderr)
     start = time.time()
     
-    # Pre-load English + Hindi (most common for Indian documents)
-    try:
-        print("  Loading English + Hindi reader...", file=sys.stderr)
-        READERS['en+hi'] = easyocr.Reader(['en', 'hi'], gpu=False, verbose=False)
-        print(f"  ✓ English + Hindi loaded in {time.time()-start:.1f}s", file=sys.stderr)
-    except Exception as e:
-        print(f"  ✗ Failed to load en+hi: {e}", file=sys.stderr)
+    # List of essential language combinations to pre-load
+    # Only load what's most commonly used to speed up startup
+    essential_combinations = [
+        (['en', 'te'], 'English + Telugu'),
+        (['en', 'hi'], 'English + Hindi'),
+        (['en'], 'English only'),
+    ]
     
-    # Pre-load English only (fallback)
-    try:
-        print("  Loading English reader...", file=sys.stderr)
-        READERS['en'] = easyocr.Reader(['en'], gpu=False, verbose=False)
-        print(f"  ✓ English loaded", file=sys.stderr)
-    except Exception as e:
-        print(f"  ✗ Failed to load en: {e}", file=sys.stderr)
+    for languages, description in essential_combinations:
+        try:
+            cache_key = '+'.join(languages)
+            print(f"  Loading {description} ({cache_key})...", file=sys.stderr)
+            load_start = time.time()
+            READERS[cache_key] = easyocr.Reader(languages, gpu=False, verbose=False, download_enabled=True)
+            load_time = time.time() - load_start
+            print(f"  ✓ {description} loaded in {load_time:.1f}s", file=sys.stderr)
+        except Exception as e:
+            print(f"  ✗ Failed to load {description}: {e}", file=sys.stderr)
+            # Continue with other languages even if one fails
+            continue
     
-    print(f"✓ OCR readers ready in {time.time()-start:.1f}s", file=sys.stderr)
+    total_time = time.time() - start
+    print(f"✓ OCR readers ready in {total_time:.1f}s", file=sys.stderr)
+    print(f"  Loaded {len(READERS)} reader(s): {list(READERS.keys())}", file=sys.stderr)
+    print(f"  Other languages will be loaded on-demand", file=sys.stderr)
 
 def get_reader(languages):
-    """Get appropriate reader for languages."""
+    """Get appropriate reader for languages with automatic model downloading."""
     global READERS
     
     # Normalize languages
     if not languages:
-        languages = ['en', 'hi']
+        languages = ['en', 'te']  # Default to English + Telugu for Indian documents
     
-    # Check for Indian languages - they can only pair with English
+    # Ensure languages is a list
+    if isinstance(languages, str):
+        languages = [languages]
+    
+    # Remove duplicates and sort for consistent cache key
+    languages = sorted(list(set(languages)))
+    
+    # Create cache key
+    cache_key = '+'.join(languages)
+    
+    # Check if reader already exists
+    if cache_key in READERS:
+        print(f"Using cached reader for: {cache_key}", file=sys.stderr)
+        return READERS[cache_key]
+    
+    # Check for Indian languages - they can only pair with English in EasyOCR
     indian_langs = {'hi', 'te', 'ta', 'kn', 'ml', 'mr', 'bn', 'gu', 'pa'}
     has_indian = any(l in indian_langs for l in languages)
     
     if has_indian:
-        # Use pre-loaded en+hi reader for any Indian language
-        if 'en+hi' in READERS:
-            return READERS['en+hi']
+        # For Telugu documents, ensure English is included
+        if 'te' in languages:
+            if 'en' not in languages:
+                languages = ['en', 'te']
+            cache_key = 'en+te'
+            if cache_key in READERS:
+                return READERS[cache_key]
+        # For Hindi documents, ensure English is included
+        elif 'hi' in languages:
+            if 'en' not in languages:
+                languages = ['en', 'hi']
+            cache_key = 'en+hi'
+            if cache_key in READERS:
+                return READERS[cache_key]
+        # For other Indian languages, pair with English
+        else:
+            indian_lang = next(l for l in languages if l in indian_langs)
+            languages = ['en', indian_lang]
+            cache_key = f'en+{indian_lang}'
     
-    # Use English reader as fallback
-    if 'en' in READERS:
-        return READERS['en']
-    
-    # Create new reader if needed (slow path)
-    key = '+'.join(sorted(languages))
-    if key not in READERS:
-        print(f"Creating new reader for {languages} (slow)...", file=sys.stderr)
-        READERS[key] = easyocr.Reader(languages, gpu=False, verbose=False)
-    
-    return READERS[key]
+    # Create new reader (will auto-download models if needed)
+    print(f"Creating new reader for: {languages} (downloading models if needed)...", file=sys.stderr)
+    try:
+        start = time.time()
+        READERS[cache_key] = easyocr.Reader(languages, gpu=False, verbose=False, download_enabled=True)
+        elapsed = time.time() - start
+        print(f"✓ Reader for {cache_key} created in {elapsed:.1f}s", file=sys.stderr)
+        return READERS[cache_key]
+    except Exception as e:
+        print(f"✗ Failed to create reader for {languages}: {e}", file=sys.stderr)
+        # Fallback to English only
+        if 'en' in READERS:
+            print(f"  Falling back to English-only reader", file=sys.stderr)
+            return READERS['en']
+        else:
+            # Last resort: create English reader
+            print(f"  Creating English-only reader as last resort", file=sys.stderr)
+            READERS['en'] = easyocr.Reader(['en'], gpu=False, verbose=False, download_enabled=True)
+            return READERS['en']
 
 
 def enhance_image(image):
