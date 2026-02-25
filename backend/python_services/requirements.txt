@@ -16,8 +16,8 @@ numpy>=1.24.0
 opencv-python-headless>=4.8.0
 
 # Optional: PaddleOCR (alternative OCR engine)
-# paddleocr>=2.7.0
-# paddlepaddle>=2.5.0
+paddleocr>=2.7.0
+paddlepaddle>=2.5.0
 
 # Tesseract wrapper (fallback)
 pytesseract>=0.3.10
