@@ -100,7 +100,7 @@ const Footer = () => {
         <div className="border-t border-gray-200 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex flex-col md:flex-row items-center gap-4">
             <p className="text-slate-600 text-sm">
-              © 2025 Budrock Technologies Private Limited. All rights reserved.
+              © 2026 Budrock Technologies Private Limited. All rights reserved.
             </p>
             <div className="flex items-center px-3 py-1.5 rounded-lg bg-gradient-to-r from-orange-50 to-green-50 border border-orange-200">
               <span className="text-sm mr-1.5">🇮🇳</span>
