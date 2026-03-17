@@ -54,10 +54,12 @@ const allowedOrigins = process.env.NODE_ENV === 'production'
       'https://robotpdf.com',
       'https://www.robotpdf.com',
       'https://api.robotpdf.com',
+      'https://www.api.robotpdf.com',
       // HTTP (Non-SSL - For testing/staging)
       'http://robotpdf.com',
       'http://www.robotpdf.com',
-      'http://api.robotpdf.com'
+      'http://api.robotpdf.com',
+      'http://www.api.robotpdf.com'
     ]
   : [
       'http://localhost:3000',

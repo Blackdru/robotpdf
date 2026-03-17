@@ -3,13 +3,13 @@ import React from 'react';
 const UpiSubscriptionTrackerPrivacy = () => {
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6">Privacy Policy for UPI Subscription Tracker</h1>
+      <h1 className="text-3xl font-bold mb-6">Privacy Policy for UPI Autopay Tracker</h1>
       <p className="text-sm text-gray-600 mb-8">Last Updated: {new Date().toLocaleDateString()}</p>
 
       <section className="mb-6">
         <h2 className="text-2xl font-semibold mb-3">1. Introduction</h2>
         <p className="text-gray-700 mb-4">
-          This Privacy Policy describes how UPI Subscription Tracker ("we", "our", "us", or "the App") 
+          This Privacy Policy describes how UPI Autopay Tracker ("we", "our", "us", or "the App") 
           handles your information. We are committed to protecting your privacy and ensuring the security 
           of your personal data in compliance with applicable data protection laws including GDPR and CCPA.
         </p>
@@ -30,9 +30,13 @@ const UpiSubscriptionTrackerPrivacy = () => {
         <h3 className="text-xl font-semibold mb-2 mt-4">2.2 Notification Permissions</h3>
         <ul className="list-disc list-inside text-gray-700 space-y-2 mb-4">
           <li><strong>POST_NOTIFICATIONS:</strong> Send renewal reminder notifications</li>
-          <li><strong>SCHEDULE_EXACT_ALARM:</strong> Schedule notifications 2 days before subscription renewal</li>
+          <li><strong>SCHEDULE_EXACT_ALARM:</strong> Schedule precise alarms to notify users about upcoming due dates so they won't miss any payments</li>
           <li><strong>RECEIVE_BOOT_COMPLETED:</strong> Restore scheduled notifications after device restart</li>
         </ul>
+        <p className="text-gray-700 mt-2">
+          <strong>Due Date Notifications:</strong> We schedule alarms to proactively notify you about upcoming subscription renewals, 
+          ensuring you never miss a due date and can manage your subscriptions effectively.
+        </p>
 
         <h3 className="text-xl font-semibold mb-2 mt-4">2.3 Internet Access</h3>
         <ul className="list-disc list-inside text-gray-700 space-y-2 mb-4">
@@ -61,7 +65,8 @@ const UpiSubscriptionTrackerPrivacy = () => {
           <li>SMS messages are processed <strong>locally on your device</strong> to detect UPI subscription payments</li>
           <li>Only subscription-related information (merchant, amount, date) is extracted and stored locally</li>
           <li>Full SMS content is never stored, transmitted, or shared</li>
-          <li>Extracted subscription data is used solely to track renewals and send reminders</li>
+          <li>Extracted subscription data is used solely to track renewals and send timely reminders</li>
+          <li>We schedule alarms to notify you about upcoming due dates, helping you avoid missed payments</li>
           <li>No SMS data is transmitted to external servers or third parties</li>
           <li>Anonymous usage analytics may be collected to improve app functionality</li>
         </ul>
@@ -111,7 +116,7 @@ const UpiSubscriptionTrackerPrivacy = () => {
       <section className="mb-6">
         <h2 className="text-2xl font-semibold mb-3">7. Monetization</h2>
         <p className="text-gray-700 mb-4">
-          UPI Subscription Tracker is a freemium app supported by:
+          UPI Autopay Tracker is a freemium app supported by:
         </p>
         <ul className="list-disc list-inside text-gray-700 space-y-2">
           <li><strong>Advertisements:</strong> Free users see ads served by third-party networks (e.g., Google AdMob)</li>
@@ -223,7 +228,7 @@ const UpiSubscriptionTrackerPrivacy = () => {
             </tr>
             <tr>
               <td className="border border-blue-200 px-4 py-2">SCHEDULE_EXACT_ALARM</td>
-              <td className="border border-blue-200 px-4 py-2">Schedule notifications 2 days before renewal</td>
+              <td className="border border-blue-200 px-4 py-2">Schedule alarms to notify about due dates so users won't miss payments</td>
               <td className="border border-blue-200 px-4 py-2"><strong>NO</strong></td>
             </tr>
             <tr>
