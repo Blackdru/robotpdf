@@ -10,8 +10,18 @@ import json
 import os
 import tempfile
 import re
+import signal
 from io import BytesIO
 from datetime import datetime
+
+# Set up signal handlers to ensure clean exit
+def signal_handler(signum, frame):
+    error_result = {'success': False, 'error': f'Process terminated by signal {signum}'}
+    print(json.dumps(error_result), flush=True)
+    sys.exit(1)
+
+signal.signal(signal.SIGTERM, signal_handler)
+signal.signal(signal.SIGINT, signal_handler)
 
 def install_dependencies():
     """Install required packages if not present"""
@@ -26,23 +36,28 @@ def install_dependencies():
         except ImportError:
             try:
                 subprocess.check_call([sys.executable, '-m', 'pip', 'install', package, '-q'])
-            except:
-                pass
+            except Exception as install_error:
+                print(f"Warning: Could not install {package}: {install_error}", file=sys.stderr)
 
 try:
     install_dependencies()
-except:
-    pass
+except Exception as dep_error:
+    print(f"Warning: Dependency installation failed: {dep_error}", file=sys.stderr)
 
-import openpyxl
-from openpyxl.utils import get_column_letter
-from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4, letter, landscape, portrait
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import inch, mm
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
-from reportlab.pdfgen import canvas
+try:
+    import openpyxl
+    from openpyxl.utils import get_column_letter
+    from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4, letter, landscape, portrait
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch, mm
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+    from reportlab.pdfgen import canvas
+except ImportError as import_error:
+    error_msg = f"Failed to import required libraries: {import_error}"
+    print(json.dumps({'success': False, 'error': error_msg}), flush=True)
+    sys.exit(1)
 
 # Try to import optional dependencies
 try:
@@ -590,12 +605,21 @@ def pdf_to_excel(input_path, output_path, options=None):
         print(f"Auto-enabling OCR for language: {language}", file=sys.stderr)
     
     try:
+        print(f"Starting PDF to Excel conversion: {input_path}", file=sys.stderr)
+        print(f"Options: language={language}, use_ocr={use_ocr}", file=sys.stderr)
+        
         # Get PDF dimensions for orientation
         pdf_width, pdf_height, is_landscape = get_pdf_page_dimensions(input_path)
+        print(f"PDF dimensions: {pdf_width}x{pdf_height}, landscape={is_landscape}", file=sys.stderr)
         
         # Extract tables using multiple methods
+        print("Extracting tables with pdfplumber...", file=sys.stderr)
         pdfplumber_tables, page_data = extract_tables_with_pdfplumber(input_path, {**options, 'use_ocr': use_ocr, 'language': language})
+        print(f"Extracted {len(pdfplumber_tables)} tables from {len(page_data)} pages", file=sys.stderr)
+        
+        print("Extracting tables with camelot...", file=sys.stderr)
         camelot_tables = extract_tables_with_camelot(input_path, options)
+        print(f"Camelot extracted {len(camelot_tables)} tables", file=sys.stderr)
         
         # Determine best table source
         best_tables = []

@@ -264,23 +264,43 @@ class ExcelPdfService {
       console.log(`[ExcelPdfService] Running: ${this.pythonCommand} ${args.join(' ')}`);
 
       const proc = spawn(this.pythonCommand, args, {
-        timeout: 120000, // 2 minutes
         shell: false,  // Don't use shell for better path handling
         windowsHide: true
       });
 
       let stdout = '';
       let stderr = '';
+      let hasOutput = false;
+      let isResolved = false;
+      
+      // Set a manual timeout
+      const timeout = setTimeout(() => {
+        if (!isResolved) {
+          console.error('[ExcelPdfService] Process timeout after 120 seconds');
+          proc.kill('SIGTERM');
+          isResolved = true;
+          resolve({
+            success: false,
+            error: 'Conversion timeout after 120 seconds'
+          });
+        }
+      }, 120000);
 
       proc.stdout.on('data', (data) => {
+        hasOutput = true;
         stdout += data.toString();
       });
 
       proc.stderr.on('data', (data) => {
+        hasOutput = true;
         stderr += data.toString();
       });
 
       proc.on('close', (code) => {
+        if (isResolved) return;
+        clearTimeout(timeout);
+        isResolved = true;
+        
         console.log(`[ExcelPdfService] Python converter finished with code ${code}`);
         if (stderr) {
           console.log(`[ExcelPdfService] stderr: ${stderr}`);
@@ -290,10 +310,12 @@ class ExcelPdfService {
         }
         
         // Handle case where process exits without output
-        if (!stdout || !stdout.trim()) {
+        if (!hasOutput || !stdout.trim()) {
+          const errorMsg = stderr || 'Python process produced no output';
+          console.error(`[ExcelPdfService] Process failed: ${errorMsg}`);
           resolve({
             success: false,
-            error: stderr || 'Python process produced no output'
+            error: errorMsg
           });
           return;
         }
@@ -312,6 +334,10 @@ class ExcelPdfService {
       });
 
       proc.on('error', (error) => {
+        if (isResolved) return;
+        clearTimeout(timeout);
+        isResolved = true;
+        
         console.log(`[ExcelPdfService] Process error: ${error.message}`);
         resolve({
           success: false,
