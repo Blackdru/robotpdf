@@ -1340,20 +1340,27 @@ def is_numeric_value(value):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 4:
-        print(json.dumps({'success': False, 'error': 'Usage: python excel_pdf_converter.py <mode> <input> <output> [options_json]'}))
+    try:
+        if len(sys.argv) < 4:
+            print(json.dumps({'success': False, 'error': 'Usage: python excel_pdf_converter.py <mode> <input> <output> [options_json]'}))
+            sys.exit(1)
+        
+        mode = sys.argv[1]
+        input_path = sys.argv[2]
+        output_path = sys.argv[3]
+        options = json.loads(sys.argv[4]) if len(sys.argv) > 4 else {}
+        
+        if mode == 'excel-to-pdf':
+            result = excel_to_pdf(input_path, output_path, options)
+        elif mode == 'pdf-to-excel':
+            result = pdf_to_excel(input_path, output_path, options)
+        else:
+            result = {'success': False, 'error': f'Unknown mode: {mode}'}
+        
+        print(json.dumps(result), flush=True)
+        sys.exit(0 if result.get('success') else 1)
+    except Exception as e:
+        import traceback
+        error_result = {'success': False, 'error': f'{str(e)}\n{traceback.format_exc()}'}
+        print(json.dumps(error_result), flush=True)
         sys.exit(1)
-    
-    mode = sys.argv[1]
-    input_path = sys.argv[2]
-    output_path = sys.argv[3]
-    options = json.loads(sys.argv[4]) if len(sys.argv) > 4 else {}
-    
-    if mode == 'excel-to-pdf':
-        result = excel_to_pdf(input_path, output_path, options)
-    elif mode == 'pdf-to-excel':
-        result = pdf_to_excel(input_path, output_path, options)
-    else:
-        result = {'success': False, 'error': f'Unknown mode: {mode}'}
-    
-    print(json.dumps(result))

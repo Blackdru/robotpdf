@@ -285,13 +285,28 @@ class ExcelPdfService {
         if (stderr) {
           console.log(`[ExcelPdfService] stderr: ${stderr}`);
         }
+        if (stdout) {
+          console.log(`[ExcelPdfService] stdout: ${stdout}`);
+        }
+        
+        // Handle case where process exits without output
+        if (!stdout || !stdout.trim()) {
+          resolve({
+            success: false,
+            error: stderr || 'Python process produced no output'
+          });
+          return;
+        }
+        
         try {
           const result = JSON.parse(stdout.trim());
           resolve(result);
         } catch (e) {
+          console.error(`[ExcelPdfService] Failed to parse JSON output: ${e.message}`);
+          console.error(`[ExcelPdfService] Raw stdout: ${stdout}`);
           resolve({
-            success: code === 0,
-            error: stderr || stdout || 'Unknown error'
+            success: false,
+            error: `Invalid JSON output: ${stderr || stdout || 'Unknown error'}`
           });
         }
       });
