@@ -66,6 +66,7 @@ const PDFToExcelPrivacyPolicy = lazy(() => import('./apps/pdftoexcel'))
 const UpiSubscriptionTrackerPrivacy = lazy(() => import('./apps/UpiSubscriptionTrackerPrivacy'))
 const IceBPrivacyPolicy = lazy(() => import('./apps/ice'))
 const WYRPrivacyPolicy = lazy(() => import('./apps/wyr'))
+const PathPuzzlePrivacy = lazy(() => import('./apps/PathPuzzlePrivacy'))
 
 
 // Components
@@ -371,6 +372,7 @@ const AppContent = () => {
                 <Route path="/apps/upitracker" element={<UpiSubscriptionTrackerPrivacy />} />
                 <Route path="/apps/ice" element={<IceBPrivacyPolicy />} />
                 <Route path="/apps/wyr" element={<WYRPrivacyPolicy />} />
+                <Route path="/apps/pathpuzzle" element={<PathPuzzlePrivacy />} />
               </Routes>
         </Suspense>
       </main>

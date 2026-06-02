@@ -48,30 +48,30 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // CORS configuration
-const allowedOrigins = process.env.NODE_ENV === 'production' 
+const allowedOrigins = process.env.NODE_ENV === 'production'
   ? [
-      // HTTPS (Production - Recommended)
-      'https://robotpdf.com',
-      'https://www.robotpdf.com',
-      'https://api.robotpdf.com',
-      'https://www.api.robotpdf.com',
-      // HTTP (Non-SSL - For testing/staging)
-      'http://robotpdf.com',
-      'http://www.robotpdf.com',
-      'http://api.robotpdf.com',
-      'http://www.api.robotpdf.com'
-    ]
+    // HTTPS (Production - Recommended)
+    'https://robotpdf.com',
+    'https://www.robotpdf.com',
+    'https://api.robotpdf.com',
+    'https://www.api.robotpdf.com',
+    // HTTP (Non-SSL - For testing/staging)
+    'http://robotpdf.com',
+    'http://www.robotpdf.com',
+    'http://api.robotpdf.com',
+    'http://www.api.robotpdf.com'
+  ]
   : [
-      'http://localhost:3000',
-      'http://localhost:5173',
-      'http://localhost:19006'
-    ];
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'http://localhost:19006'
+  ];
 
 app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps, curl, Postman)
     if (!origin) return callback(null, true);
-    
+
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
@@ -155,50 +155,50 @@ app.use('*', (req, res) => {
 // Global error handler
 app.use((err, req, res, next) => {
   console.error('Error:', err);
-  
+
   // Handle multer errors
   if (err.name === 'MulterError') {
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(413).json({ 
-        error: 'File size exceeds the limit. Free tools support up to 10MB, Advanced tools support up to 100MB.' 
+      return res.status(413).json({
+        error: 'File size exceeds the limit. Free tools support up to 10MB, Advanced tools support up to 100MB.'
       });
     }
     if (err.code === 'LIMIT_FILE_COUNT') {
-      return res.status(400).json({ 
-        error: 'Too many files. Maximum 10 files at once.' 
+      return res.status(400).json({
+        error: 'Too many files. Maximum 10 files at once.'
       });
     }
     if (err.code === 'LIMIT_UNEXPECTED_FILE') {
-      return res.status(400).json({ 
-        error: 'Unexpected field in file upload.' 
+      return res.status(400).json({
+        error: 'Unexpected field in file upload.'
       });
     }
-    return res.status(400).json({ 
-      error: `File upload error: ${err.message}` 
+    return res.status(400).json({
+      error: `File upload error: ${err.message}`
     });
   }
-  
+
   // Handle payload too large errors
   if (err.status === 413 || err.type === 'entity.too.large') {
-    return res.status(413).json({ 
-      error: 'Request payload too large. For OCR, please limit PDFs to 10 pages or 50MB. Consider splitting large documents.' 
+    return res.status(413).json({
+      error: 'Request payload too large. For OCR, please limit PDFs to 10 pages or 50MB. Consider splitting large documents.'
     });
   }
-  
+
   // Handle file type errors
   if (err.message && err.message.includes('Invalid file type')) {
-    return res.status(400).json({ 
-      error: err.message 
+    return res.status(400).json({
+      error: err.message
     });
   }
-  
+
   // Handle timeout errors
   if (err.code === 'ETIMEDOUT' || err.message.includes('timeout')) {
-    return res.status(408).json({ 
-      error: 'Request timeout. Please try again with a smaller file or check your connection.' 
+    return res.status(408).json({
+      error: 'Request timeout. Please try again with a smaller file or check your connection.'
     });
   }
-  
+
   res.status(err.status || 500).json({
     error: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message,
     ...(process.env.NODE_ENV !== 'production' && { stack: err.stack })
@@ -210,10 +210,10 @@ const server = app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV}`);
   console.log(`🔗 Health check: http://localhost:${PORT}/health`);
-  
+
   // Start cleanup scheduler
   cleanupScheduler.start();
-  
+
   // Start subscription expiry checker
   subscriptionExpiryService.startPeriodicCheck();
 });

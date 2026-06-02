@@ -418,17 +418,22 @@ def extract_tables_with_pdfplumber(pdf_path, options=None):
 def extract_tables_with_camelot(pdf_path, options=None):
     """Extract tables using camelot for better accuracy with bordered tables"""
     if not HAS_CAMELOT:
+        print("Camelot not available, skipping", file=sys.stderr)
         return []
     
     all_tables = []
     try:
+        print("Attempting camelot lattice mode...", file=sys.stderr)
         # Try lattice mode first (for tables with borders)
         tables = camelot.read_pdf(pdf_path, pages='all', flavor='lattice')
+        print(f"Camelot lattice found {len(tables)} tables", file=sys.stderr)
         
         if len(tables) == 0:
+            print("Attempting camelot stream mode...", file=sys.stderr)
             # Fall back to stream mode (for tables without borders)
             tables = camelot.read_pdf(pdf_path, pages='all', flavor='stream',
                                       edge_tol=50, row_tol=10)
+            print(f"Camelot stream found {len(tables)} tables", file=sys.stderr)
         
         for table in tables:
             df = table.df
@@ -449,9 +454,13 @@ def extract_tables_with_camelot(pdf_path, options=None):
                     'data': table_data,
                     'accuracy': table.accuracy if hasattr(table, 'accuracy') else 0
                 })
+        
+        print(f"Camelot extraction completed successfully", file=sys.stderr)
                 
     except Exception as e:
-        print(f"camelot extraction error: {e}", file=sys.stderr)
+        print(f"camelot extraction error (non-fatal): {e}", file=sys.stderr)
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
     
     return all_tables
 
@@ -617,11 +626,21 @@ def pdf_to_excel(input_path, output_path, options=None):
         pdfplumber_tables, page_data = extract_tables_with_pdfplumber(input_path, {**options, 'use_ocr': use_ocr, 'language': language})
         print(f"Extracted {len(pdfplumber_tables)} tables from {len(page_data)} pages", file=sys.stderr)
         
-        print("Extracting tables with camelot...", file=sys.stderr)
-        camelot_tables = extract_tables_with_camelot(input_path, options)
-        print(f"Camelot extracted {len(camelot_tables)} tables", file=sys.stderr)
+        # Skip camelot for large PDFs (>20 pages) as it can hang or crash
+        camelot_tables = []
+        if len(page_data) <= 20:
+            print("Extracting tables with camelot...", file=sys.stderr)
+            try:
+                camelot_tables = extract_tables_with_camelot(input_path, options)
+                print(f"Camelot extracted {len(camelot_tables)} tables", file=sys.stderr)
+            except Exception as camelot_error:
+                print(f"Camelot extraction failed (non-fatal): {camelot_error}", file=sys.stderr)
+                camelot_tables = []
+        else:
+            print(f"Skipping camelot for large PDF ({len(page_data)} pages)", file=sys.stderr)
         
         # Determine best table source
+        print("Determining best table source...", file=sys.stderr)
         best_tables = []
         if camelot_tables:
             high_accuracy_tables = [t for t in camelot_tables if t.get('accuracy', 0) > 70]
@@ -634,24 +653,33 @@ def pdf_to_excel(input_path, output_path, options=None):
         elif pdfplumber_tables:
             best_tables = pdfplumber_tables
         
+        print(f"Using {len(best_tables)} tables for conversion", file=sys.stderr)
+        
         # Detect if this is a bank statement
+        print("Detecting document type...", file=sys.stderr)
         is_bank_stmt = is_bank_statement(page_data, best_tables)
+        print(f"Is bank statement: {is_bank_stmt}", file=sys.stderr)
         
         # Create workbook
+        print("Creating Excel workbook...", file=sys.stderr)
         wb = openpyxl.Workbook()
         
         if is_bank_stmt:
             # Bank statement mode: 2 sheets - Details and Statement
+            print("Processing as bank statement...", file=sys.stderr)
             ws_details = wb.active
             ws_details.title = "Details"
             ws_statement = wb.create_sheet("Statement")
             
             # Process bank statement with special formatting
             result = process_bank_statement(wb, ws_details, ws_statement, page_data, best_tables, is_landscape)
+            print("Saving bank statement workbook...", file=sys.stderr)
             wb.save(output_path)
+            print(f"Bank statement saved successfully to {output_path}", file=sys.stderr)
             return result
         
         # Regular PDF processing (non-bank statement)
+        print("Processing as regular PDF...", file=sys.stderr)
         ws = wb.active
         ws.title = "Converted Data"
         
@@ -853,6 +881,7 @@ def pdf_to_excel(input_path, output_path, options=None):
             current_row += 1  # Space between pages
         
         # Auto-fit columns
+        print("Auto-fitting columns...", file=sys.stderr)
         for column in ws.columns:
             max_length = 0
             column_letter = get_column_letter(column[0].column)
@@ -867,7 +896,9 @@ def pdf_to_excel(input_path, output_path, options=None):
             adjusted_width = min(max_length + 2, 50)
             ws.column_dimensions[column_letter].width = max(adjusted_width, 8)
         
+        print(f"Saving workbook to {output_path}...", file=sys.stderr)
         wb.save(output_path)
+        print(f"Workbook saved successfully", file=sys.stderr)
         
         return {'success': True, 'output': output_path}
         
