@@ -68,6 +68,7 @@ const IceBPrivacyPolicy = lazy(() => import('./apps/ice'))
 const WYRPrivacyPolicy = lazy(() => import('./apps/wyr'))
 const PathPuzzlePrivacy = lazy(() => import('./apps/PathPuzzlePrivacy'))
 const ConnectDotsPrivacy = lazy(() => import('./apps/ConnectDotsPrivacy'))
+const ShikakuPrivacy = lazy(() => import('./apps/ShikakuPrivacy'))
 
 
 // Components
@@ -375,6 +376,7 @@ const AppContent = () => {
                 <Route path="/apps/wyr" element={<WYRPrivacyPolicy />} />
                 <Route path="/apps/pathpuzzle" element={<PathPuzzlePrivacy />} />
                 <Route path="/apps/connectdots" element={<ConnectDotsPrivacy />} />
+                <Route path="/apps/shikaku" element={<ShikakuPrivacy />} />
               </Routes>
         </Suspense>
       </main>
