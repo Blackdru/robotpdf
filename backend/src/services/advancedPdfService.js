@@ -536,148 +536,133 @@ class AdvancedPdfService {
       
       await fs.writeFile(tempInputPath, buffer);
       
-      // Try to decrypt the PDF
+      // Try to decrypt the PDF using qpdf first (handles AES-256, AES-128, RC4)
+      let decrypted = false;
+      const { execFile } = require('child_process');
+      const util = require('util');
+      const execFileAsync = util.promisify(execFile);
+
+      // Method 1: Try qpdf (standard CLI tool)
       try {
-        // Try using muhammara to decrypt
-        const muhammara = require('muhammara');
-        
-        console.log('Attempting to decrypt PDF with muhammara...');
-        
-        // Create PDF writer
-        const pdfWriter = muhammara.createWriter(tempOutputPath);
-        
-        // Try to open encrypted PDF with password
-        const copyingContext = pdfWriter.createPDFCopyingContext(tempInputPath, {
-          password: password
-        });
-        
-        // Copy all pages without encryption
-        const pageCount = copyingContext.getSourceDocumentParser().getPagesCount();
-        console.log(`Decrypting ${pageCount} pages...`);
-        
-        for (let i = 0; i < pageCount; i++) {
-          const page = pdfWriter.createPage(0, 0);
-          copyingContext.mergePDFPageToPage(page, i);
-          pdfWriter.writePage(page);
-        }
-        
-        // Finalize without encryption
-        pdfWriter.end();
-        
-        console.log('PDF decrypted successfully with muhammara');
-        
-        // Read the decrypted file
-        const decryptedBuffer = await fs.readFile(tempOutputPath);
-        console.log('Decrypted PDF size:', decryptedBuffer.length);
-        
-        // Upload unlocked PDF to Supabase storage
-        const storagePath = `unlocked/${uuidv4()}-${outputName}`;
-        const { error: uploadError } = await supabaseAdmin.storage
-          .from('files')
-          .upload(storagePath, decryptedBuffer, {
-            contentType: 'application/pdf',
-            upsert: false
-          });
+        console.log('Attempting to decrypt PDF with qpdf CLI...');
+        await execFileAsync('qpdf', [
+          '--decrypt',
+          `--password=${password}`,
+          tempInputPath,
+          tempOutputPath
+        ]);
+        decrypted = true;
+        console.log('PDF decrypted successfully with qpdf CLI');
+      } catch (qpdfError) {
+        console.log('qpdf CLI error / exit:', qpdfError.message);
+        const stderr = (qpdfError.stderr || '').toLowerCase();
+        const stdout = (qpdfError.stdout || '').toLowerCase();
+        const combined = stderr + ' ' + stdout + ' ' + qpdfError.message.toLowerCase();
 
-        if (uploadError) {
-          throw new Error('Failed to upload unlocked file: ' + uploadError.message);
+        // Check if qpdf explicitly failed due to wrong password
+        if (combined.includes('invalid password') || combined.includes('invalid user password') || combined.includes('incorrect password')) {
+          await this.cleanupFile(tempInputPath);
+          await this.cleanupFile(tempOutputPath);
+          const err = new Error('Incorrect password. Please check your password and try again.');
+          err.statusCode = 400;
+          throw err;
         }
 
-        console.log('Unlocked PDF uploaded successfully');
-        
-        // Clean up temp files
-        await this.cleanupFile(tempInputPath);
-        await this.cleanupFile(tempOutputPath);
+        // If qpdf was not found or failed for other reasons, try node-qpdf2 or muhammara
+      }
 
-        return {
-          filename: outputName,
-          size: decryptedBuffer.length,
-          path: storagePath,
-          unlocked: true,
-          note: 'Password protection removed successfully using muhammara.'
-        };
-        
-      } catch (muhammaraError) {
-        console.log('Muhammara decryption failed, trying pdf-lib fallback:', muhammaraError.message);
-        
-        // Fallback to pdf-lib - DO NOT use ignoreEncryption as it bypasses password check
+      // Method 2: Try node-qpdf2 library if qpdf CLI was not used/failed
+      if (!decrypted) {
         try {
-          const pdfDoc = await PDFLib.PDFDocument.load(buffer, {
-            ignoreEncryption: false, // IMPORTANT: Must validate password
+          console.log('Attempting to decrypt PDF with node-qpdf2...');
+          const nodeQpdf = require('node-qpdf2');
+          await nodeQpdf.decrypt({
+            input: tempInputPath,
+            output: tempOutputPath,
             password: password
           });
-          
-          console.log('PDF loaded successfully with pdf-lib (password validated)');
-          
-          // Save the PDF without encryption
-          const pdfBytes = await pdfDoc.save();
-          
-          console.log('PDF decrypted with pdf-lib, size:', pdfBytes.length);
-          
-          // Upload unlocked PDF to Supabase storage
-          const storagePath = `unlocked/${uuidv4()}-${outputName}`;
-          const { error: uploadError } = await supabaseAdmin.storage
-            .from('files')
-            .upload(storagePath, pdfBytes, {
-              contentType: 'application/pdf',
-              upsert: false
-            });
-
-          if (uploadError) {
-            throw new Error('Failed to upload unlocked file: ' + uploadError.message);
+          decrypted = true;
+          console.log('PDF decrypted successfully with node-qpdf2');
+        } catch (nodeQpdfError) {
+          console.log('node-qpdf2 failed:', nodeQpdfError.message);
+          const msg = (nodeQpdfError.message || '').toLowerCase();
+          if (msg.includes('invalid password') || msg.includes('incorrect password')) {
+            await this.cleanupFile(tempInputPath);
+            await this.cleanupFile(tempOutputPath);
+            const err = new Error('Incorrect password. Please check your password and try again.');
+            err.statusCode = 400;
+            throw err;
           }
-
-          console.log('Unlocked PDF uploaded successfully');
-          
-          // Clean up temp files
-          await this.cleanupFile(tempInputPath);
-          await this.cleanupFile(tempOutputPath);
-
-          return {
-            filename: outputName,
-            size: pdfBytes.length,
-            path: storagePath,
-            unlocked: true,
-            note: 'Password protection removed successfully using pdf-lib fallback.'
-          };
-          
-        } catch (pdfLibError) {
-          console.error('pdf-lib decryption also failed:', pdfLibError.message);
-          
-          // Check if it's a password error
-          if (pdfLibError.message.includes('password') || pdfLibError.message.includes('encrypted') ||
-              pdfLibError.message.includes('decrypt') || muhammaraError.message.includes('password')) {
-            throw new Error('Incorrect password. Please check your password and try again.');
-          }
-          
-          // If PDF is not encrypted, just copy it
-          console.log('PDF might not be encrypted, creating copy');
-          
-          const storagePath = `unlocked/${uuidv4()}-${outputName}`;
-          const { error: uploadError } = await supabaseAdmin.storage
-            .from('files')
-            .upload(storagePath, buffer, {
-              contentType: 'application/pdf',
-              upsert: false
-            });
-
-          if (uploadError) {
-            throw new Error('Failed to upload file: ' + uploadError.message);
-          }
-          
-          // Clean up temp files
-          await this.cleanupFile(tempInputPath);
-          await this.cleanupFile(tempOutputPath);
-
-          return {
-            filename: outputName,
-            size: buffer.length,
-            path: storagePath,
-            unlocked: true,
-            note: 'PDF was not password-protected. A copy has been created.'
-          };
         }
       }
+
+      // Method 3: Fallback to muhammara
+      if (!decrypted) {
+        try {
+          console.log('Attempting to decrypt PDF with muhammara fallback...');
+          const muhammara = require('muhammara');
+          const pdfWriter = muhammara.createWriter(tempOutputPath);
+          const copyingContext = pdfWriter.createPDFCopyingContext(tempInputPath, {
+            password: password
+          });
+
+          const parser = copyingContext.getSourceDocumentParser();
+          if (!parser) {
+            throw new Error('Failed to parse PDF document');
+          }
+
+          const pageCount = parser.getPagesCount();
+          console.log(`Decrypting ${pageCount} pages with muhammara...`);
+
+          for (let i = 0; i < pageCount; i++) {
+            const page = pdfWriter.createPage(0, 0);
+            copyingContext.mergePDFPageToPage(page, i);
+            pdfWriter.writePage(page);
+          }
+
+          pdfWriter.end();
+          decrypted = true;
+          console.log('PDF decrypted successfully with muhammara');
+        } catch (muhammaraError) {
+          console.log('Muhammara decryption failed:', muhammaraError.message);
+          await this.cleanupFile(tempInputPath);
+          await this.cleanupFile(tempOutputPath);
+          const err = new Error('Incorrect password. Please check your password and try again.');
+          err.statusCode = 400;
+          throw err;
+        }
+      }
+
+      // Read the decrypted file
+      const decryptedBuffer = await fs.readFile(tempOutputPath);
+      console.log('Decrypted PDF size:', decryptedBuffer.length);
+
+      // Upload unlocked PDF to Supabase storage
+      const storagePath = `unlocked/${uuidv4()}-${outputName}`;
+      const { error: uploadError } = await supabaseAdmin.storage
+        .from('files')
+        .upload(storagePath, decryptedBuffer, {
+          contentType: 'application/pdf',
+          upsert: false
+        });
+
+      if (uploadError) {
+        throw new Error('Failed to upload unlocked file: ' + uploadError.message);
+      }
+
+      console.log('Unlocked PDF uploaded successfully');
+
+      // Clean up temp files
+      await this.cleanupFile(tempInputPath);
+      await this.cleanupFile(tempOutputPath);
+
+      return {
+        filename: outputName,
+        size: decryptedBuffer.length,
+        path: storagePath,
+        unlocked: true,
+        note: 'Password protection removed successfully.'
+      };
 
     } catch (error) {
       console.error('Password removal error:', error);

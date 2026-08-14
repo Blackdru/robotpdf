@@ -483,7 +483,8 @@ router.post('/password-remove',
 
     } catch (error) {
       console.error('Password removal error:', error);
-      res.status(500).json({ error: error.message || 'Password removal failed' });
+      const statusCode = error.statusCode || (error.message && error.message.includes('Incorrect password') ? 400 : 500);
+      res.status(statusCode).json({ error: error.message || 'Password removal failed' });
     }
   }
 );
