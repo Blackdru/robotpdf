@@ -89,7 +89,6 @@ const Footer = () => {
           <div>
             <h3 className="text-slate-900 font-semibold mb-4">Resources</h3>
             <div className="space-y-2">
-              <Link to="/developers/docs" className="block text-slate-600 hover:text-indigo-600 transition-colors text-sm">API Docs</Link>
               <Link to="/pricing" className="block text-slate-600 hover:text-indigo-600 transition-colors text-sm">Pricing</Link>
               <Link to="/contact" className="block text-slate-600 hover:text-indigo-600 transition-colors text-sm">Contact Us</Link>
             </div>

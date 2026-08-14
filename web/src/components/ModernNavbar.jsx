@@ -68,7 +68,6 @@ const ModernNavbar = () => {
 
   const publicNavItems = [
     { path: '/pricing', label: 'Pricing', icon: DollarSign },
-    { path: '/developers', label: 'Developers', icon: Code },
   ]
 
   const getVisibleNavItems = () => {
@@ -209,14 +208,6 @@ const ModernNavbar = () => {
                             <span className="font-medium text-slate-700">Billing & Usage</span>
                             <span className="block text-xs text-slate-500">Manage subscription</span>
                           </div>
-                        </DropdownMenuItem>
-
-                        <DropdownMenuItem 
-                          onClick={() => navigate('/developers')}
-                          className="px-3 py-2 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-                        >
-                          <Code className="mr-3 h-4 w-4 text-slate-500" />
-                          <span className="font-medium text-slate-700">Developer Portal</span>
                         </DropdownMenuItem>
 
                         {/* Upgrade Button for Free/Basic Users */}

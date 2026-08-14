@@ -8,8 +8,7 @@ const MobileBottomNav = () => {
   const navItems = [
     { id: 'files', label: 'Files', icon: FolderOpen, path: '/files' },
     { id: 'tools', label: 'Tools', icon: Wrench, path: '/tools' },
-    { id: 'advanced', label: 'Pro Tools', icon: Sparkles, path: '/advanced-tools' },
-    { id: 'developers', label: 'Developers', icon: Code, path: '/developers' }
+    { id: 'advanced', label: 'Pro Tools', icon: Sparkles, path: '/advanced-tools' }
   ]
 
   const isActive = (path) => {
@@ -18,7 +17,7 @@ const MobileBottomNav = () => {
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 safe-area-bottom shadow-lg">
-      <div className="grid grid-cols-4 gap-1 px-2 py-2">
+      <div className="grid grid-cols-3 gap-1 px-2 py-2">
         {navItems.map((item) => {
           const Icon = item.icon
           const active = isActive(item.path)
