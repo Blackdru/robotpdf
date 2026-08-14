@@ -39,49 +39,67 @@ app.set('trust proxy', 1);
 app.use(helmet());
 app.use(compression());
 
-// CORS configuration - must be before rate limiter so CORS headers
-// are present even on 429 Too Many Requests responses
-const allowedOrigins = process.env.NODE_ENV === 'production'
-  ? [
-    // HTTPS (Production - Recommended)
-    'https://robotpdf.com',
-    'https://www.robotpdf.com',
-    'https://api.robotpdf.com',
-    'https://www.api.robotpdf.com',
-    // HTTP (Non-SSL - For testing/staging)
-    'http://robotpdf.com',
-    'http://www.robotpdf.com',
-    'http://api.robotpdf.com',
-    'http://www.api.robotpdf.com'
-  ]
-  : [
-    'http://localhost:3000',
-    'http://localhost:5173',
-    'http://localhost:19006'
-  ];
+// CORS configuration - Allow production domains and local development
+const allowedOrigins = [
+  'https://robotpdf.com',
+  'https://www.robotpdf.com',
+  'https://api.robotpdf.com',
+  'https://www.api.robotpdf.com',
+  'http://robotpdf.com',
+  'http://www.robotpdf.com',
+  'http://api.robotpdf.com',
+  'http://www.api.robotpdf.com',
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'http://localhost:19006',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:5173'
+];
+
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true;
+  if (allowedOrigins.includes(origin)) return true;
+  // Allow all robotpdf.com subdomains and preview deployments
+  if (/^https?:\/\/([a-z0-9-]+\.)*robotpdf\.com(:[0-9]+)?$/i.test(origin)) return true;
+  // Allow localhost on any port
+  if (/^https?:\/\/localhost(:[0-9]+)?$/i.test(origin)) return true;
+  if (/^https?:\/\/127\.0\.0\.1(:[0-9]+)?$/i.test(origin)) return true;
+  return false;
+};
 
 const corsOptions = {
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps, curl, Postman)
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    // Allow requests with no origin (like mobile apps, curl, Postman) or valid origins
+    if (isAllowedOrigin(origin)) {
       callback(null, true);
     } else {
-      console.warn(`CORS blocked origin: ${origin}`);
-      callback(new Error('Not allowed by CORS'));
+      console.warn(`⚠️ CORS blocked origin: ${origin}`);
+      // Do NOT pass new Error() to avoid Express crashing into 500 error handler without CORS headers
+      callback(null, false);
     }
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
-  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH', 'HEAD'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'Range', 'x-client-info', 'apikey'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range', 'Content-Disposition', 'Content-Length'],
   maxAge: 86400 // 24 hours - cache preflight requests
 };
 
 // Handle preflight OPTIONS requests with the same corsOptions
 app.options('*', cors(corsOptions));
 app.use(cors(corsOptions));
+
+// Explicit fallback middleware to ensure CORS headers on every response
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (isAllowedOrigin(origin)) {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH, HEAD');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Range, x-client-info, apikey');
+  }
+  next();
+});
 
 // Rate limiting
 const limiter = rateLimit({
@@ -158,6 +176,13 @@ app.use('*', (req, res) => {
 app.use((err, req, res, next) => {
   console.error('Error:', err);
 
+  // Ensure CORS headers are explicitly set on error responses
+  const origin = req.headers.origin;
+  if (isAllowedOrigin(origin)) {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+    res.header('Access-Control-Allow-Credentials', 'true');
+  }
+
   // Handle multer errors
   if (err.name === 'MulterError') {
     if (err.code === 'LIMIT_FILE_SIZE') {
@@ -205,6 +230,15 @@ app.use((err, req, res, next) => {
     error: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message,
     ...(process.env.NODE_ENV !== 'production' && { stack: err.stack })
   });
+});
+
+// Process-level safety against crashes
+process.on('uncaughtException', (err) => {
+  console.error('💥 Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
 // Start server
